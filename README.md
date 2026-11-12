@@ -16,6 +16,8 @@ The standard alone cannot say whether a renderer is right, because section 8.3.4
 
 `compare` checks a frame against a reference. A pixel fails only if its colour appears nowhere within a given distance in the other frame. A line one pixel wider passes; a missing shape, a wrong colour or a shape in the wrong place does not.
 
+How all of this is checked, and how each check was itself checked, is in `docs/verification.md`.
+
 The oracle is checked against independent evidence. The `rosetta_stone` testbed of the Telidon project has 18 PP3 screenshots, and the oracle's captures of the same 18 pages match them.
 
 ## Requirements
