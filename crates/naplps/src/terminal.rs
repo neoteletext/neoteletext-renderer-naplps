@@ -1187,8 +1187,8 @@ impl Terminal {
         x0 >= area.0 && y0 >= area.1 && x1 <= area.2 && y1 <= area.3
     }
 
-    /// The cursor's step along the path for one character (section 5.3.2.3.4); proportional
-    /// spacing steps as single spacing here (a to-do).
+    /// The cursor's step along the path for one character (section 5.3.2.3.4). Proportional
+    /// spacing steps by a whole field here; [`Self::character`] narrows it for a stroke glyph.
     fn advance_step(&self) -> Point {
         let (ex, ey) = self.field_now(self.cursor).extent();
         let scale_by = |value: Unit| match self.text.spacing {
@@ -1348,8 +1348,8 @@ impl Terminal {
     }
 
     /// Moves along the path after a character; at the edge, a new line (section 5.3.2.3.6).
-    fn advance(&mut self, canvas: &mut Canvas) {
-        let next = self.cursor.plus(self.advance_step());
+    fn advance(&mut self, canvas: &mut Canvas, step: Point) {
+        let next = self.cursor.plus(step);
         if self.fits(next, self.area()) {
             self.cursor = next;
             self.sync_point();
@@ -1407,6 +1407,7 @@ impl Terminal {
         }
         let spacing = !(set == CharSet::Supplementary && (0x40..=0x4F).contains(&code));
         let field = self.field_now(self.cursor);
+        let proportional = self.proportional_extent(set, code);
         let ink = Ink {
             colour: self.colour,
             background: (self.mode == Mode::MapWithBackground).then_some(self.background),
@@ -1435,6 +1436,14 @@ impl Terminal {
                         self.font.as_ref().and_then(|font| font.glyph(font_set, code))
                     };
                     let shape = glyph.map_or(Shape::Blank, |glyph| Shape::Strokes(&glyph.segments));
+                    let mut field = field;
+                    if let Some((left, _)) = proportional {
+                        // The glyph's leftmost stroke sits at the cursor.
+                        let (u, _) = field.axes();
+                        let shift = Point::new(eighths(u.x, left), eighths(u.y, left));
+                        field.origin =
+                            field.origin.plus(Point::new(shift.x.saturating_neg(), shift.y.saturating_neg()));
+                    }
                     text::draw(surface, field, &shape, ink);
                 }
                 CharSet::Mosaic => {
@@ -1458,8 +1467,33 @@ impl Terminal {
         }
         if spacing {
             self.last_spacing = Some((set, code));
-            self.advance(canvas);
+            let mut step = self.advance_step();
+            if let Some((left, right)) = proportional {
+                let width = i64::from(right.saturating_sub(left)).saturating_add(PROPORTIONAL_GAP);
+                step = Point::new(eighths(step.x, width), eighths(step.y, width));
+            }
+            self.advance(canvas, step);
         }
+    }
+
+    /// The leftmost and rightmost stroke columns of a glyph drawn with proportional spacing on
+    /// a horizontal path; `None` for fixed spacing, vertical paths and glyphs without strokes,
+    /// which step by the whole field (PP3, SEAPORT.NAP: a space steps 20 pixels on a 20-pixel
+    /// field).
+    fn proportional_extent(&self, set: CharSet, code: u8) -> Option<(u8, u8)> {
+        if self.text.spacing != SPACING_PROPORTIONAL || !matches!(self.text.path, Path::Right | Path::Left) {
+            return None;
+        }
+        let font_set = match set {
+            CharSet::Primary => FontSet::Primary,
+            CharSet::Supplementary => FontSet::Supplementary,
+            _ => return None,
+        };
+        let glyph = self.font.as_ref()?.glyph(font_set, code)?;
+        let columns = glyph.segments.iter().flat_map(|segment| [segment[0], segment[2]]);
+        let left = columns.clone().min()?;
+        let right = columns.max()?;
+        Some((left, right))
     }
 
     fn repeat(&mut self, canvas: &mut Canvas, count: u32) {
@@ -1533,6 +1567,19 @@ fn eight_bits(value: u32, width: u32) -> u8 {
     }
     let scaled = if width >= 8 { value >> (width - 8) } else { value << (8 - width) };
     u8::try_from(scaled & 0xFF).unwrap_or(u8::MAX)
+}
+
+/// TEXT's spacing field value for proportional spacing (section 5.3.2.3.4: 11).
+const SPACING_PROPORTIONAL: u8 = 0b11;
+
+/// A proportionally spaced stroke glyph steps by its strokes' width plus this many eighths of
+/// the field. Measured from PP3 (SEAPORT.NAP, a 20-pixel field): F, e, a, u, r, n, g (strokes
+/// spanning 4 columns) step 15 pixels, t (2 columns) 10 and i (one column) 5.
+const PROPORTIONAL_GAP: i64 = 2;
+
+/// `count` eighths of `value`, the stroke grid's column width (`text::STROKE_X_DIVISOR`).
+fn eighths(value: Unit, count: impl Into<i64>) -> Unit {
+    Unit::try_from(crate::fixed::scale(i64::from(value), count.into(), text::STROKE_X_DIVISOR)).unwrap_or(value)
 }
 
 #[cfg(test)]
@@ -1673,5 +1720,24 @@ mod tests {
         // INCREMENTAL LINE 3/10, step (1/16, 1/16): opcodes 01 01 11 (right, right, diagonal).
         let (_, canvas, _) = run(&[SO, 0x3A, 0x40, 0x52, 0x40, 0x40 | 0b01_01_11]);
         assert!(lit(&canvas) > 0);
+    }
+    #[test]
+    fn proportional_spacing_steps_by_the_strokes_width() {
+        // TEXT with proportional spacing and a 1/32 field, whose eighths are whole units; then
+        // "il " in a font where i is one column (x = 3) and l spans four (x = 1 to 5).
+        let font = StrokeFont::parse("[primary]\n69 0 0 3,2,3,6\n6c 0 0 1,2,5,2\n[supplementary]\n").unwrap();
+        let mut canvas = Canvas::new(640, 480).unwrap();
+        let mut terminal = Terminal::new(4);
+        terminal.set_font(font);
+        let _ = terminal.feed(&mut canvas, &[SO, 0x22, 0x70, 0x40]);
+        terminal.text.size = Point::new(ONE / 32, ONE / 32);
+        terminal.cursor = Point::new(0, ONE / 2);
+        let _ = terminal.feed(&mut canvas, &[SI, b'i']);
+        // i: one column wide, so it steps 0 + 2 eighths.
+        assert_eq!(terminal.cursor.x, ONE / 32 / 8 * 2);
+        let _ = terminal.feed(&mut canvas, b"l");
+        assert_eq!(terminal.cursor.x, ONE / 32 / 8 * 2 + ONE / 32 / 8 * 6);
+        let _ = terminal.feed(&mut canvas, b" ");
+        assert_eq!(terminal.cursor.x, ONE / 32 / 8 * 8 + ONE / 32, "a space steps the whole field");
     }
 }

@@ -22,7 +22,7 @@ use crate::surface::{Mask, SUBPIXELS, Surface, subpixel_of};
 /// 94 primary glyphs, the best of the mappings tried). PP3 scales its font differently at large
 /// sizes (a 195 x 288 field puts grid columns 16 pixels apart, not 24), which this does not
 /// reproduce.
-const STROKE_X_DIVISOR: i64 = 8;
+pub(crate) const STROKE_X_DIVISOR: i64 = 8;
 /// See [`STROKE_X_DIVISOR`].
 const STROKE_Y_DIVISOR: i64 = 10;
 /// See [`STROKE_X_DIVISOR`]: the pen's side as a share of the field height.
