@@ -1,0 +1,25 @@
+061 | Scottish tartan swatch with clan name | woven look: overlapping hatch textures
+062 | Islamic geometric star tiling | girih pattern from a macro, turquoise and gold
+063 | optical illusion | op art: black and white, bulging grid
+064 | abstract composition | De Stijl: black grid, red, yellow, blue blocks
+065 | wave and mountain landscape | ukiyo-e inspired flat print: indigo, cream, a red seal
+066 | soup-can style repeated product portrait | pop art: four colour variations by palette
+067 | workers' festival poster | constructivist: diagonals, red, black, cream
+068 | furniture showroom advertisement | Memphis design: squiggles, terrazzo, pastel clash
+069 | perfume advertisement | art nouveau: whiplash curves, lily, muted gold
+070 | space shooter title screen | arcade pixel art from mosaic characters
+071 | bridge engineering elevation | blueprint: white on cyan-blue with title block
+072 | fable illustration: the crow and the pitcher | woodcut: black and white with hatch shading
+073 | cathedral rose window | stained glass: jewel colours with black leading
+074 | late-night diner sign | neon tubes on dark brick (colour cycling allowed)
+075 | portrait of a cat in one continuous line | minimal line art using incremental lines
+076 | seaside afternoon | pointillism: many POINTs with a large pel
+077 | system status console | green phosphor terminal with scan-line hatch
+078 | desert caravan at sunset | layered paper-cut silhouettes
+079 | hiking trail map with contour lines | topographic map: brown contours, trail dashes
+080 | tarot card: The Star | ornate card with border and symbolic figure
+081 | commemorative postage stamp | perforated edge, engraved portrait feel, denomination
+082 | jazz record sleeve | 1950s Blue Note style: duotone, bold type, shapes
+083 | paperback science-fiction cover | 1970s sci-fi: planet, rings, stripe gradient
+084 | film noir movie poster | high-contrast shadows, venetian blinds, one accent
+085 | alpine ski resort travel poster | vintage travel poster: flat mountains, big type

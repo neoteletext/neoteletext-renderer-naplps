@@ -1,0 +1,26 @@
+from _support import *
+META=dict(number=15,title='North Quay Bank statement',purpose='Bank account statement and balance',style='Sober navy and grey banking form with fine rules',techniques=['rules','fixed-pitch amounts','polygons'],animated=False)
+def build():
+    p=Page('015-bank-statement',['f2f3ee','1e3554','a8b1bc','dce1e4','ffffff','496377'])
+    p.poly([(27,33),(53,16),(79,33)],1);p.rect(31,38,44,7,1)
+    for x in [34,50,66]:p.rect(x,47,5,32,1)
+    p.rect(28,82,50,6,1)
+    p.t(101,16,'NORTH QUAY BANK',28,39)
+    p.t(102,62,'ACCOUNT STATEMENT',20,28,c=5)
+    p.line([(24,108),(616,108)],1,2)
+    p.t(25,120,'A. VALE',23,31)
+    p.t(616,120,'01-30 NOV 1987',19,27,align='right')
+    p.t(25,155,'ACCOUNT  0471  2086',19,27,c=5,prop=False)
+    p.rect(24,209,592,39,3)
+    p.t(34,214,'DATE',18,26)
+    p.t(145,214,'TRANSACTION',18,26)
+    p.t(605,214,'AMOUNT',18,26,align='right')
+    for y,date,desc,amount in [(259,'01 NOV','OPENING','$1,240.00'),(302,'15 NOV','SALARY','+2,100.00'),(345,'20 NOV','RENT','-780.00')]:
+        p.t(34,y,date,18,26,prop=False);p.t(178,y,desc,20,27)
+        p.t(606,y,amount,20,27,prop=False,align='right')
+        p.line([(25,y+35),(615,y+35)],2,1)
+    p.rect(24,403,592,61,1)
+    p.t(39,418,'CLOSING BALANCE',20,29,c=4)
+    p.t(598,411,'$2,560.00',28,42,c=4,prop=False,align='right')
+    return p
+if __name__=='__main__':run(build)

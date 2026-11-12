@@ -1,0 +1,25 @@
+036 | apartment floor plan with dimensions | architect's blueprint with dimension arrows
+037 | month calendar with marked events | desk calendar: red header, clean grid
+038 | world clock showing four cities | analogue clock faces in a row, minimalist
+039 | a line of sheet music with a title | engraved music: staves, notes, clef from polygons
+040 | children's bedtime story page | soft storybook illustration: moon, hill, sleeping fox
+041 | three-panel comic strip | comic: thick outlines, speech balloons, halftone hatch
+042 | birthday greeting card | festive: balloons, confetti, hand-lettered feel
+043 | supermarket weekly specials advertisement | loud retail ad: red and yellow, starbursts
+044 | emergency evacuation notice with routes | hazard signage: black and yellow chevrons
+045 | farm commodity prices: wheat, wool, cattle | rural almanac: woodcut-like silhouettes, ochre
+046 | library catalogue search result | index card: typewriter feel, ruled card, stamp
+047 | electronic mail inbox | early online-service interface: panels and menu bar
+048 | bulletin board system main menu | BBS: numbered menu, neon on black, mosaic border
+049 | service log-on welcome screen | corporate 1980s videotex: logo, stripes, prompt
+050 | help page explaining keypad commands | instructional diagram of a keypad with callouts
+051 | quarterly sales bar chart | business graphics: 3D-look bars, grid, legend
+052 | household budget pie chart | soft infographic: pie from filled arcs, labels
+053 | population pyramid by age | data visualisation: mirrored bars, two hues
+054 | periodic table excerpt, first 18 elements | scientific chart: colour-coded tiles
+055 | the solar system to scale of order | astronomy plate: black space, orbits as arcs
+056 | human heart anatomy with labels | medical illustration: reds and blues, leader lines
+057 | water molecule and bond angles | chemistry diagram: spheres, sticks, hatching
+058 | flags of six countries | flat vexillology grid
+059 | a coat of arms | heraldry: shield, chevron, tinctures, motto ribbon
+060 | patchwork quilt pattern | folk textile: repeating blocks via macros

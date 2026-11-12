@@ -190,6 +190,16 @@ Results on 13 November 2026:
 
 The oracle captures each corpus page with a fresh PP3 (`capture --fresh`): one PP3 session carried state its reset did not clear, and pages captured after others in a single session came out blank on 12 November 2026.
 
+### The sample pages
+
+The 110 designed pages of `samples/` (REQ-5821) went through the same comparison on 13 November 2026 (`samples/pipeline.sh`): each captured in a fresh PP3 and compared with the renderer at 640 x 480.
+
+- **PP3 truncates the colours a page defines** to VGA's 6 bits, where the comparison rounds, so backgrounds differ by one register step and no page passes at channel tolerance 0 (TODO-5822). The figures below allow one step (channel tolerance 4).
+- One page agrees at displacement 1 and six at displacement 2. Taking the larger of a page's two unexplained counts as a share of its 307,200 pixels, the median page has 1.2 % unexplained; 43 pages have under 1 %, 69 under 2 % and 90 under 5 %.
+- Most of what remains is the weight of text strokes at sizes other than the default (TODO-5803). The largest differences, `029-libra` (94 %), `059-alder-arms` (70 %) and `041-green-fingers` (43 %), are not yet explained (TODO-5825).
+- Three pages that blink never settled and were captured at the ceiling (TODO-5762).
+- Stroke text is damaged at 256 x 200 and 320 x 200 and clean from 480 x 462 upward (TODO-5827).
+
 ## 8. Running it
 
 ```

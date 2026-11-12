@@ -1,0 +1,158 @@
+<title>NAPLPS Sample Pages</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: a control strip over a dense wall of screens; one screen opens into a bench that
+   shows the three resolutions and the PP3 comparison side by side. */
+:root {
+  --bg: #e9e7e1; --panel: #f6f5f1; --ink: #1d2126; --dim: #5d646c; --rule: #c9c6bd;
+  --accent: #0b6e8f; --pass: #1f7a4a; --near: #9a6a00; --fail: #b3372b; --bezel: #23262a;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15171a; --panel: #1e2125; --ink: #e6e4de; --dim: #9aa1a8; --rule: #353a40;
+  --accent: #58b8d6; --pass: #5cc48b; --near: #e0b04a; --fail: #f08375; --bezel: #0b0c0d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1e2125; --ink: #e6e4de; --dim: #9aa1a8; --rule: #353a40;
+  --accent: #58b8d6; --pass: #5cc48b; --near: #e0b04a; --fail: #f08375; --bezel: #0b0c0d; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.45; }
+.wrap { max-width: 1500px; margin: 0 auto; padding-block: 28px 60px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-size: 2.1rem; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.lede { color: var(--dim); max-width: 68ch; margin: 6px 0 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 18px 0 0; font-family: var(--mono); font-size: .82rem; }
+.stats b { font-weight: 500; font-size: 1.25rem; display: block; font-variant-numeric: tabular-nums; }
+.stats span { color: var(--dim); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--rule);
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding-block: 12px; margin-top: 22px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 .8rem var(--mono); color: var(--dim); background: var(--panel); border: 0; padding: 7px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+button:focus-visible, .card:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 500 .7rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-right: 6px; }
+#q { font: .9rem var(--body); padding: 7px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); color: var(--ink); min-width: 0; width: 15rem; max-width: 100%; }
+.count { font: .8rem var(--mono); color: var(--dim); margin-left: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px 16px; margin-top: 20px; }
+.card { text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+.screen { background: var(--bezel); padding: 5px; border-radius: 4px; }
+.screen img { display: block; width: 100%; image-rendering: pixelated; }
+.fit43 img { aspect-ratio: 4 / 3; }
+.fitTT img { aspect-ratio: 7680 / 6500; }
+.fitLB img { aspect-ratio: 7680 / 6006; }
+.tt { background: var(--bezel); display: flex; align-items: center; justify-content: center; width: 591px; max-width: 100%; height: 500px; }
+.meta { display: flex; gap: 8px; align-items: baseline; margin-top: 7px; }
+.num { font: .75rem var(--mono); color: var(--dim); }
+.title { font-weight: 600; font-size: .92rem; min-width: 0; overflow-wrap: anywhere; }
+.purpose { color: var(--dim); font-size: .8rem; margin-top: 1px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-left: auto; align-self: center; }
+.s-pass { background: var(--pass); } .s-near { background: var(--near); } .s-fail { background: var(--fail); } .s-none { background: var(--rule); }
+dialog { border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 0; width: min(1400px, 96vw); max-height: 94vh; }
+dialog::backdrop { background: rgb(0 0 0 / .6); }
+.bench { padding: 20px 22px 24px; }
+.bench header { display: flex; gap: 14px; align-items: flex-start; }
+.bench h2 { font-family: var(--display); font-size: 1.5rem; margin: 0; }
+.bench .sub { color: var(--dim); font-size: .88rem; max-width: 80ch; }
+.x { margin-left: auto; font: 500 .8rem var(--mono); background: none; border: 1px solid var(--rule); color: var(--ink); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.nav { display: flex; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; margin-top: 18px; }
+.row figure { margin: 0; min-width: 0; }
+.row figcaption, .pair figcaption { font: .74rem var(--mono); color: var(--dim); margin-top: 5px; }
+.native img { image-rendering: pixelated; display: block; max-width: 100%; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 22px; }
+.pair figure { margin: 0; min-width: 0; }
+.pair img { display: block; width: 100%; }
+.verdict { margin-top: 18px; font-size: .9rem; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.pill { font: 500 .74rem var(--mono); padding: 3px 9px; border-radius: 99px; border: 1px solid currentColor; }
+.p-pass { color: var(--pass); } .p-near { color: var(--near); } .p-fail { color: var(--fail); } .p-none { color: var(--dim); }
+h3 { font: 500 .72rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin: 24px 0 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .8rem; color: var(--dim); margin-top: 10px; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+</style>
+<div class="wrap">
+  <h1>NAPLPS Sample Pages</h1>
+  <p class="lede">Each page is a NAPLPS byte stream of a few hundred bytes to a few kilobytes, drawn by the neoteletext-naplps renderer at three period resolutions and at NeoTeletext's 480×500, and checked against the 1980s terminal program PP3.</p>
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span><i class="s-pass"></i>Matches PP3 within one pixel and one colour step</span>
+    <span><i class="s-near"></i>Under 2% of pixels unexplained</span>
+    <span><i class="s-fail"></i>Differs more</span>
+    <span><i class="s-none"></i>No PP3 capture</span>
+  </div>
+  <div class="bar">
+    <span><span class="label">Resolution</span><span class="seg" id="size">
+      <button data-v="s256" aria-pressed="false">256×200</button><button data-v="s320" aria-pressed="true">320×200</button><button data-v="s512" aria-pressed="false">512×400</button><button data-v="s480" aria-pressed="false">480×500</button><button data-v="s462" aria-pressed="false">480×462</button></span></span>
+    <span><span class="label">Shape</span><span class="seg" id="shape">
+      <button data-v="fit" aria-pressed="true">As displayed</button><button data-v="raw" aria-pressed="false">Square pixels</button></span></span>
+    <span><span class="label">Show</span><span class="seg" id="filter">
+      <button data-v="all" aria-pressed="true">All</button><button data-v="pass" aria-pressed="false">Match</button><button data-v="near" aria-pressed="false">Near</button><button data-v="fail" aria-pressed="false">Differ</button></span></span>
+    <input id="q" type="search" placeholder="Search title, purpose, style" aria-label="Search pages">
+    <span class="count" id="count"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+<dialog id="dlg" aria-labelledby="dt"><div class="bench" id="bench"></div></dialog>
+<script>
+const PAGES = /*DATA*/[];
+const state = { size: "s320", shape: "fit", filter: "all", q: "", open: -1 };
+const status = p => !p.captured ? "none" : p.close ? "pass" : p.share < 2 ? "near" : "fail";
+const WORD = { pass: "Matches PP3", near: "Near PP3", fail: "Differs from PP3", none: "Not captured" };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const grid = document.getElementById("grid");
+let shown = [];
+
+function stats() {
+  const n = PAGES.length, cap = PAGES.filter(p => p.captured).length;
+  const by = k => PAGES.filter(p => status(p) === k).length;
+  const bytes = PAGES.map(p => p.bytes).sort((a, b) => a - b);
+  const cells = [[n, "pages"], [cap, "captured in PP3"], [by("pass"), "match PP3"], [by("near"), "near"], [by("fail"), "differ"],
+    [bytes[Math.floor(n / 2)].toLocaleString() + " B", "median size"], [bytes[n - 1].toLocaleString() + " B", "largest"]];
+  document.getElementById("stats").innerHTML = cells.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
+}
+function draw() {
+  const q = state.q.toLowerCase();
+  shown = PAGES.filter(p => (state.filter === "all" || status(p) === state.filter) &&
+    (!q || (p.title + " " + p.purpose + " " + p.style).toLowerCase().includes(q)));
+  grid.innerHTML = shown.map((p, i) => `<button class="card" data-i="${i}">
+    <div class="screen ${state.shape !== "fit" ? "" : state.size === "s480" ? "fitTT" : state.size === "s462" ? "fitLB" : "fit43"}"><img loading="lazy" alt="${esc(p.title)}" src="${p[state.size]}"></div>
+    <div class="meta"><span class="num">${p.n}</span><span class="title">${esc(p.title)}</span><span class="dot s-${status(p)}" title="${WORD[status(p)]}"></span></div>
+    <div class="purpose">${esc(p.purpose)}</div></button>`).join("");
+  document.getElementById("count").textContent = shown.length + " of " + PAGES.length;
+}
+function bench(i) {
+  state.open = i; const p = shown[i], s = status(p);
+  const fig = (k, w, h) => `<figure class="native"><img src="${p[k]}" width="${w * 2}" height="${h * 2}" alt=""><figcaption>${w}×${h}, shown at 2×</figcaption></figure>`;
+  document.getElementById("bench").innerHTML = `<header><div><h2 id="dt">${p.n} · ${esc(p.title)}</h2>
+    <div class="sub">${esc(p.purpose)}. ${esc(p.style)}. ${p.bytes.toLocaleString()} bytes${p.animated ? ", animated" : ""}.</div></div>
+    <span class="nav" style="margin-left:auto"><button class="x" id="prev" style="margin:0">Previous</button><button class="x" id="next" style="margin:0">Next</button><button class="x" id="close" style="margin:0">Close</button></span></header>
+    <h3>Rendered at three resolutions</h3>
+    <div class="row">${fig("s256", 256, 200)}${fig("s320", 320, 200)}
+      <figure class="native"><img src="${p.s512}" width="512" height="400" alt=""><figcaption>512×400, shown at 1×</figcaption></figure></div>
+    <h3>At NeoTeletext's 480×500</h3>
+    <div class="row"><figure class="native"><img src="${p.s480}" width="591" height="500" alt="" style="image-rendering:auto"><figcaption>480×500, filling the raster: about 8% too tall</figcaption></figure>
+      <figure class="native"><div class="tt"><img src="${p.s462}" width="591" height="462" alt="" style="image-rendering:auto"></div><figcaption>480×462 inside the 480×500 raster, 19 border lines above and below: correct shape</figcaption></figure>
+      <figure class="native"><img src="${p.s480}" width="480" height="500" alt=""><figcaption>480×500, raw pixels</figcaption></figure></div>
+    <h3>Verification against PP3 at 640×480</h3>
+    <div class="verdict"><span class="pill p-${s}">${WORD[s]}</span>${p.captured ? `<span>${p.share}% of pixels unexplained within one pixel and one colour step.${p.exact ? " Also matches with exact colours." : ""}${!p.close && p.close2 ? " Matches within two pixels." : ""}</span>` : "<span>PP3 produced no frame for this page.</span>"}</div>
+    <div class="pair">${p.pp3 ? `<figure><img src="${p.pp3}" alt="PP3 capture"><figcaption>PP3 2.18A in DOSBox</figcaption></figure>` : ""}
+      <figure><img src="${p.ours}" alt="Renderer output"><figcaption>neoteletext-naplps renderer</figcaption></figure></div>`;
+  document.getElementById("close").onclick = () => dlg.close();
+  document.getElementById("prev").onclick = () => bench((i + shown.length - 1) % shown.length);
+  document.getElementById("next").onclick = () => bench((i + 1) % shown.length);
+}
+const dlg = document.getElementById("dlg");
+grid.addEventListener("click", e => { const c = e.target.closest(".card"); if (c) { bench(+c.dataset.i); dlg.showModal(); } });
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+document.addEventListener("keydown", e => { if (!dlg.open) return;
+  if (e.key === "ArrowRight") bench((state.open + 1) % shown.length);
+  if (e.key === "ArrowLeft") bench((state.open + shown.length - 1) % shown.length); });
+for (const id of ["size", "shape", "filter"]) document.getElementById(id).addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state[id] = b.dataset.v;
+  for (const x of b.parentNode.children) x.setAttribute("aria-pressed", x === b);
+  draw(); });
+document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; draw(); });
+stats(); draw();
+</script>

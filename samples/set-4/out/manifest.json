@@ -1,0 +1,360 @@
+[
+  {
+    "number": 86,
+    "file": "086-admission.nap",
+    "title": "The Velvet Satellites",
+    "purpose": "concert admission ticket",
+    "style": "Coral ticket stock, detachable cream stub, serial bars and perforation",
+    "bytes": 881,
+    "techniques": [
+      "polygons",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 87,
+    "file": "087-banknote.nap",
+    "title": "Isles Reserve / 25 Crowns",
+    "purpose": "banknote design",
+    "style": "Sage security engraving with interlaced arc lines and an oval portrait",
+    "bytes": 1023,
+    "techniques": [
+      "arcs",
+      "polygons",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 88,
+    "file": "088-queen.nap",
+    "title": "Queen of Hearts",
+    "purpose": "playing card: queen of hearts",
+    "style": "Traditional red, gold and navy court card with rotational symmetry",
+    "bytes": 953,
+    "techniques": [
+      "polygons",
+      "rotated text",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 89,
+    "file": "089-mate-in-two.nap",
+    "title": "The King’s Turn",
+    "purpose": "chess problem: mate in two",
+    "style": "Spare chess journal with an ivory and stone board and polygon pieces",
+    "bytes": 1396,
+    "techniques": [
+      "polygons",
+      "rectangles",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 90,
+    "file": "090-crossword.nap",
+    "title": "The Morning Fold / Mini 218",
+    "purpose": "crossword puzzle grid with clues",
+    "style": "Warm monochrome newspaper mini with a heavy open word-square grid",
+    "bytes": 906,
+    "techniques": [
+      "lines",
+      "rectangles",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 91,
+    "file": "091-knit-chart.nap",
+    "title": "Fern Cowl / Chart 02",
+    "purpose": "knitting pattern chart",
+    "style": "Rose and cream craft chart with moss and rose stitch symbols",
+    "bytes": 1754,
+    "techniques": [
+      "macro",
+      "polygons",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 92,
+    "file": "092-tide-table.nap",
+    "title": "Greyhook Harbour / Tides",
+    "purpose": "tide table for a harbour with curve",
+    "style": "Dark nautical almanac with a turquoise tidal curve and moon discs",
+    "bytes": 877,
+    "techniques": [
+      "arcs",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 93,
+    "file": "093-ski-report.nap",
+    "title": "Rime Ridge / Snow Report",
+    "purpose": "ski report: snow depth and lifts open",
+    "style": "Icy mountain panorama, big depth figures and compact lift bars",
+    "bytes": 756,
+    "techniques": [
+      "DRCS",
+      "polygons",
+      "bars",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 94,
+    "file": "094-surf-report.nap",
+    "title": "Breakwater / Surf",
+    "purpose": "surf report with swell and wind",
+    "style": "Bright teal beach graphic with a cresting wave and dark navy water",
+    "bytes": 586,
+    "techniques": [
+      "arcs",
+      "polygons",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 95,
+    "file": "095-planting-calendar.nap",
+    "title": "The Seed Cupboard",
+    "purpose": "garden planting calendar by month",
+    "style": "Botanical seed-packet planner with paired six-month green tables",
+    "bytes": 1327,
+    "techniques": [
+      "rectangles",
+      "arcs",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 96,
+    "file": "096-finches.nap",
+    "title": "Field Notes / Finches",
+    "purpose": "bird identification card: three finches",
+    "style": "Ivory field-guide plate with ochre, russet and sage bird silhouettes",
+    "bytes": 1232,
+    "techniques": [
+      "polygons",
+      "arcs",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 97,
+    "file": "097-stegosaurus.nap",
+    "title": "Stegosaurus / Armour Up!",
+    "purpose": "dinosaur fact sheet: Stegosaurus",
+    "style": "Ochre museum panel with a bold plated silhouette and human scale",
+    "bytes": 782,
+    "techniques": [
+      "polygons",
+      "incremental lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 98,
+    "file": "098-orbit-status.nap",
+    "title": "Kestrel / Flight 03",
+    "purpose": "space mission status: orbit diagram",
+    "style": "Restrained green phosphor mission display with orbital geometry",
+    "bytes": 776,
+    "techniques": [
+      "arcs",
+      "lines",
+      "polygons",
+      "blink",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 99,
+    "file": "099-car-advert.nap",
+    "title": "Vanterra / V-6 GT",
+    "purpose": "new car advertisement",
+    "style": "Glossy 1980s wedge coupe on a violet grid horizon and striped sunset",
+    "bytes": 887,
+    "techniques": [
+      "polygons",
+      "arcs",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 100,
+    "file": "100-lookbook.nap",
+    "title": "Velune / Autumn 86",
+    "purpose": "fashion boutique seasonal lookbook",
+    "style": "Spacious cream editorial with a tall linen figure and patterned wool",
+    "bytes": 832,
+    "techniques": [
+      "defined fill pattern",
+      "polygons",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 101,
+    "file": "101-wine-label.nap",
+    "title": "Château Aubrel / Reserve 1983",
+    "purpose": "wine label",
+    "style": "Burgundy chateau label with cream stock, gold rules and engraved type",
+    "bytes": 694,
+    "techniques": [
+      "hatching",
+      "supplementary set",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 102,
+    "file": "102-football-tactics.nap",
+    "title": "Alder United / 4-4-2",
+    "purpose": "football tactics board, 4-4-2",
+    "style": "Green striped pitch with numbered cream discs and gold passing arrows",
+    "bytes": 840,
+    "techniques": [
+      "arcs",
+      "polygons",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 103,
+    "file": "103-racing-form.nap",
+    "title": "Bracken Park / Race 4",
+    "purpose": "horse racing form guide",
+    "style": "Cream racing sheet with coloured silks, zebra rows and large fractional odds",
+    "bytes": 945,
+    "techniques": [
+      "polygons",
+      "rectangles",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 104,
+    "file": "104-lottery-results.nap",
+    "title": "Lucky Comet / Draw 318",
+    "purpose": "lottery results draw",
+    "style": "Purple celebration with gold and turquoise numbered balls and confetti",
+    "bytes": 998,
+    "techniques": [
+      "arcs",
+      "wait",
+      "palette redefinition",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 105,
+    "file": "105-election-night.nap",
+    "title": "Vale Votes / Election 1986",
+    "purpose": "election night results by party",
+    "style": "Blue broadcast graphic with a sixty-seat hemicycle and warm ticker",
+    "bytes": 1044,
+    "techniques": [
+      "arcs",
+      "rectangles",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 106,
+    "file": "106-hospital-wayfinding.nap",
+    "title": "Merevale Hospital / North Entrance",
+    "purpose": "hospital wayfinding sign",
+    "style": "Calm white signage with red, teal and violet direction bands",
+    "bytes": 567,
+    "techniques": [
+      "polygons",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 107,
+    "file": "107-hotel-confirmation.nap",
+    "title": "The Linden Quay / Confirmed",
+    "purpose": "hotel room booking confirmation",
+    "style": "Warm hospitality card with a brass key and tidy two-column dates",
+    "bytes": 582,
+    "techniques": [
+      "colour mode 2",
+      "arcs",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 108,
+    "file": "108-festival-poster.nap",
+    "title": "Sun Spiral / Music Fair",
+    "purpose": "music festival line-up poster",
+    "style": "Psychedelic gold poster with flowing clashing ribbons and wavy display type",
+    "bytes": 1310,
+    "techniques": [
+      "polygons",
+      "arcs",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 109,
+    "file": "109-radio-dial.nap",
+    "title": "Northline FM / The Night Train",
+    "purpose": "FM radio station dial and programme",
+    "style": "Dark hi-fi faceplate with a lit analogue scale, needle and speaker mosaics",
+    "bytes": 1213,
+    "techniques": [
+      "mosaics",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 110,
+    "file": "110-cave-room.nap",
+    "title": "The Hollow Below / Chamber 04",
+    "purpose": "adventure game room: a cave with exits",
+    "style": "Faceted cave illustration over a compact text-adventure command panel",
+    "bytes": 993,
+    "techniques": [
+      "polygons",
+      "arcs",
+      "lines",
+      "proportional text"
+    ],
+    "animated": false
+  }
+]

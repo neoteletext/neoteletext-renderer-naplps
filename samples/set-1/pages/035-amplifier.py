@@ -1,0 +1,47 @@
+from _support import *
+META=dict(number=35,title='One-transistor amplifier',purpose='Electronics schematic of a simple common-emitter amplifier',style='Thin white engineering lines on a blue construction grid',techniques=['line drawing','native arcs','point junctions'],animated=False)
+def resistor(p,x,a,b):
+    p.line([(x,a),(x,a+13)],1,2.5)
+    p.rect(x-10,a+13,20,b-a-26,1,False)
+    p.line([(x,b-13),(x,b)],1,2.5)
+def cap(p,x,y):
+    for xx in [x,x+13]:p.line([(xx,y-15),(xx,y+15)],1,3)
+def build():
+    p=Page('035-amplifier',['204b87','f1f4de','2b5890','92cfdf'])
+    for x in range(0,640,32):p.line([(x,88),(x,478)],2,1)
+    for y in range(96,480,32):p.line([(0,y),(639,y)],2,1)
+    p.t(16,5,'ONE-TRANSISTOR AMP',29,40)
+    p.t(17,53,'COMMON EMITTER / 9V',20,28,c=3)
+    # Supply and bias divider.
+    p.line([(204,104),(440,104)],1,2.5)
+    p.t(458,85,'+9V',22,30)
+    p.line([(204,104),(204,132)],1,2.5)
+    resistor(p,204,132,203)
+    p.line([(204,203),(204,313)],1,2.5)
+    resistor(p,204,313,391)
+    p.line([(204,391),(204,425),(388,425)],1,2.5)
+    p.t(105,145,'100k',20,28)
+    p.t(122,337,'22k',20,28)
+    # AC-coupled input and the NPN symbol.
+    p.line([(34,258),(105,258)],1,2.5);cap(p,105,258)
+    p.line([(118,258),(337,258)],1,2.5)
+    p.circle(355,258,46,1,False,2)
+    p.line([(337,231),(337,284)],1,3)
+    p.line([(337,246),(388,202),(388,175)],1,2.5)
+    p.line([(337,270),(388,313),(388,339)],1,2.5)
+    p.arrow([(354,285),(376,303)],1,2.5,11)
+    resistor(p,388,104,175);resistor(p,388,339,407)
+    p.line([(388,407),(388,425)],1,2.5)
+    p.t(422,129,'4k7',20,28);p.t(425,357,'1k',20,28)
+    p.t(23,211,'IN',23,32,c=3);p.t(75,285,'1uF',20,28)
+    p.t(443,247,'Q1',22,31,c=3);p.t(443,282,'NPN',20,28,c=3)
+    # AC output taken from the collector, through its coupling capacitor.
+    p.line([(388,198),(493,198)],1,2.5);cap(p,493,198)
+    p.line([(506,198),(600,198)],1,2.5)
+    p.t(531,151,'OUT',22,31,c=3);p.t(500,217,'10uF',20,28)
+    for x,y in [(204,104),(204,258),(388,104),(388,198)]:p.circle(x,y,4,1)
+    p.line([(296,425),(296,444)],1,2.5)
+    for y,w in [(444,35),(451,23),(458,10)]:p.line([(296-w/2,y),(296+w/2,y)],1,2.5)
+    p.t(451,438,'R: OHMS',20,28,c=3)
+    return p
+if __name__=='__main__':run(build)

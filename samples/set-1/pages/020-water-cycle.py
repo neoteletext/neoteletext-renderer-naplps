@@ -1,0 +1,22 @@
+from _support import *
+META=dict(number=20,title='Round goes the rain',purpose='School diagram of the water cycle',style='Friendly illustrated textbook scene with large coloured arrows',techniques=['native arcs','arrows','filled polygons'],animated=False)
+def build():
+    p=Page('020-water-cycle',['e9f4e3','244b5a','efbe47','ffffff','81bed2','4b936c','a7c895','597c8a','cc765b','c3dce0'])
+    p.t(23,10,'ROUND GOES THE RAIN',30,43)
+    sun(p,70,126,28,2)
+    cloud(p,308,155,9,1.40);cloud(p,307,147,3,1.05)
+    p.poly([(265,398),(467,214),(618,398)],7)
+    p.poly([(415,260),(467,214),(511,268),(479,255),(461,270),(445,251)],3)
+    p.poly([(0,386),(105,352),(207,381),(315,359),(431,393),(640,365),(640,480),(0,480)],6)
+    p.poly([(0,411),(165,387),(280,407),(414,402),(640,429),(640,480),(0,480)],4)
+    p.poly([(468,290),(456,330),(419,355),(429,371),(385,399),(354,402),(405,367),(395,354),(438,321),(449,285)],4)
+    p.arrow([(210,370),(210,223)],8,7,19)
+    p.arrow([(210,195),(227,174),(240,174)],8,6,16)
+    p.arrow([(402,167),(480,167),(514,220)],7,5,17)
+    for x,y in [(274,209),(310,214),(346,211),(375,230)]:p.line([(x,y),(x-10,y+25)],4,5)
+    p.t(169,78,'CONDENSATION',20,28)
+    p.t(20,278,'EVAPORATION',20,28)
+    p.t(412,312,'RAIN',22,31,c=3)
+    p.t(221,435,'COLLECTION',23,31)
+    return p
+if __name__=='__main__':run(build)

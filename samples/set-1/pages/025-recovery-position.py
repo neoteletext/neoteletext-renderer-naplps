@@ -1,0 +1,27 @@
+from _support import *
+META=dict(number=25,title='Recovery position',purpose='First-aid instructions for an unresponsive adult breathing normally',style='Red and white public-safety poster with a large side-lying pictogram',techniques=['pictogram','thick lines','arrows'],animated=False)
+def build():
+    p=Page('025-recovery-position',['fffaf0','b92f36','273a41','f4d2c5','d9e4df'])
+    p.rect(0,0,640,70,1)
+    p.t(16,6,'RECOVERY POSITION',33,49,c=0)
+    p.t(17,81,'Unresponsive, breathing normally.',21,29,c=2)
+    p.t(17,113,'No suspected injury. Call 000.',21,29,c=2)
+    # Side-lying adult: head on supporting hand; top leg bent for stability.
+    p.rect(16,166,608,131,4)
+    p.line([(50,279),(591,279)],2,2)
+    p.circle(130,227,25,2)
+    p.poly([(151,218),(166,240),(150,249)],2)
+    p.line([(174,241),(267,241),(325,244)],2,29)
+    p.line([(201,231),(174,270),(124,263)],2,12)
+    p.line([(307,244),(395,270),(485,270)],2,14)
+    p.line([(306,240),(403,208),(443,264)],1,16)
+    p.circle(117,260,10,2)
+    p.arrow([(94,186),(68,207),(78,238)],1,4,12)
+    p.t(17,309,'1  Hand to cheek; bend far knee.',20,27,c=2)
+    p.t(17,343,'2  Roll towards you onto side.',20,27,c=2)
+    p.t(17,377,'3  Tilt head back; lift chin.',20,27,c=2)
+    p.t(17,411,'4  Stay; keep checking breathing.',20,27,c=2)
+    p.rect(0,449,640,31,1)
+    p.t(15,449,'Not breathing normally? Start CPR.',20,28,c=0)
+    return p
+if __name__=='__main__':run(build)

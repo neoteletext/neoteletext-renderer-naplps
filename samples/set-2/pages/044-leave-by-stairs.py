@@ -1,0 +1,27 @@
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from encoder.art import Art,palette
+p=Art('044-leave-by-stairs',palette('f6d82d','161c20','f4f1dc','35876f','bf3b2c'))
+for x in range(-45,680,60):p.poly([(x,0),(x+29,0),(x+69,34),(x+40,34)],1)
+p.txt(24,95,'EVACUATE',43,52,1)
+p.txt(26,137,'USE STAIRS / NO LIFTS',25,30,1)
+# Ground-floor route diagram. Thick green path is continuous to the exit.
+p.rect(25,161,372,236,2)
+p.line([(43,375),(43,184),(375,184),(375,375),(310,375)],1,5)
+p.line([(43,375),(243,375)],1,5)
+p.line([(43,271),(170,271),(170,184)],1,4)
+p.line([(260,184),(260,291),(375,291)],1,4)
+p.circle(111,325,11,4)
+p.arrow([(111,325),(278,325),(278,377)],3,9,22)
+p.txt(53,313,'YOU',22,26,1)
+p.rect(245,364,63,28,3);p.center(278,385,'OUT',19,23,2)
+p.txt(422,199,'GO TO',24,30,1)
+p.txt(422,237,'EAST',30,38,1)
+p.txt(422,275,'GATE',30,38,1)
+p.line([(430,311),(438,311),(438,300),(450,300),(450,289),(462,289),(462,278),(475,278)],1,5)
+p.txt(421,358,'KEEP',24,29,1)
+p.txt(421,393,'CLEAR',24,29,1)
+p.rect(0,412,640,43,1);p.txt(25,447,'ASSEMBLY: EAST GATE',29,31,0)
+for x in range(-45,680,60):p.poly([(x,465),(x+29,465),(x+49,480),(x+20,480)],1)
+p.save()

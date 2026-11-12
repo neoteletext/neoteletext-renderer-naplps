@@ -1,0 +1,25 @@
+011 | evening news front page with three headlines | newspaper: black ink on newsprint, rules and columns
+012 | five-day city weather forecast | flat pictogram icons on pastel cards
+013 | football league table and last night's scores | scoreboard: bold condensed type on dark green
+014 | stock market closing summary with an index line chart | financial terminal: amber on black
+015 | bank account statement and balance | sober banking form: navy, grey and fine rules
+016 | mail-order catalogue page for three products | 1980s catalogue: bright panels and price bursts
+017 | intercity train timetable | railway signage: white on deep blue with a route line
+018 | airport departures board | split-flap board: yellow on black
+019 | fractions lesson with pie diagrams | chalkboard: chalk white and pastel on slate green
+020 | the water cycle diagram for a school | friendly textbook illustration with arrows
+021 | French vocabulary flash cards with accents | playful cards using supplementary-set accents
+022 | tic-tac-toe game in progress | hand-drawn marker lines on paper
+023 | a maze puzzle with start and finish | bold labyrinth in two colours
+024 | trivia quiz question with four answers | game-show stage lights and big type
+025 | first-aid instructions: recovery position | clear public-safety pictograms, red and white
+026 | recipe card for pancakes with ingredients | warm kitchen illustration, gingham border
+027 | real-estate listing with a house and floor area | estate-agent brochure, isometric house
+028 | classified ads column | dense small type in ruled boxes, one highlighted ad
+029 | daily horoscope for one sign | mystical: deep purple, gold stars and zodiac wheel
+030 | television guide for one evening | grid schedule with colour-coded channels
+031 | cinema listings with show times | marquee with light bulbs (blinking allowed)
+032 | museum exhibition announcement | Bauhaus: circles, squares, triangles in primaries
+033 | city centre street map with landmarks | cartographic: pale streets, park greens, legend
+034 | metro network diagram | transit-map style: coloured lines at 45 degrees
+035 | electronics schematic of a simple amplifier | engineering drawing: thin white lines on blue

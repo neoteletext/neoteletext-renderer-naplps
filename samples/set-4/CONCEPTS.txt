@@ -1,0 +1,25 @@
+086 | concert admission ticket | ticket stub with barcode, perforation, serial
+087 | banknote design | guilloche-like arcs, portrait oval, numerals
+088 | playing card: queen of hearts | traditional court card, mirrored halves
+089 | chess problem: mate in two | diagram board with pieces from polygons
+090 | crossword puzzle grid with clues | newspaper puzzle: grid, numbers, clue column
+091 | knitting pattern chart | craft chart: symbol grid and yarn colour key
+092 | tide table for a harbour with curve | nautical almanac: sine curve, moon phases
+093 | ski report: snow depth and lifts open | cool blues, snowflake DRCS characters, bars
+094 | surf report with swell and wind | beach graphic: waves, wind rose, bright teal
+095 | garden planting calendar by month | botanical planner: seed-packet charm, greens
+096 | bird identification card: three finches | field-guide plate with size scale
+097 | dinosaur fact sheet: Stegosaurus | museum kid's panel: bold creature, size vs human
+098 | space mission status: orbit diagram | mission-control display: orbits, telemetry
+099 | new car advertisement | glossy 1980s car ad: wedge car, grid horizon
+100 | fashion boutique seasonal lookbook | elegant editorial: tall figure, lots of white
+101 | wine label | classic chateau label: serif-like lettering, crest
+102 | football tactics board, 4-4-2 | pitch diagram with arrows and player discs
+103 | horse racing form guide | racing sheet: silks as coloured shapes, odds
+104 | lottery results draw | bouncing numbered balls, celebratory
+105 | election night results by party | broadcast graphics: seats arc (hemicycle), swing
+106 | hospital wayfinding sign | calm signage: pictograms, arrows, colour bands
+107 | hotel room booking confirmation | hospitality: key motif, tidy summary panel
+108 | music festival line-up poster | psychedelic 1960s: wavy bands, clashing colours
+109 | FM radio station dial and programme | hi-fi tuner: dial scale, needle, glowing accents
+110 | adventure game room: a cave with exits | text-adventure illustration with compass and inventory

@@ -1,0 +1,351 @@
+[
+  {
+    "number": 61,
+    "file": "061-glenbrae.nap",
+    "title": "Glenbrae",
+    "purpose": "Clan tartan swatch and wool identification",
+    "style": "Woven Scottish textile",
+    "bytes": 848,
+    "techniques": [
+      "hatching",
+      "overlapping textures",
+      "palette"
+    ],
+    "animated": false
+  },
+  {
+    "number": 62,
+    "file": "062-eightfold.nap",
+    "title": "Eightfold",
+    "purpose": "Decorative tile atelier catalogue plate",
+    "style": "Turquoise and gold girih geometry",
+    "bytes": 1090,
+    "techniques": [
+      "macro",
+      "relative polygons",
+      "eightfold symmetry"
+    ],
+    "animated": false
+  },
+  {
+    "number": 63,
+    "file": "063-pressure.nap",
+    "title": "Pressure",
+    "purpose": "Optical perception exhibition poster",
+    "style": "Black-and-white bulging op-art mesh",
+    "bytes": 5429,
+    "techniques": [
+      "polylines",
+      "nonlinear grid"
+    ],
+    "animated": false
+  },
+  {
+    "number": 64,
+    "file": "064-counterweight.nap",
+    "title": "Balance",
+    "purpose": "Modern design seminar announcement",
+    "style": "De Stijl asymmetric primary planes",
+    "bytes": 420,
+    "techniques": [
+      "rectangles",
+      "negative space",
+      "stroke typography"
+    ],
+    "animated": false
+  },
+  {
+    "number": 65,
+    "file": "065-blue-tide.nap",
+    "title": "Blue Tide",
+    "purpose": "Coastal woodblock print catalogue",
+    "style": "Ukiyo-e flat indigo print",
+    "bytes": 1012,
+    "techniques": [
+      "layered polygons",
+      "polylines",
+      "native arc"
+    ],
+    "animated": false
+  },
+  {
+    "number": 66,
+    "file": "066-pantry-pop.nap",
+    "title": "Pantry Pop",
+    "purpose": "Fictional soup product portrait",
+    "style": "Four-up pop-art screenprint",
+    "bytes": 1716,
+    "techniques": [
+      "palette redefinition",
+      "indexed colour variations",
+      "ellipses"
+    ],
+    "animated": false
+  },
+  {
+    "number": 67,
+    "file": "067-make-tomorrow.nap",
+    "title": "Make Tomorrow",
+    "purpose": "Workers festival poster",
+    "style": "Constructivist red diagonal and black silhouette",
+    "bytes": 548,
+    "techniques": [
+      "diagonal polygons",
+      "silhouette",
+      "display typography"
+    ],
+    "animated": false
+  },
+  {
+    "number": 68,
+    "file": "068-odd-room.nap",
+    "title": "Odd Room",
+    "purpose": "Furniture showroom advertisement",
+    "style": "Memphis pastel furniture and terrazzo",
+    "bytes": 788,
+    "techniques": [
+      "DRCS",
+      "squiggle polylines",
+      "axonometric polygons"
+    ],
+    "animated": false
+  },
+  {
+    "number": 69,
+    "file": "069-vespera.nap",
+    "title": "Vespera",
+    "purpose": "Lily perfume advertisement",
+    "style": "Art nouveau whiplash curves in muted gold",
+    "bytes": 1139,
+    "techniques": [
+      "curved polylines",
+      "botanical polygons",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 70,
+    "file": "070-void-patrol.nap",
+    "title": "Void Patrol",
+    "purpose": "Space shooter title screen",
+    "style": "Arcade mosaic pixel art",
+    "bytes": 626,
+    "techniques": [
+      "mosaics",
+      "large text fields",
+      "points"
+    ],
+    "animated": false
+  },
+  {
+    "number": 71,
+    "file": "071-astor-bridge.nap",
+    "title": "Astor River Bridge",
+    "purpose": "Engineering elevation drawing",
+    "style": "Cyan-blue blueprint and technical title block",
+    "bytes": 1290,
+    "techniques": [
+      "polylines",
+      "dimension lines",
+      "logical pel"
+    ],
+    "animated": false
+  },
+  {
+    "number": 72,
+    "file": "072-crow-pitcher.nap",
+    "title": "The Crow and the Pitcher",
+    "purpose": "Illustrated fable page",
+    "style": "Two-ink woodcut with carved hatch shading",
+    "bytes": 1213,
+    "techniques": [
+      "hatching",
+      "silhouette polygons",
+      "engraved lines"
+    ],
+    "animated": false
+  },
+  {
+    "number": 73,
+    "file": "073-lumen-window.nap",
+    "title": "Lumen",
+    "purpose": "Cathedral stained-glass window study",
+    "style": "Jewel-coloured rose window with black leading",
+    "bytes": 1447,
+    "techniques": [
+      "radial polygons",
+      "native circles",
+      "eight-point star"
+    ],
+    "animated": false
+  },
+  {
+    "number": 74,
+    "file": "074-orbit-diner.nap",
+    "title": "Orbit Diner",
+    "purpose": "Late-night diner sign",
+    "style": "Pink and mint neon on dark brick",
+    "bytes": 2942,
+    "techniques": [
+      "stroke overprinting",
+      "brick line texture",
+      "native arc"
+    ],
+    "animated": false
+  },
+  {
+    "number": 75,
+    "file": "075-one-cat.nap",
+    "title": "One Cat",
+    "purpose": "Continuous-line cat portrait",
+    "style": "Minimal warm-paper line art",
+    "bytes": 602,
+    "techniques": [
+      "incremental lines",
+      "single continuous path",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 76,
+    "file": "076-salt-afternoon.nap",
+    "title": "Salt Afternoon",
+    "purpose": "Seaside art postcard",
+    "style": "Pointillist coastal afternoon",
+    "bytes": 2808,
+    "techniques": [
+      "POINT",
+      "large logical pel",
+      "deterministic stippling"
+    ],
+    "animated": false
+  },
+  {
+    "number": 77,
+    "file": "077-morrow-console.nap",
+    "title": "Morrow System Console",
+    "purpose": "Computer network status display",
+    "style": "Green phosphor terminal with scan lines",
+    "bytes": 869,
+    "techniques": [
+      "defined fill pattern",
+      "colour mode 2",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 78,
+    "file": "078-amber-road.nap",
+    "title": "The Amber Road",
+    "purpose": "Desert caravan tour poster",
+    "style": "Layered sunset paper-cut silhouettes",
+    "bytes": 1089,
+    "techniques": [
+      "layered polygons",
+      "silhouette",
+      "native circles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 79,
+    "file": "079-fox-ridge.nap",
+    "title": "Fox Ridge Loop",
+    "purpose": "Hiking trail map",
+    "style": "Topographic contours and dashed red route",
+    "bytes": 2240,
+    "techniques": [
+      "contour polylines",
+      "dashed line texture",
+      "native points"
+    ],
+    "animated": false
+  },
+  {
+    "number": 80,
+    "file": "080-the-star.nap",
+    "title": "The Star",
+    "purpose": "Tarot card illustration",
+    "style": "Ornate ivory card with symbolic celestial figure",
+    "bytes": 1467,
+    "techniques": [
+      "star polygons",
+      "figurative silhouette",
+      "border ornaments"
+    ],
+    "animated": false
+  },
+  {
+    "number": 81,
+    "file": "081-elin-vale.nap",
+    "title": "Elin Vale",
+    "purpose": "Commemorative postage stamp for a fictional naturalist",
+    "style": "Perforated engraved duotone stamp",
+    "bytes": 2338,
+    "techniques": [
+      "perforated native circles",
+      "portrait polygons",
+      "engraved lines"
+    ],
+    "animated": false
+  },
+  {
+    "number": 82,
+    "file": "082-side-street.nap",
+    "title": "Side Street",
+    "purpose": "Jazz quartet record sleeve",
+    "style": "1950s duotone jazz editorial design",
+    "bytes": 629,
+    "techniques": [
+      "supplementary accented letter",
+      "duotone silhouette",
+      "display typography"
+    ],
+    "animated": false
+  },
+  {
+    "number": 83,
+    "file": "083-orbits-of-glass.nap",
+    "title": "Orbits of Glass",
+    "purpose": "Fictional science-fiction paperback cover",
+    "style": "1970s ringed planet and stripe gradient",
+    "bytes": 943,
+    "techniques": [
+      "palette stripe gradient",
+      "native circles",
+      "elliptical polylines"
+    ],
+    "animated": false
+  },
+  {
+    "number": 84,
+    "file": "084-last-tram.nap",
+    "title": "Last Tram at Midnight",
+    "purpose": "Fictional film noir cinema poster",
+    "style": "Venetian-blind shadows with a single red accent",
+    "bytes": 787,
+    "techniques": [
+      "high-contrast polygons",
+      "silhouette",
+      "red accent"
+    ],
+    "animated": false
+  },
+  {
+    "number": 85,
+    "file": "085-valenne.nap",
+    "title": "Valenne",
+    "purpose": "Alpine ski resort rail travel poster",
+    "style": "Vintage flat mountain travel print",
+    "bytes": 631,
+    "techniques": [
+      "flat mountain polygons",
+      "skier silhouette",
+      "display typography"
+    ],
+    "animated": false
+  }
+]

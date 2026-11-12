@@ -1,0 +1,30 @@
+from lib import *
+p=Page('096-finches',['F3F0DC','343A2E','C2AD75','9F5339','4E675D','D5CBAB','DDAF43','ECE4CC'])
+p.text(22,43,'FIELD NOTES / FINCHES',26,33,1)
+p.text(24,80,'Woodland birds of the Alder Isles',20,24,4)
+# Separate perches and diagnostic plumage, rather than repeating one silhouette.
+for x in [121,321,521]:p.line([(x-77,306),(x+72,300)],2,4)
+def bird(x,y,scale,body,head,wing):
+    def v(pts):return [(x+a*scale,y+b*scale) for a,b in pts]
+    p.poly(v([(-20,18),(-62,75),(-47,74),(0,41),(23,27)]),wing)
+    p.ellipse(x,y+8*scale,36*scale,56*scale,body,n=20)
+    p.circle(x+16*scale,y-41*scale,28*scale,head)
+    p.poly(v([(37,-48),(63,-34),(37,-28)]),6)
+    p.poly(v([(-24,-12),(-43,23),(-26,55),(14,23),(18,5)]),wing)
+    p.line(v([(-20,9),(-30,26),(-19,40)]),5,3)
+    p.line(v([(-8,12),(-17,30)]),5,3)
+    p.circle(x+25*scale,y-47*scale,3.5,1)
+    p.circle(x+26*scale,y-48*scale,1.2,0)
+    for a in [-8,11]:
+        p.line(v([(a,58),(a-3,78),(a-13,79)]),1,2)
+bird(113,222,1.0,6,1,3)
+bird(319,218,1.13,3,3,1)
+bird(521,229,.9,5,4,4)
+p.text(39,354,'AMBER',24,29,1);p.text(39,387,'FINCH',21,25,1)
+p.text(235,354,'RUSSET',24,29,1);p.text(235,387,'FINCH',21,25,1)
+p.text(443,354,'SAGE',24,29,1);p.text(443,387,'FINCH',21,25,1)
+for x,sz in [(39,'12 cm'),(235,'14 cm'),(443,'11 cm')]:p.text(x,426,sz,20,24,4)
+p.line([(42,454),(180,454)],1,2)
+p.line([(42,448),(42,459)],1,2);p.line([(180,448),(180,459)],1,2)
+p.text(203,463,'10 cm / approx.',20,24,1)
+p.save()

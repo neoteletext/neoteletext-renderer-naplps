@@ -1,0 +1,371 @@
+[
+  {
+    "number": 36,
+    "file": "036-cedar-flat.nap",
+    "title": "Cedar / Flat 2B",
+    "purpose": "Apartment floor plan with dimensions",
+    "style": "Architectural blueprint with dimension arrows",
+    "bytes": 977,
+    "techniques": [
+      "dimension arrows",
+      "native arcs",
+      "polygons",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 37,
+    "file": "037-september.nap",
+    "title": "September 1988",
+    "purpose": "Month calendar with marked events",
+    "style": "Red desk-calendar header and clean grid",
+    "bytes": 1174,
+    "techniques": [
+      "rectangles",
+      "grid",
+      "fixed-pitch text",
+      "native circles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 38,
+    "file": "038-same-moment.nap",
+    "title": "The Same Moment",
+    "purpose": "World clock for four cities",
+    "style": "Minimal analogue clock faces in one row",
+    "bytes": 1293,
+    "techniques": [
+      "native circles",
+      "radial lines",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 39,
+    "file": "039-lantern-waltz.nap",
+    "title": "Lantern Waltz",
+    "purpose": "A titled line of sheet music",
+    "style": "Engraved music on parchment",
+    "bytes": 999,
+    "techniques": [
+      "polygons",
+      "native arc",
+      "staff lines",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 40,
+    "file": "040-fox-moon.nap",
+    "title": "Fox and the Moon",
+    "purpose": "Children's bedtime story page",
+    "style": "Soft moonlit storybook illustration",
+    "bytes": 947,
+    "techniques": [
+      "polygons",
+      "native circles",
+      "incremental lines",
+      "proportional text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 41,
+    "file": "041-green-fingers.nap",
+    "title": "Green Fingers",
+    "purpose": "Three-panel comic strip",
+    "style": "Thick ink outlines, balloons and halftone",
+    "bytes": 1449,
+    "techniques": [
+      "defined fill pattern",
+      "polygons",
+      "rectangles",
+      "native circles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 42,
+    "file": "042-birthday-magic.nap",
+    "title": "Birthday Magic",
+    "purpose": "Personal birthday greeting card",
+    "style": "Festive balloons, confetti and uneven lettering",
+    "bytes": 835,
+    "techniques": [
+      "native arcs",
+      "native circles",
+      "supplementary set",
+      "palette redefinition"
+    ],
+    "animated": false
+  },
+  {
+    "number": 43,
+    "file": "043-pips-market.nap",
+    "title": "Pip's Market",
+    "purpose": "Supermarket weekly specials advertisement",
+    "style": "Loud red-and-yellow retail starbursts",
+    "bytes": 874,
+    "techniques": [
+      "starburst polygons",
+      "rectangles",
+      "large stroke text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 44,
+    "file": "044-leave-by-stairs.nap",
+    "title": "Leave by Stairs",
+    "purpose": "Emergency evacuation notice with route",
+    "style": "Black-and-yellow hazard signage",
+    "bytes": 1102,
+    "techniques": [
+      "chevron polygons",
+      "route arrows",
+      "thick lines",
+      "rectangles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 45,
+    "file": "045-paddock-prices.nap",
+    "title": "Paddock Prices",
+    "purpose": "Wheat, wool and cattle commodity prices",
+    "style": "Ochre rural almanac with woodcut-like wheat",
+    "bytes": 1168,
+    "techniques": [
+      "hatching",
+      "polygons",
+      "thick lines",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 46,
+    "file": "046-library-card.nap",
+    "title": "Marsh Library Card",
+    "purpose": "Library catalogue search result",
+    "style": "Typewriter-like ruled index card with stamp",
+    "bytes": 601,
+    "techniques": [
+      "ruled lines",
+      "rectangles",
+      "native circle",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 47,
+    "file": "047-postroom.nap",
+    "title": "Postroom",
+    "purpose": "Electronic mail inbox",
+    "style": "Early online-service panels and menu bar",
+    "bytes": 768,
+    "techniques": [
+      "colour mode 2",
+      "rectangles",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 48,
+    "file": "048-night-orchard.nap",
+    "title": "Night Orchard",
+    "purpose": "Bulletin board system main menu",
+    "style": "Neon on black with native mosaic border",
+    "bytes": 1116,
+    "techniques": [
+      "mosaics",
+      "fixed-pitch text",
+      "large stroke text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 49,
+    "file": "049-merevale-link.nap",
+    "title": "Merevale Link",
+    "purpose": "Service log-on welcome screen",
+    "style": "Corporate 1980s logo and broadcast stripes",
+    "bytes": 438,
+    "techniques": [
+      "polygons",
+      "rectangles",
+      "WAIT",
+      "palette redefinition"
+    ],
+    "animated": true
+  },
+  {
+    "number": 50,
+    "file": "050-keypad-guide.nap",
+    "title": "Find Your Way",
+    "purpose": "Help page explaining keypad commands",
+    "style": "Instructional keypad diagram and callouts",
+    "bytes": 967,
+    "techniques": [
+      "DRCS",
+      "rectangles",
+      "leader lines",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 51,
+    "file": "051-harbor-sales.nap",
+    "title": "Harbor Sales",
+    "purpose": "Quarterly sales bar chart",
+    "style": "Business graphics with three-dimensional bars",
+    "bytes": 751,
+    "techniques": [
+      "polygons",
+      "grid",
+      "rectangles",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 52,
+    "file": "052-household-budget.nap",
+    "title": "Where It Goes",
+    "purpose": "Household budget pie chart",
+    "style": "Soft pastel infographic with native arc sectors",
+    "bytes": 696,
+    "techniques": [
+      "filled arcs",
+      "polygons",
+      "native circles",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 53,
+    "file": "053-river-population.nap",
+    "title": "River County Population",
+    "purpose": "Population pyramid by age",
+    "style": "Mirrored rose and sea-glass bars",
+    "bytes": 739,
+    "techniques": [
+      "rectangles",
+      "mirrored bars",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 54,
+    "file": "054-first-eighteen.nap",
+    "title": "The First 18",
+    "purpose": "Periodic table excerpt of the first 18 elements",
+    "style": "Colour-coded scientific tiles",
+    "bytes": 1302,
+    "techniques": [
+      "rectangles",
+      "grid",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 55,
+    "file": "055-solar-order.nap",
+    "title": "The Solar System",
+    "purpose": "Solar-system order diagram",
+    "style": "Black-space astronomy plate with orbit arcs",
+    "bytes": 832,
+    "techniques": [
+      "native circles",
+      "native arcs",
+      "leader lines",
+      "thick lines"
+    ],
+    "animated": false
+  },
+  {
+    "number": 56,
+    "file": "056-human-heart.nap",
+    "title": "The Human Heart",
+    "purpose": "Human heart anatomy with chamber labels",
+    "style": "Red-and-blue anatomical section illustration",
+    "bytes": 1270,
+    "techniques": [
+      "polygons",
+      "leader lines",
+      "thick lines",
+      "native circles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 57,
+    "file": "057-water-molecule.nap",
+    "title": "Water / H2O",
+    "purpose": "Water molecule and bond angle",
+    "style": "Ball-and-stick chemistry with hatched shading",
+    "bytes": 602,
+    "techniques": [
+      "native circles",
+      "native arcs",
+      "hatching",
+      "supplementary set"
+    ],
+    "animated": false
+  },
+  {
+    "number": 58,
+    "file": "058-six-flags.nap",
+    "title": "Flags of Six Nations",
+    "purpose": "Flags of six countries",
+    "style": "Flat vexillology grid",
+    "bytes": 577,
+    "techniques": [
+      "rectangles",
+      "polygons",
+      "native circle",
+      "star polygon"
+    ],
+    "animated": false
+  },
+  {
+    "number": 59,
+    "file": "059-alder-arms.nap",
+    "title": "Alder Arms",
+    "purpose": "Fictional coat of arms",
+    "style": "Heraldic shield, chevron, tinctures and motto",
+    "bytes": 997,
+    "techniques": [
+      "polygons",
+      "stars",
+      "thick lines",
+      "fixed-pitch text"
+    ],
+    "animated": false
+  },
+  {
+    "number": 60,
+    "file": "060-hearth-quilt.nap",
+    "title": "Hearth Quilt",
+    "purpose": "Patchwork quilt pattern",
+    "style": "Folk textile repeated with relative macros",
+    "bytes": 1591,
+    "techniques": [
+      "macros",
+      "relative polygons",
+      "repetition",
+      "seam lines"
+    ],
+    "animated": false
+  }
+]

@@ -1,0 +1,35 @@
+from _support import *
+META=dict(number=33,title='Old Quay city centre',purpose='City street map with landmarks and a legend',style='Pale cartography with wide streets, a green park and numbered landmarks',techniques=['polygons','native arcs','cartographic symbols'],animated=False)
+def marker(p,x,y,n):
+    p.circle(x,y,17,1);p.t(x,y-16,str(n),21,30,c=2,align='center')
+def build():
+    p=Page('033-old-quay-map',['deded1','344b4a','fffbee','b3c991','8cb6c3','c5c5b5','e2bba3','6d8e60','ba5d49'])
+    p.rect(0,0,640,93,2)
+    p.t(17,3,'OLD QUAY',37,50)
+    p.t(19,53,'CITY CENTRE',20,28)
+    p.arrow([(590,73),(590,27)],1,3,12);p.t(590,0,'N',20,27,align='center')
+    # Main streets, with names set inside their pale corridors.
+    for x in [52,202,351]:p.rect(x-18,94,36,386,2)
+    for y in [153,278,401]:p.rect(0,y-18,455,36,2)
+    p.poly([(432,94),(419,184),(433,265),(425,336),(449,420),(430,480),(461,480),(475,414),(451,333),(459,264),(443,181),(456,94)],4)
+    p.rect(78,300,100,80,3)
+    for x,y in [(98,323),(137,325),(113,354),(155,357)]:p.circle(x,y,11,7)
+    p.t(96,383,'PARK',17,24)
+    p.rect(238,183,78,55,5);p.rect(229,304,99,71,6)
+    p.rect(76,191,97,46,5);p.rect(76,430,97,34,5)
+    p.t(99,136,'MILL ST',19,27)
+    p.t(217,260,'KING ST',19,27)
+    p.t(213,384,'QUAY RD',19,27)
+    marker(p,277,210,1);marker(p,278,339,2);marker(p,123,447,3)
+    p.star(52,401,14,8,n=4,inner=.28)
+    # Full-height legend panel, rather than another framed map.
+    p.rect(480,94,160,386,2)
+    p.t(493,112,'KEY',25,34)
+    for y,s in [(170,'1 MUSEUM'),(214,'2 HALL'),(258,'3 RAIL')]:p.t(492,y,s,19,27)
+    p.star(503,330,11,8,n=4,inner=.28)
+    p.t(525,310,'YOU',20,28);p.t(493,343,'ARE HERE',19,27)
+    p.line([(497,416),(619,416)],1,4)
+    for x in [497,619]:p.line([(x,409),(x,422)],1,2)
+    p.t(558,432,'200 m',20,27,align='center')
+    return p
+if __name__=='__main__':run(build)

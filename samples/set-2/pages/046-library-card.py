@@ -1,0 +1,20 @@
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from encoder.art import Art,palette
+p=Art('046-library-card',palette('c3b395','313d43','f6eed7','a4b7ba','ac5149','dfd5b8'))
+p.rect(19,27,608,435,5);p.rect(10,18,608,435,2)
+p.circle(46,53,12,0)
+p.txt(82,62,'MARSH PUBLIC LIBRARY',23,28,1)
+p.txt(34,106,'CATALOGUE / RESULT 1 OF 3',21,26,1)
+for y in range(128,416,41):p.line([(30,y),(597,y)],3)
+p.line([(63,128),(63,416)],4)
+p.txt(82,165,'THE TIDE AT LOW WATER',22,27,1)
+p.txt(82,206,'THORNE, LENA',22,27,1)
+p.txt(82,247,'REED LANTERN / 1982',22,27,1)
+p.txt(82,288,'184 P. / FICTION',22,27,1)
+p.txt(82,329,'823.91 / THO',23,27,1)
+p.txt(82,370,'MAIN / BAY 14',22,27,1)
+p.rect(359,383,228,52,4,False);p.rect(365,389,216,40,4,False)
+p.txt(380,422,'ON SHELF',24,29,4)
+p.save()

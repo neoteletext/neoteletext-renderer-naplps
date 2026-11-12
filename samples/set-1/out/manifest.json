@@ -1,0 +1,354 @@
+[
+  {
+    "number": 11,
+    "title": "The Evening Ledger",
+    "purpose": "Evening news front page with three headlines",
+    "style": "Black ink on newsprint; newspaper rules and unequal columns",
+    "techniques": [
+      "proportional text",
+      "polygons",
+      "rules",
+      "palette redefinition"
+    ],
+    "animated": false,
+    "file": "011-evening-ledger.nap",
+    "bytes": 873
+  },
+  {
+    "number": 12,
+    "title": "Belltown: five days",
+    "purpose": "Five-day city weather forecast",
+    "style": "Flat pictograms on five full-height pastel cards",
+    "techniques": [
+      "native arcs",
+      "polygons",
+      "palette redefinition"
+    ],
+    "animated": false,
+    "file": "012-city-weather.nap",
+    "bytes": 1275
+  },
+  {
+    "number": 13,
+    "title": "Floodlight League",
+    "purpose": "Football league table and last night's scores",
+    "style": "Condensed scoreboard lettering on dark green",
+    "techniques": [
+      "fixed-pitch text",
+      "mosaics",
+      "condensed type"
+    ],
+    "animated": false,
+    "file": "013-football.nap",
+    "bytes": 1088
+  },
+  {
+    "number": 14,
+    "title": "Meridian market close",
+    "purpose": "Stock market closing summary and index chart",
+    "style": "Amber financial terminal with a native incremental line chart",
+    "techniques": [
+      "incremental lines",
+      "line textures",
+      "fixed-pitch text"
+    ],
+    "animated": false,
+    "file": "014-market-close.nap",
+    "bytes": 634
+  },
+  {
+    "number": 15,
+    "title": "North Quay Bank statement",
+    "purpose": "Bank account statement and balance",
+    "style": "Sober navy and grey banking form with fine rules",
+    "techniques": [
+      "rules",
+      "fixed-pitch amounts",
+      "polygons"
+    ],
+    "animated": false,
+    "file": "015-bank-statement.nap",
+    "bytes": 845
+  },
+  {
+    "number": 16,
+    "title": "Homepost autumn offers",
+    "purpose": "Mail-order catalogue for three products",
+    "style": "Bright 1980s panels, product silhouettes and serrated price bursts",
+    "techniques": [
+      "polygons",
+      "native arcs",
+      "price bursts"
+    ],
+    "animated": false,
+    "file": "016-home-catalogue.nap",
+    "bytes": 1325
+  },
+  {
+    "number": 17,
+    "title": "Coastlink intercity",
+    "purpose": "Intercity train timetable",
+    "style": "White railway wayfinding on deep blue with a schematic route strip",
+    "techniques": [
+      "macro",
+      "fixed-pitch timetable",
+      "route lines"
+    ],
+    "animated": false,
+    "file": "017-intercity.nap",
+    "bytes": 951
+  },
+  {
+    "number": 18,
+    "title": "Alderfield departures",
+    "purpose": "Airport departures board",
+    "style": "Yellow split-flap lettering on black with individual character cells",
+    "techniques": [
+      "colour mode 2",
+      "fixed-pitch text",
+      "rules"
+    ],
+    "animated": false,
+    "file": "018-departures.nap",
+    "bytes": 2875
+  },
+  {
+    "number": 19,
+    "title": "A piece of the whole",
+    "purpose": "Fractions lesson with pie diagrams",
+    "style": "Pastel chalk diagrams on a hand-ruled slate-green board",
+    "techniques": [
+      "hatching",
+      "polygons",
+      "native arcs"
+    ],
+    "animated": false,
+    "file": "019-fractions.nap",
+    "bytes": 1261
+  },
+  {
+    "number": 20,
+    "title": "Round goes the rain",
+    "purpose": "School diagram of the water cycle",
+    "style": "Friendly illustrated textbook scene with large coloured arrows",
+    "techniques": [
+      "native arcs",
+      "arrows",
+      "filled polygons"
+    ],
+    "animated": false,
+    "file": "020-water-cycle.nap",
+    "bytes": 952
+  },
+  {
+    "number": 21,
+    "title": "Les petits mots",
+    "purpose": "French vocabulary flash cards with accents",
+    "style": "Playful offset paper cards and small illustrative word pictures",
+    "techniques": [
+      "supplementary set",
+      "native arcs",
+      "polygons"
+    ],
+    "animated": false,
+    "file": "021-french-cards.nap",
+    "bytes": 1068
+  },
+  {
+    "number": 22,
+    "title": "Your turn",
+    "purpose": "Tic-tac-toe game in progress",
+    "style": "Hand-drawn blue and red marker on ruled notebook paper",
+    "techniques": [
+      "incremental lines",
+      "native arcs",
+      "marker-width pels"
+    ],
+    "animated": false,
+    "file": "022-noughts-crosses.nap",
+    "bytes": 809
+  },
+  {
+    "number": 23,
+    "title": "The long way out",
+    "purpose": "Solvable maze puzzle with start and finish",
+    "style": "Bold coral labyrinth on pale yellow; two inks only",
+    "techniques": [
+      "thick lines",
+      "polygons",
+      "deterministic maze"
+    ],
+    "animated": false,
+    "file": "023-maze.nap",
+    "bytes": 1900
+  },
+  {
+    "number": 24,
+    "title": "Bright Spark",
+    "purpose": "Trivia question with four answers",
+    "style": "Game-show spotlights, magenta stage and diamond answer panels",
+    "techniques": [
+      "polygons",
+      "native arcs",
+      "display type"
+    ],
+    "animated": false,
+    "file": "024-quiz-show.nap",
+    "bytes": 897
+  },
+  {
+    "number": 25,
+    "title": "Recovery position",
+    "purpose": "First-aid instructions for an unresponsive adult breathing normally",
+    "style": "Red and white public-safety poster with a large side-lying pictogram",
+    "techniques": [
+      "pictogram",
+      "thick lines",
+      "arrows"
+    ],
+    "animated": false,
+    "file": "025-recovery-position.nap",
+    "bytes": 771
+  },
+  {
+    "number": 26,
+    "title": "Sunday pancakes",
+    "purpose": "Pancake recipe with ingredients and method",
+    "style": "Warm kitchen recipe card inside a red gingham border",
+    "techniques": [
+      "defined fill patterns",
+      "polygons",
+      "proportional text"
+    ],
+    "animated": false,
+    "file": "026-pancakes.nap",
+    "bytes": 1357
+  },
+  {
+    "number": 27,
+    "title": "18 Fern Close",
+    "purpose": "Real-estate listing with an isometric house and floor area",
+    "style": "Cream and olive estate brochure with an architectural house rendering",
+    "techniques": [
+      "isometric polygons",
+      "floor plan",
+      "proportional text"
+    ],
+    "animated": false,
+    "file": "027-fern-close.nap",
+    "bytes": 824
+  },
+  {
+    "number": 28,
+    "title": "Small ads",
+    "purpose": "Classified ads column with one highlighted advertisement",
+    "style": "Dense plum ink in ruled white boxes with one yellow display ad",
+    "techniques": [
+      "rules",
+      "proportional text",
+      "colour panels"
+    ],
+    "animated": false,
+    "file": "028-classifieds.nap",
+    "bytes": 987
+  },
+  {
+    "number": 29,
+    "title": "Libra: the balanced day",
+    "purpose": "Daily horoscope for one sign",
+    "style": "Deep purple, gold stars, a zodiac wheel and a custom scales glyph",
+    "techniques": [
+      "DRCS",
+      "macro",
+      "native arcs",
+      "palette redefinition"
+    ],
+    "animated": false,
+    "file": "029-libra.nap",
+    "bytes": 978
+  },
+  {
+    "number": 30,
+    "title": "Tonight on three",
+    "purpose": "Television schedule for one evening",
+    "style": "Pastel electronic programme grid with colour-coded channel bands",
+    "techniques": [
+      "grid",
+      "colour panels",
+      "fixed-pitch time axis"
+    ],
+    "animated": false,
+    "file": "030-tv-tonight.nap",
+    "bytes": 913
+  },
+  {
+    "number": 31,
+    "title": "The Aster cinema",
+    "purpose": "Cinema listings with show times",
+    "style": "Wine-red cinema marquee with gold bulbs and a few blinking accents",
+    "techniques": [
+      "macro",
+      "blink",
+      "native arcs"
+    ],
+    "animated": true,
+    "file": "031-aster-cinema.nap",
+    "bytes": 1054
+  },
+  {
+    "number": 32,
+    "title": "Form in motion",
+    "purpose": "Museum exhibition announcement",
+    "style": "Asymmetric Bauhaus poster: primary circle, square and triangle",
+    "techniques": [
+      "native arcs",
+      "polygons",
+      "display type"
+    ],
+    "animated": false,
+    "file": "032-form-in-motion.nap",
+    "bytes": 447
+  },
+  {
+    "number": 33,
+    "title": "Old Quay city centre",
+    "purpose": "City street map with landmarks and a legend",
+    "style": "Pale cartography with wide streets, a green park and numbered landmarks",
+    "techniques": [
+      "polygons",
+      "native arcs",
+      "cartographic symbols"
+    ],
+    "animated": false,
+    "file": "033-old-quay-map.nap",
+    "bytes": 1083
+  },
+  {
+    "number": 34,
+    "title": "Alder Metro",
+    "purpose": "Metro network diagram",
+    "style": "Three coloured routes at 45 degrees with rings at interchanges",
+    "techniques": [
+      "thick polylines",
+      "native arcs",
+      "transit symbols"
+    ],
+    "animated": false,
+    "file": "034-alder-metro.nap",
+    "bytes": 1102
+  },
+  {
+    "number": 35,
+    "title": "One-transistor amplifier",
+    "purpose": "Electronics schematic of a simple common-emitter amplifier",
+    "style": "Thin white engineering lines on a blue construction grid",
+    "techniques": [
+      "line drawing",
+      "native arcs",
+      "point junctions"
+    ],
+    "animated": false,
+    "file": "035-amplifier.nap",
+    "bytes": 1679
+  }
+]

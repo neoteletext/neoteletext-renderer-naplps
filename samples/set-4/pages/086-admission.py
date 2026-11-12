@@ -1,0 +1,22 @@
+from lib import *
+p=Page('086-admission',['171426','F8EFD2','EF593E','383042','D7C4A0'])
+p.rect(18,26,604,424,1)
+p.rect(18,26,604,80,2)
+p.text(36,80,'NIGHT ORCHARD',29,39,0)
+p.text(36,145,'LIVE AT THE GLASSHOUSE',20,24,0)
+p.text(36,218,'THE VELVET',38,46,0)
+p.text(36,262,'SATELLITES',38,46,0)
+p.text(36,312,'FRI 18 JUN  /  DOORS 19:30',20,24,0)
+p.text(36,355,'FLOOR A / ROW 4 / SEAT 18',20,24,0)
+p.rect(36,379,393,43,0)
+p.text(49,409,'ADMIT ONE   $28.00',22,27,1)
+for y in range(111,438,15):p.rect(457,y,3,7,0)
+p.circle(459,26,12,0);p.circle(459,450,12,0)
+p.text(482,150,'No.',21,27,0)
+p.text(482,185,'08416',22,28,0)
+# Reproducible decorative machine-readable serial bars, with quiet zones.
+for i,b in enumerate('1101001110010101101010011001011100101101'):
+    if b=='1':p.rect(483+i*3,220,2,115,0)
+p.text(482,375,'18 JUN',20,25,0)
+p.text(482,413,'KEEP',22,28,2)
+p.save()
