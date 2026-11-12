@@ -2,6 +2,11 @@
 
 NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol Syntax: ANSI X3.110-1983, CSA T500-1983, CCITT T.101 Annex D.
 
+## Making pages
+
+- [docs/guide.md](docs/guide.md): a tutorial from an empty file to a finished, animated page, every example a real page with its picture.
+- [docs/reference.md](docs/reference.md): every byte, control and drawing command, the operand encodings, the limits, and where this renderer departs from the standard.
+
 ## What is here
 
 **`naplps`** is the renderer: a `no_std` library with no input or output that turns a page's bytes into colour-map addresses on a canvas the caller owns (ANSI X3.110-1983 throughout: code extension, every PDI, colour modes 0 to 2 and the default colour map, text, mosaics, macros, DRCS, fill masks, WAIT and BLINK as events and colour maps over time). It contains no font: a stroke font is passed in as data. Everything a page can make it hold or do is bounded (`naplps::limits`).

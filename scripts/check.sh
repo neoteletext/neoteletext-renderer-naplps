@@ -62,6 +62,14 @@ push_steps() {
 full_steps() {
     step "documentation builds, warnings as errors"
     RUSTDOCFLAGS="-D warnings" cargo doc --quiet --workspace --no-deps
+    step "the documentations example pages are what their code generates
+    need_tool python3 docs/examples/examples.py builds the guides pages (sudo apt-get install python3)"
+    local generated
+    generated=tmp/examples-check
+    rm -rf "$generated"
+    python3 docs/examples/examples.py "$generated" >/dev/null
+    diff -r "$generated" docs/examples/pages || fail "docs/examples/pages differs from what docs/examples/examples.py generates; run docs/examples/build.sh"
+    rm -r "$generated"
     step "release tests"
     cargo test --quiet --workspace --release
     step "3,000 random pages in a debug build, where arithmetic overflow panics (about seven minutes)"
