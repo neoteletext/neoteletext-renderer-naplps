@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! naplps-oracle capture --out DIR [--pp3 DIR] [--work DIR] [--bits-per-second N]
-//!                       [--quiet-ms N] [--ceiling-s N] FILE...
+//!                       [--quiet-ms N] [--ceiling-s N] [--fresh] FILE...
 //! naplps-oracle compare [--channel N] [--displacement N] [--place] [--trim N] REFERENCE CANDIDATE
 //! ```
 //!
@@ -99,7 +99,7 @@ const VALUE_OPTIONS: [&str; 9] = [
     "--trim",
 ];
 /// Options that stand alone.
-const FLAG_OPTIONS: [&str; 1] = ["--place"];
+const FLAG_OPTIONS: [&str; 2] = ["--place", "--fresh"];
 
 impl Options {
     fn parse(arguments: &[OsString]) -> Result<Self, Error> {
@@ -164,15 +164,22 @@ fn capture(options: &Options) -> Result<bool, Error> {
 
     fs::create_dir_all(&out).map_err(|source| Error::Io { context: format!("creating {}", out.display()), source })?;
     let work = session::fresh_work_directory(&work_root)?;
+    let fresh = options.flags.iter().any(|flag| flag == "--fresh");
     let mut session = Session::start(&pp3, &work)?;
 
     let mut manifest = manifest_header(bits_per_second, settling)?;
     let mut all_settled = true;
-    for (name, path) in &names {
+    for (index, (name, path)) in names.iter().enumerate() {
         let page = read_bounded(path, MAX_PAGE_BYTES)?;
         let mut bytes = PAGE_PREAMBLE.to_vec();
         bytes.extend_from_slice(&page);
         let sent_at = Instant::now();
+        if fresh && index > 0 {
+            // A new PP3 for every page: one session can carry state a reset does not clear
+            // (pages captured after others came out blank in the corpus run of 12 November 2026).
+            drop(session);
+            session = Session::start(&pp3, &work)?;
+        }
         session.send(&bytes, bits_per_second)?;
         let settled = session.settle(sent_at, settling)?;
         let picture = out.join(format!("{name}.png"));
