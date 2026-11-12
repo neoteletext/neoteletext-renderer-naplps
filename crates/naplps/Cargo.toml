@@ -1,0 +1,13 @@
+[package]
+name = "naplps"
+description = "A NAPLPS (ANSI X3.110-1983) renderer: bytes in, colour-map addresses on a caller's canvas out; no_std, no input or output"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

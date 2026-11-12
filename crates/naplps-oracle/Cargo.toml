@@ -11,3 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+
+[dev-dependencies]
+# The renderer, checked against PP3's frames by tests/renderer.rs.
+naplps = { path = "../naplps" }

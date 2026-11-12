@@ -23,7 +23,7 @@ readonly CHECKED_PATHS=(crates scripts .githooks Cargo.toml Cargo.lock rust-tool
 # The crates that read input from outside their process, each with the
 # same no-panic lint list at its root (DEVELOPMENT.md section 6). Every
 # crate root must be listed.
-readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs)
+readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs crates/naplps/src/lib.rs crates/naplps-render/src/main.rs)
 
 check_no_panic_lists() {
     step "the no-panic lint list is the same in every crate root"
@@ -64,7 +64,9 @@ full_steps() {
     RUSTDOCFLAGS="-D warnings" cargo doc --quiet --workspace --no-deps
     step "release tests"
     cargo test --quiet --workspace --release
-    step "the oracle reproduces the rosetta_stone screenshots with PP3 (about a minute)"
+    step "3,000 random pages in a debug build, where arithmetic overflow panics (about seven minutes)"
+    cargo test --quiet -p naplps --test random_input -- --ignored
+    step "the oracle and the renderer against PP3, and the whole collection (about three minutes)"
     local tool
     for tool in dosbox Xvfb socat xdotool ffmpeg ffprobe sha256sum; do
         need_tool "$tool" "the oracle runs PP3 in DOSBox on Xvfb (sudo apt-get install dosbox xvfb socat xdotool ffmpeg)"

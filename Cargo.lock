@@ -3,5 +3,19 @@
 version = 4
 
 [[package]]
+name = "naplps"
+version = "0.1.0"
+
+[[package]]
 name = "naplps-oracle"
 version = "0.1.0"
+dependencies = [
+ "naplps",
+]
+
+[[package]]
+name = "naplps-render"
+version = "0.1.0"
+dependencies = [
+ "naplps",
+]
