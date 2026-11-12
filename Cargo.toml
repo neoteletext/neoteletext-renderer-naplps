@@ -1,0 +1,32 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# At most three stable releases behind the pinned toolchain
+# (neoteletext-common DEVELOPMENT.md section 13).
+rust-version = "1.97"
+license = "MIT"
+publish = false
+
+# No library is used: every library needs the owner's approval by name,
+# recorded in a decision (DEVELOPMENT.md section 7). The oracle drives
+# external programs instead (Xvfb, DOSBox, socat, xdotool, ffmpeg).
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# DEVELOPMENT.md section 6: every function returning a Result says which
+# errors it returns; debugging output and unfinished code never reach a
+# commit; every suppression is narrow and says why.
+missing_errors_doc = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+allow_attributes_without_reason = "warn"

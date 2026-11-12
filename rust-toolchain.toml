@@ -1,0 +1,7 @@
+[toolchain]
+# The engine's and the browser's release (neoteletext-common DEVELOPMENT.md
+# section 11: the repositories pin the same Rust).
+channel = "1.99.0"
+components = ["clippy", "rustfmt"]
+targets = ["x86_64-unknown-linux-gnu"]
+profile = "minimal"

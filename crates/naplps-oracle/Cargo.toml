@@ -1,0 +1,13 @@
+[package]
+name = "naplps-oracle"
+description = "Reference frames for NAPLPS rendering, captured from period software, and the comparison a renderer is judged by"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
