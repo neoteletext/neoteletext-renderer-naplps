@@ -1,6 +1,6 @@
 # neoteletext-naplps
 
-NAPLPS (ANSI X3.110-1983, CSA T500-1983, CCITT T.101 Annex D) for NeoTeletext. Today it holds the verification a NAPLPS renderer will be judged by: `naplps-oracle`, which captures reference frames from PP3 (Personality+III, 1991) running in DOSBox, and the comparison that judges a frame against them.
+NAPLPS (ANSI X3.110-1983, CSA T500-1983, CCITT T.101 Annex D) for NeoTeletext: the renderer (`naplps`, a `no_std` library, and `naplps-render`) and the verification it is judged by: `naplps-oracle`, which captures reference frames from PP3 (Personality+III, 1991) running in DOSBox, and the comparison that judges a frame against them.
 
 ## How we work
 
@@ -14,6 +14,8 @@ That is the one document of how we work, for every NeoTeletext repository, with 
 - **No period software, page data or screenshots in this repository.** PP3, the corpus pages and the reference screenshots are read from `~/devel/teletext-reference/NAPLPS/` (or `NAPLPS_PP3_DIR`, `NAPLPS_ROSETTA_DIR`) and pinned by SHA-256: PP3's files in `session.rs` (`PINNED_FILES`), the rosetta_stone testbed in `crates/naplps-oracle/tests/rosetta.sha256`. Captured frames go to the ignored `tmp/`.
 - **The oracle never listens on the network.** PP3's COM1 is a pseudo-terminal made by socat (DOSBox's `nullmodem` would listen on every interface); Xvfb runs with `-nolisten tcp`.
 - **The standard is the source of truth for behaviour; PP3 is the evidence for what the standard's approximations look like** (section 8.3.4). A difference between the two is recorded as a decision in rdm, never settled silently in code.
+- **The renderer library is sans-IO, `no_std` and integer-only** (DEC-5764, DEC-5765): no file, clock or floating point; it draws colour-map addresses into the caller's canvas. Fonts are data passed in (DEC-5768); no font is compiled in.
+- **Behaviour PP3 shows is measured, then recorded**: each rule taken from PP3's frames (pixel rounding, fill edges, hatching, circle radii, glyph placement) cites its measurement in the code and is a decision in rdm.
 - **No library without the owner's approval by name** (DEVELOPMENT.md section 7). The oracle has none: it drives external programs.
 
 ## Commands

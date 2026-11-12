@@ -4,6 +4,17 @@ NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol
 
 ## What is here
 
+**`naplps`** is the renderer: a `no_std` library with no input or output that turns a page's bytes into colour-map addresses on a canvas the caller owns (ANSI X3.110-1983 throughout: code extension, every PDI, colour modes 0 to 2 and the default colour map, text, mosaics, macros, DRCS, fill masks, WAIT and BLINK as events and colour maps over time). It contains no font: a stroke font is passed in as data. Everything a page can make it hold or do is bounded (`naplps::limits`).
+
+**`naplps-render`** renders one page to a PPM picture:
+
+```
+naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--dac-bits N] [--preamble] PAGE OUT.ppm
+```
+
+`--font` takes a stroke font in the library's text form, such as the Microstar font recovered from PP3 (`~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes`). `--preamble` and `--dac-bits 6` render a page as the oracle shows it to PP3, for comparison.
+
+
 `naplps-oracle` makes the reference frames a NAPLPS renderer is judged by, and judges frames against them.
 
 The standard alone cannot say whether a renderer is right, because section 8.3.4 lets decoders approximate line widths, fill edges, fonts and the mapping of the unit screen onto pixels. So the references come from a period decoder.

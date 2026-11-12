@@ -171,19 +171,37 @@ Two problems found while extracting, and how each was settled:
 
 **Not yet confirmed:** the meaning of the two metric bytes in each record. Only eight (left, width) pairs occur, and they do not map directly onto the ten width classes in Dillon's NAPLPS notes. Settling it means drawing proportionally spaced text through PP3 and measuring each glyph's advance.
 
-## 7. Running it
+## 7. The renderer against PP3
+
+The renderer (`crates/naplps`) is checked against PP3's own frames at channel tolerance 0 and displacement 1 (REQ-5790, DEC-5774), rendering each page exactly as the oracle shows it to PP3: the oracle's page preamble first (`naplps_oracle::session::PAGE_PREAMBLE`), a 640 x 480 canvas, a 16-entry colour map, the Microstar font recovered from PP3, and colours through VGA's 6-bit registers (`naplps::palette::through_register`, which turns the standard's 63 into the 65 PP3's screen shows).
+
+What PP3's frames settled, each now in the code with its measurement:
+- **The display shows 25/32 of the unit screen's height** (ANSI X3.110 Table D1's 256 x 200), not 0.75: PP3's 5/128 text rows are exactly 24 of its 480 lines.
+- **Coordinates round to the nearest pixel**, and **filled objects are stroked with the logical pel in their fill's colours**, so fills reach pel - 1 pixels further right and up.
+- **Hatching bands are the pel rounded to the nearest pixel** (3 x 2 pixels for a 1/256 pel), registered from the left edge and the bottom line: every pixel of PP3's cross-hatch matches.
+- **Circles are circles on the unit screen**, so ellipses in pixels, with the centre rounded to a pixel and radii truncated.
+- **Glyphs**: grid x at x/8 of the field, grid y at y/10, a square pen of about 1/12 of the field's height extending right and up: at the default field every one of the 94 primary glyphs matches PP3 to within one pixel.
+
+Results on 13 November 2026:
+- **rosetta_stone**: 15 of 18 pages agree (`tests/renderer.rs`, asserted exactly). The three that do not: `circf` (a filled circle's edge, 73 of 17,600 pixels) and `hello` and `text` (text at sizes and rotations where PP3 scales its font differently from the default-size fit).
+- **The corpus** (139 distinct pages, PP3 restarted for every page): 36 agree at displacement 1 and 46 at displacement 2; on the median page 1.2 % of pixels are unexplained, and 6.8 % at the 75th percentile. The largest differences are pages with WAIT whose PP3 frame is an earlier scene (TODO-5762) and text at non-default sizes.
+- **Robustness**: every NAPLPS page of the reference collection renders within the processing budget; 3,000 random pages (biased to NAPLPS's code ranges, fed in pieces) render in a debug build, where any arithmetic overflow would panic, without a fault (`crates/naplps/tests/random_input.rs`; 200 pages on every push, all 3,000 in a debug build in the full gate).
+
+The oracle captures each corpus page with a fresh PP3 (`capture --fresh`): one PP3 session carried state its reset did not clear, and pages captured after others in a single session came out blank on 12 November 2026.
+
+## 8. Running it
 
 ```
 cargo build --release
 target/release/naplps-oracle capture --out tmp/ref/NAME PAGE.nap ...
 target/release/naplps-oracle compare --displacement 1 REFERENCE_DIR CANDIDATE_DIR
-cargo test --release -- --ignored        # the rosetta self-check, about a minute
+cargo test --release -- --ignored        # the PP3 self-check, the renderer against PP3, the collection, 3,000 random pages
 scripts/check.sh full                    # every gate, including the self-check
 ```
 
 The oracle needs `dosbox`, `Xvfb`, `socat`, `xdotool`, `ffmpeg`, `ffprobe` and `sha256sum` (`sudo apt-get install dosbox xvfb socat xdotool ffmpeg`). The full gate fails, naming what is missing, without them.
 
-## 8. Still owed
+## 9. Still owed
 
 | To-do | What |
 |---|---|
