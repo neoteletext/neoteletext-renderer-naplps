@@ -1,0 +1,9 @@
+target/
+/tools
+tmp/
+.claude/
+.DS_Store
+.env*
+*.pem
+*.key
+*.bak*
