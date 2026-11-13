@@ -1,0 +1,1269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAPLPS page reference</title>
+<style>:root { --fg: #1d1d1f; --bg: #ffffff; --muted: #5b5b66; --rule: #d9d9e0; --code-bg: #f3f3f6; --link: #0b57d0; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #e6e6ea; --bg: #16161a; --muted: #a0a0ab; --rule: #34343c; --code-bg: #222228; --link: #8ab4f8; }
+}
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 2rem 1rem 4rem; background: var(--bg); color: var(--fg);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 52rem; margin: 0 auto; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 1rem; }
+h2 { font-size: 1.45rem; margin: 2.5rem 0 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--rule); }
+h3 { font-size: 1.15rem; margin: 2rem 0 0.5rem; }
+a { color: var(--link); }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 3px; }
+pre { background: var(--code-bg); padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--rule); padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--rule); }</style>
+</head>
+<body>
+<main>
+<h1 id="naplps-page-reference">NAPLPS page reference</h1>
+<p>Every byte a NAPLPS page can contain, what it does, and what this repository's renderer does with it. For a tutorial, read <a href="guide.html"><code>guide.html</code></a> first.</p>
+<p>The standard is ANSI X3.110-1983, identical in substance to CSA T500-1983; section numbers below are the standard's. Where the standard leaves a choice open, or this renderer does less than the standard asks, the entry says <strong>Here:</strong>. <a href="#what-this-renderer-does-not-do">The last section</a> collects those.</p>
+<p>Bytes are written in hexadecimal. The standard's own notation is column/row: <code>3/14</code> is <code>3E</code>. Operand bits are numbered as the standard numbers them, <strong>b7 to b1</strong>, where b7 is always 1 in the 7-bit form and b6 to b1 are the six data bits.</p>
+<p>Contents: <a href="#the-code-table">The code table</a> · <a href="#sets-and-shifts">Sets and shifts</a> · <a href="#c0-controls">C0 controls</a> · <a href="#c1-controls">C1 controls</a> · <a href="#operands">Operands</a> · <a href="#pdis">PDIs</a> · <a href="#colour">Colour</a> · <a href="#text">Text</a> · <a href="#mosaics">Mosaics</a> · <a href="#macros">Macros</a> · <a href="#drcs">DRCS</a> · <a href="#fill-patterns">Fill patterns</a> · <a href="#the-display">The display</a> · <a href="#limits">Limits</a> · <a href="#tools">Tools</a> · <a href="#what-this-renderer-does-not-do">What this renderer does not do</a></p>
+<h2 id="the-code-table">The code table</h2>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>7-bit form</th>
+<th>8-bit form</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00</code>-<code>1F</code></td>
+<td>C0 controls</td>
+<td>C0 controls</td>
+</tr>
+<tr>
+<td><code>20</code>-<code>7F</code></td>
+<td>GL: the set shifted in (G0 at first)</td>
+<td>GL</td>
+</tr>
+<tr>
+<td><code>80</code>-<code>9F</code></td>
+<td>not used; C1 is sent as ESC <code>40</code>-<code>5F</code></td>
+<td>C1 controls</td>
+</tr>
+<tr>
+<td><code>A0</code>-<code>FF</code></td>
+<td>not used</td>
+<td>GR: the set shifted in (G1 at first)</td>
+</tr>
+</tbody>
+</table>
+<p>A terminal holds four sets, <strong>G0 to G3</strong>, chosen from six. Shifts decide which of the four the bytes <code>20</code>-<code>7F</code> (and <code>A0</code>-<code>FF</code>) mean.</p>
+<table>
+<thead>
+<tr>
+<th>Set</th>
+<th>Holds</th>
+<th>Designated by final byte</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Primary</td>
+<td>ASCII</td>
+<td><code>42</code></td>
+</tr>
+<tr>
+<td>Supplementary</td>
+<td>accents, symbols, other letters</td>
+<td><code>7C</code></td>
+</tr>
+<tr>
+<td>PDI</td>
+<td>drawing opcodes and operands</td>
+<td><code>57</code></td>
+</tr>
+<tr>
+<td>Mosaic</td>
+<td>2 by 3 block graphics</td>
+<td><code>7D</code></td>
+</tr>
+<tr>
+<td>Macro</td>
+<td>96 macro names</td>
+<td><code>7A</code></td>
+</tr>
+<tr>
+<td>DRCS</td>
+<td>96 characters you define</td>
+<td><code>7B</code></td>
+</tr>
+</tbody>
+</table>
+<p>At power-up and after NSR: <strong>G0 primary, G1 PDI, G2 supplementary, G3 mosaic</strong>; G0 in GL and G1 in GR.</p>
+<h3 id="the-8-bit-form">The 8-bit form</h3>
+<p>With eight bits, text is sent as <code>20</code>-<code>7F</code> and drawing as <code>A0</code>-<code>FF</code> (each PDI byte with its top bit set) with no SO or SI between them, and each C1 control is one byte, <code>80</code>-<code>9F</code>. Prodigy's pages are in this form. A page may mix both forms; this renderer accepts either at any time.</p>
+<h2 id="sets-and-shifts">Sets and shifts</h2>
+<p><strong>Designation</strong> puts a set into G0 to G3: <code>ESC</code>, an intermediate byte naming the G-set, and the set's final byte from the table above.</p>
+<table>
+<thead>
+<tr>
+<th>Intermediate</th>
+<th>G-set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>28</code></td>
+<td>G0 (primary and supplementary sets only, by the standard)</td>
+</tr>
+<tr>
+<td><code>29</code> or <code>2D</code></td>
+<td>G1</td>
+</tr>
+<tr>
+<td><code>2A</code> or <code>2E</code></td>
+<td>G2</td>
+</tr>
+<tr>
+<td><code>2B</code> or <code>2F</code></td>
+<td>G3</td>
+</tr>
+</tbody>
+</table>
+<p>So <code>1B 2F 7A</code> puts the macro set in G3 and <code>1B 2A 7B</code> puts the DRCS in G2. <strong>Here:</strong> a further intermediate byte <code>20</code> before the final byte is accepted and ignored (<code>1B 2E 20 7A</code>), as other NAPLPS and T.101 documents write these sequences; unknown final bytes leave the G-set unchanged.</p>
+<p><strong>Invocation</strong> chooses which G-set the bytes mean.</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>Name</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0F</code></td>
+<td>SI (LS0)</td>
+<td>G0 into GL</td>
+</tr>
+<tr>
+<td><code>0E</code></td>
+<td>SO (LS1)</td>
+<td>G1 into GL</td>
+</tr>
+<tr>
+<td><code>1B 6E</code></td>
+<td>LS2</td>
+<td>G2 into GL</td>
+</tr>
+<tr>
+<td><code>1B 6F</code></td>
+<td>LS3</td>
+<td>G3 into GL</td>
+</tr>
+<tr>
+<td><code>1B 7E</code></td>
+<td>LS1R</td>
+<td>G1 into GR</td>
+</tr>
+<tr>
+<td><code>1B 7D</code></td>
+<td>LS2R</td>
+<td>G2 into GR</td>
+</tr>
+<tr>
+<td><code>1B 7C</code></td>
+<td>LS3R</td>
+<td>G3 into GR</td>
+</tr>
+<tr>
+<td><code>19</code></td>
+<td>SS2</td>
+<td>the next byte only is taken from G2</td>
+</tr>
+<tr>
+<td><code>1D</code></td>
+<td>SS3</td>
+<td>the next byte only is taken from G3</td>
+</tr>
+</tbody>
+</table>
+<p>A shift does not end a PDI that is collecting operands. Every other C0 control and every C1 control does.</p>
+<p>Other escape sequences (<code>1B 21 ...</code>, <code>1B 22 46</code> announcing the C1 set, <code>1B 25 ...</code>) are read and have no effect.</p>
+<h2 id="c0-controls">C0 controls</h2>
+<table>
+<thead>
+<tr>
+<th>Byte</th>
+<th>Name</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>07</code></td>
+<td>BEL</td>
+<td><strong>Here:</strong> reported to the caller as an event.</td>
+</tr>
+<tr>
+<td><code>08</code></td>
+<td>APB</td>
+<td>Cursor back one character; at the start of a line, to the end of the line above.</td>
+</tr>
+<tr>
+<td><code>09</code></td>
+<td>APF</td>
+<td>Cursor forward one character; at the end of a line, to the start of the next.</td>
+</tr>
+<tr>
+<td><code>0A</code></td>
+<td>APD</td>
+<td>Cursor down one row (line feed). At the bottom: to the top, or scroll in scroll mode.</td>
+</tr>
+<tr>
+<td><code>0B</code></td>
+<td>APU</td>
+<td>Cursor up one row.</td>
+</tr>
+<tr>
+<td><code>0C</code></td>
+<td>CS</td>
+<td>Clear the screen to nominal black (in colour mode 2, to the background colour) and home the cursor. Inside DEF DRCS or DEF TEXTURE, clears the definition instead.</td>
+</tr>
+<tr>
+<td><code>0D</code></td>
+<td>APR</td>
+<td>Cursor to the start of the line (carriage return).</td>
+</tr>
+<tr>
+<td><code>0E</code> <code>0F</code></td>
+<td>SO SI</td>
+<td>See <a href="#sets-and-shifts">shifts</a>.</td>
+</tr>
+<tr>
+<td><code>18</code></td>
+<td>CAN</td>
+<td>Ends every macro being executed.</td>
+</tr>
+<tr>
+<td><code>19</code> <code>1D</code></td>
+<td>SS2 SS3</td>
+<td>See <a href="#sets-and-shifts">shifts</a>.</td>
+</tr>
+<tr>
+<td><code>1B</code></td>
+<td>ESC</td>
+<td>Begins an escape sequence.</td>
+</tr>
+<tr>
+<td><code>1C</code></td>
+<td>APS</td>
+<td>Cursor to a row and column, given by the next two bytes, each <code>20</code> plus the number, in character fields of the current size. <strong>Here:</strong> rows are counted upward from the bottom of the screen; this has not been checked against PP3.</td>
+</tr>
+<tr>
+<td><code>1E</code></td>
+<td>APH</td>
+<td>Cursor to the home position, the top left character field.</td>
+</tr>
+<tr>
+<td><code>1F</code></td>
+<td>NSR</td>
+<td>Non-selective reset: sets and shifts, DOMAIN, text attributes, textures and colour mode 0 return to their defaults; the colour map, macros, DRCS and fill patterns are kept. May be followed by two bytes <code>40</code>-<code>7F</code> giving a row and column from the top left.</td>
+</tr>
+</tbody>
+</table>
+<p><code>00</code>-<code>06</code> and <code>10</code>-<code>17</code> belong to other layers of a system; they do nothing and do not end a PDI. Cursor movements move the drawing point with them unless TEXT has separated the two.</p>
+<h2 id="c1-controls">C1 controls</h2>
+<p>Sent as <code>ESC</code> and the byte in the second column, or in the 8-bit form as the single byte in the first.</p>
+<table>
+<thead>
+<tr>
+<th>8-bit</th>
+<th>7-bit</th>
+<th>Name</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>80</code></td>
+<td><code>1B 40</code></td>
+<td>DEF MACRO</td>
+<td>Begin recording a <a href="#macros">macro</a>; the next byte is its name.</td>
+</tr>
+<tr>
+<td><code>81</code></td>
+<td><code>1B 41</code></td>
+<td>DEFP MACRO</td>
+<td>The same, and the bytes are also executed as they arrive.</td>
+</tr>
+<tr>
+<td><code>82</code></td>
+<td><code>1B 42</code></td>
+<td>DEFT MACRO</td>
+<td>A transmit macro. <strong>Here:</strong> stored like any macro; nothing is transmitted.</td>
+</tr>
+<tr>
+<td><code>83</code></td>
+<td><code>1B 43</code></td>
+<td>DEF DRCS</td>
+<td>Begin defining a <a href="#drcs">DRCS</a> character; the next byte is its code.</td>
+</tr>
+<tr>
+<td><code>84</code></td>
+<td><code>1B 44</code></td>
+<td>DEF TEXTURE</td>
+<td>Begin defining a <a href="#fill-patterns">fill pattern</a>; the next byte is <code>41</code>-<code>44</code>.</td>
+</tr>
+<tr>
+<td><code>85</code></td>
+<td><code>1B 45</code></td>
+<td>END</td>
+<td>Ends a definition. Any of <code>80</code>-<code>84</code> also ends one and begins the next.</td>
+</tr>
+<tr>
+<td><code>86</code></td>
+<td><code>1B 46</code></td>
+<td>REPEAT</td>
+<td>The next byte, <code>40</code>-<code>7F</code>, is a count 0 to 63: draw the last spacing character that many more times.</td>
+</tr>
+<tr>
+<td><code>87</code></td>
+<td><code>1B 47</code></td>
+<td>REPEAT TO EOL</td>
+<td>Draw the last spacing character to the end of the line.</td>
+</tr>
+<tr>
+<td><code>88</code></td>
+<td><code>1B 48</code></td>
+<td>REVERSE VIDEO</td>
+<td>Characters are drawn with field and strokes exchanged.</td>
+</tr>
+<tr>
+<td><code>89</code></td>
+<td><code>1B 49</code></td>
+<td>NORMAL VIDEO</td>
+<td>Ends reverse video.</td>
+</tr>
+<tr>
+<td><code>8A</code></td>
+<td><code>1B 4A</code></td>
+<td>SMALL TEXT</td>
+<td>Character field 1/80 by 5/128.</td>
+</tr>
+<tr>
+<td><code>8B</code></td>
+<td><code>1B 4B</code></td>
+<td>MEDIUM TEXT</td>
+<td>Character field 1/32 by 3/64.</td>
+</tr>
+<tr>
+<td><code>8C</code></td>
+<td><code>1B 4C</code></td>
+<td>NORMAL TEXT</td>
+<td>Character field 1/40 by 5/128.</td>
+</tr>
+<tr>
+<td><code>8D</code></td>
+<td><code>1B 4D</code></td>
+<td>DOUBLE HEIGHT</td>
+<td>Character field 1/40 by 5/64.</td>
+</tr>
+<tr>
+<td><code>8E</code></td>
+<td><code>1B 4E</code></td>
+<td>BLINK START</td>
+<td>The current colour blinks to black (mode 2: to the background). <strong>Here:</strong> half a second each way.</td>
+</tr>
+<tr>
+<td><code>8F</code></td>
+<td><code>1B 4F</code></td>
+<td>DOUBLE SIZE</td>
+<td>Character field 1/20 by 5/64.</td>
+</tr>
+<tr>
+<td><code>90</code></td>
+<td><code>1B 50</code></td>
+<td>PROTECT</td>
+<td><strong>Here:</strong> no effect.</td>
+</tr>
+<tr>
+<td><code>91</code>-<code>94</code></td>
+<td><code>1B 51</code>-<code>54</code></td>
+<td>EDC1-EDC4</td>
+<td>Device controls. No effect.</td>
+</tr>
+<tr>
+<td><code>95</code> <code>96</code></td>
+<td><code>1B 55</code> <code>56</code></td>
+<td>WORD WRAP ON, OFF</td>
+<td><strong>Here:</strong> recorded, not applied: lines break at the edge.</td>
+</tr>
+<tr>
+<td><code>97</code> <code>98</code></td>
+<td><code>1B 57</code> <code>58</code></td>
+<td>SCROLL ON, OFF</td>
+<td>A line feed at the last row scrolls the text area instead of wrapping to the top.</td>
+</tr>
+<tr>
+<td><code>99</code> <code>9A</code></td>
+<td><code>1B 59</code> <code>5A</code></td>
+<td>UNDERLINE START, STOP</td>
+<td>Characters are underlined; mosaics are drawn separated.</td>
+</tr>
+<tr>
+<td><code>9B</code>-<code>9D</code></td>
+<td><code>1B 5B</code>-<code>5D</code></td>
+<td>FLASH CURSOR, STEADY CURSOR, CURSOR OFF</td>
+<td><strong>Here:</strong> no effect; no cursor is drawn.</td>
+</tr>
+<tr>
+<td><code>9E</code></td>
+<td><code>1B 5E</code></td>
+<td>BLINK STOP</td>
+<td>Ends blinking of the current colour.</td>
+</tr>
+<tr>
+<td><code>9F</code></td>
+<td><code>1B 5F</code></td>
+<td>UNPROTECT</td>
+<td><strong>Here:</strong> no effect.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operands">Operands</h2>
+<p>In the PDI set, <code>20</code>-<code>3F</code> are opcodes and <code>40</code>-<code>7F</code> are operand bytes, each carrying six bits (b6 to b1). A PDI is an opcode and every operand byte up to the next byte that is not one. There are four kinds of operand.</p>
+<p><strong>Fixed format</strong>: one byte whose bits are flags, laid out differently for each command.</p>
+<p><strong>Single value</strong>: an unsigned number, six bits per byte, most significant first. One byte unless DOMAIN changes it (1 to 4). Used for colour-map entries.</p>
+<p><strong>Multi-value</strong>: a coordinate pair. Three bytes unless DOMAIN changes it (1 to 8). Each byte holds three bits of x (b6 to b4) and three of y (b3 to b1), most significant first, so n bytes give 3n bits to each coordinate: one sign bit, then 3n - 1 bits of binary fraction, in two's complement. With three bytes a coordinate is a multiple of 1/256 from -1 to 255/256.</p>
+<pre><code>(0.35, 0.40):  x = 0 01011010   y = 0 01100110
+               49 = 1 001 001   5C = 1 011 100   56 = 1 010 110
+(-0.25, 0):    x = 1 11000000   y = 0 00000000
+               78 = 1 111 000   40 = 1 000 000   40 = 1 000 000
+</code></pre>
+<p>In three-dimensional mode each byte holds two bits each of x, y and z. <strong>Here:</strong> z is read and ignored.</p>
+<p><strong>Colour</strong>: a multi-value operand whose bytes hold two bits of each primary in the order green, red, blue, green, red, blue (b6 to b1), most significant first. Three bytes give six bits a primary. A value of all ones is full intensity.</p>
+<pre><code>red 255, green 208, blue 64 -&gt; 6 bits each: R 111111, G 110100, B 010000
+byte 1: G1 R1 B0 G1 R1 B1 = 110111 -&gt; 77
+byte 2: G0 R1 B0 G1 R1 B0 = 010110 -&gt; 56
+byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
+</code></pre>
+<p><strong>Short operands.</strong> If a PDI's data ends partway through an operand, the missing bytes count as zero, so trailing zero bytes of the last operand may be omitted. A PDI with fewer operands than it needs does what the entry below says, usually nothing.</p>
+<h2 id="pdis">PDIs</h2>
+<p>"Drawing point" is the current position, left by the previous PDI. Where an entry says an operand repeats, any number may follow.</p>
+<h3 id="reset-20">RESET <code>20</code></h3>
+<p>Two fixed bytes; a missing byte is zero. Actions are taken in this order.</p>
+<table>
+<thead>
+<tr>
+<th>Byte 1</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b1</td>
+<td>DOMAIN to its default: one-byte single values, three-byte multi-values, two dimensions, the smallest logical pel.</td>
+</tr>
+<tr>
+<td>b3 b2</td>
+<td>Colour. <code>01</code>: colour mode 0, the default colour map, white selected. <code>10</code>: the default colour map (in mode 0, also mode 1 and white). <code>11</code>: colour mode 1, the default colour map, white selected.</td>
+</tr>
+<tr>
+<td>b6 b5 b4</td>
+<td>Screen. <code>001</code> or <code>111</code>: clear to nominal black. <code>010</code>, <code>101</code> or <code>110</code>: clear to the current drawing colour. <code>011</code> and <code>100</code> concern the border only. <strong>Here:</strong> there is no border.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Byte 2</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b1</td>
+<td>Text attributes to their defaults, the active field removed, cursor home.</td>
+</tr>
+<tr>
+<td>b2</td>
+<td>All blinking stopped.</td>
+</tr>
+<tr>
+<td>b3</td>
+<td>Unprotected fields. <strong>Here:</strong> no effect.</td>
+</tr>
+<tr>
+<td>b4</td>
+<td>Line texture solid, fill pattern solid, highlight off, mask size 1/40 by 5/128.</td>
+</tr>
+<tr>
+<td>b5</td>
+<td>Every macro deleted.</td>
+</tr>
+<tr>
+<td>b6</td>
+<td>Every DRCS character deleted.</td>
+</tr>
+</tbody>
+</table>
+<p><code>20 7F 7F</code> resets everything and clears the screen: the right way to begin a page.</p>
+<h3 id="domain-21">DOMAIN <code>21</code></h3>
+<p>One fixed byte, then a multi-value operand (in the new lengths) giving the <strong>logical pel</strong>: the width and height of the brush.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b6</td>
+<td>1: three-dimensional coordinates</td>
+</tr>
+<tr>
+<td>b5 b4 b3</td>
+<td>bytes in a multi-value operand, less one (<code>010</code> is three)</td>
+</tr>
+<tr>
+<td>b2 b1</td>
+<td>bytes in a single-value operand, less one</td>
+</tr>
+</tbody>
+</table>
+<p><code>21 48 40 40 49</code> is the default lengths with a pel of 1/256 by 1/256. A pel dimension of zero means the smallest the display can show. A negative dimension draws the pel leftward or downward from each point.</p>
+<p>Lines are stamped with the pel from each point rightward and upward. <strong>Here:</strong> the pel is rounded up to whole pixels (1/256 is 3 by 3 pixels at 640 by 480), and line textures and hatching are measured in it.</p>
+<h3 id="text-22">TEXT <code>22</code></h3>
+<p>Two fixed bytes and a multi-value operand; anything omitted is left unchanged.</p>
+<table>
+<thead>
+<tr>
+<th>Byte 1</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b6 b5</td>
+<td>Spacing between characters: <code>00</code> 1, <code>01</code> 5/4, <code>10</code> 3/2 of the field's width; <code>11</code> proportional.</td>
+</tr>
+<tr>
+<td>b4 b3</td>
+<td>Path: <code>00</code> right, <code>01</code> left, <code>10</code> up, <code>11</code> down.</td>
+</tr>
+<tr>
+<td>b2 b1</td>
+<td>Rotation of each character: <code>00</code> 0, <code>01</code> 90, <code>10</code> 180, <code>11</code> 270 degrees counterclockwise.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Byte 2</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b6 b5</td>
+<td>Cursor style: underscore, block, cross-hair, custom. <strong>Here:</strong> recorded only.</td>
+</tr>
+<tr>
+<td>b4 b3</td>
+<td><code>00</code> cursor and drawing point move together; <code>01</code> cursor leads; <code>10</code> drawing point leads; <code>11</code> independent.</td>
+</tr>
+<tr>
+<td>b2 b1</td>
+<td>Spacing between rows: <code>00</code> 1, <code>01</code> 5/4, <code>10</code> 3/2, <code>11</code> 2 of the field's height.</td>
+</tr>
+</tbody>
+</table>
+<p>The multi-value operand is the character field's width and height. See <a href="#text">Text</a>.</p>
+<h3 id="texture-23">TEXTURE <code>23</code></h3>
+<p>One fixed byte, then an optional multi-value operand: the <strong>mask size</strong>, the width and height at which a defined fill pattern repeats (default 1/40 by 5/128).</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>b6 b5 b4</td>
+<td>Fill pattern: <code>000</code> solid, <code>001</code> vertical hatching, <code>010</code> horizontal, <code>011</code> cross-hatching, <code>100</code>-<code>111</code> <a href="#fill-patterns">defined patterns</a> A to D.</td>
+</tr>
+<tr>
+<td>b3</td>
+<td>Highlight: filled shapes are outlined in nominal black (mode 2: the background colour).</td>
+</tr>
+<tr>
+<td>b2 b1</td>
+<td>Line texture: <code>00</code> solid, <code>01</code> dotted, <code>10</code> dashed, <code>11</code> dot-dash.</td>
+</tr>
+</tbody>
+</table>
+<p>Hatching lines are one pel wide and one pel apart. Dotted is one pel on, one off; dashed three on, one off; dot-dash three on, one off, one on, one off. Gaps leave what was there, or in colour mode 2 take the background colour. <strong>Here:</strong> a line is textured only if the pel has a size along it; with the default pel, lines are solid.</p>
+<h3 id="point-24-27">POINT <code>24</code>-<code>27</code></h3>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>24</code></td>
+<td>POINT SET (absolute)</td>
+<td>a point: the drawing point moves there</td>
+</tr>
+<tr>
+<td><code>25</code></td>
+<td>POINT SET (relative)</td>
+<td>a step: the drawing point moves by it</td>
+</tr>
+<tr>
+<td><code>26</code></td>
+<td>POINT (absolute)</td>
+<td>a point: move there and draw one pel</td>
+</tr>
+<tr>
+<td><code>27</code></td>
+<td>POINT (relative)</td>
+<td>a step: move and draw one pel</td>
+</tr>
+</tbody>
+</table>
+<p>Operands repeat.</p>
+<h3 id="line-28-2b">LINE <code>28</code>-<code>2B</code></h3>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>28</code></td>
+<td>LINE (absolute)</td>
+<td>end point, repeating: from the drawing point to each in turn</td>
+</tr>
+<tr>
+<td><code>29</code></td>
+<td>LINE (relative)</td>
+<td>step, repeating</td>
+</tr>
+<tr>
+<td><code>2A</code></td>
+<td>SET &amp; LINE (absolute)</td>
+<td>start point, then end points</td>
+</tr>
+<tr>
+<td><code>2B</code></td>
+<td>SET &amp; LINE (relative)</td>
+<td>start point, then steps</td>
+</tr>
+</tbody>
+</table>
+<p>The drawing point is left at the last end.</p>
+<h3 id="arc-2c-2f">ARC <code>2C</code>-<code>2F</code></h3>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2C</code></td>
+<td>ARC (outlined)</td>
+<td>step to a middle point, step to the end point</td>
+</tr>
+<tr>
+<td><code>2D</code></td>
+<td>ARC (filled)</td>
+<td>the same; the area between arc and chord is filled</td>
+</tr>
+<tr>
+<td><code>2E</code></td>
+<td>SET &amp; ARC (outlined)</td>
+<td>start point, then the two steps</td>
+</tr>
+<tr>
+<td><code>2F</code></td>
+<td>SET &amp; ARC (filled)</td>
+<td>start point, then the two steps</td>
+</tr>
+</tbody>
+</table>
+<p>The arc starts at the drawing point (or the start point), passes through the middle point and ends at the end point; each step is relative to the point before it. With <strong>one</strong> step, the arc is the full circle whose diameter runs from the start to that point, and the drawing point does not move. With two steps the drawing point is left at the end.</p>
+<p><strong>Here:</strong> more than two steps describe a curve through all the points, which the standard draws as a spline; it is drawn as straight segments. Circles are true circles on the unit screen.</p>
+<h3 id="rectangle-30-33">RECTANGLE <code>30</code>-<code>33</code></h3>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>30</code></td>
+<td>RECT (outlined)</td>
+<td>width and height, repeating</td>
+</tr>
+<tr>
+<td><code>31</code></td>
+<td>RECT (filled)</td>
+<td>width and height, repeating</td>
+</tr>
+<tr>
+<td><code>32</code></td>
+<td>SET &amp; RECT (outlined)</td>
+<td>corner, then width and height, repeating</td>
+</tr>
+<tr>
+<td><code>33</code></td>
+<td>SET &amp; RECT (filled)</td>
+<td>corner, then width and height, repeating</td>
+</tr>
+</tbody>
+</table>
+<p>One corner is the drawing point; width and height may be negative. Afterwards the drawing point has moved <strong>horizontally by the width</strong>, so each further operand draws an adjoining rectangle.</p>
+<h3 id="polygon-34-37">POLYGON <code>34</code>-<code>37</code></h3>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Operands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>34</code></td>
+<td>POLY (outlined)</td>
+<td>step to each next vertex, repeating</td>
+</tr>
+<tr>
+<td><code>35</code></td>
+<td>POLY (filled)</td>
+<td>the same</td>
+</tr>
+<tr>
+<td><code>36</code></td>
+<td>SET &amp; POLY (outlined)</td>
+<td>first vertex, then steps</td>
+</tr>
+<tr>
+<td><code>37</code></td>
+<td>SET &amp; POLY (filled)</td>
+<td>first vertex, then steps</td>
+</tr>
+</tbody>
+</table>
+<p>The first vertex is the drawing point (or the given point); every later operand is a <strong>step from the previous vertex</strong>. The polygon is closed back to the first vertex, and the drawing point is left there. Self-crossing polygons are filled by the even-odd rule. <strong>Here:</strong> up to 4096 vertices.</p>
+<h3 id="field-38">FIELD <code>38</code></h3>
+<table>
+<thead>
+<tr>
+<th>Operands</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>origin and size</td>
+<td>The active field is that rectangle.</td>
+</tr>
+<tr>
+<td>size only</td>
+<td>The active field has its origin at the drawing point.</td>
+</tr>
+<tr>
+<td>none</td>
+<td>The active field is the whole display.</td>
+</tr>
+</tbody>
+</table>
+<p>The drawing point moves to the field's origin. The field is where INCREMENTAL POINT draws, and where text wraps and scrolls when the character field fits inside it. Unprotected (input) fields are also made with FIELD. <strong>Here:</strong> they are not recorded.</p>
+<h3 id="incremental-point-39">INCREMENTAL POINT <code>39</code></h3>
+<p>A bitmap. One fixed byte, the <strong>packing</strong>: bits per pel, 1 to 48. Then bits, six to a byte, read in groups of that size. Each group colours one pel: in colour mode 0 an RGB value (bits in the order G R B, repeating), otherwise a colour-map entry. Pels are laid from the drawing point across the active field, a pel's width at a time, moving up a pel's height at the end of each row, until the field is full or the data ends. The drawing point is left at the field's origin.</p>
+<h3 id="incremental-line-3a">INCREMENTAL LINE <code>3A</code></h3>
+<p>A multi-value operand giving a step (dx, dy), then bytes of three two-bit moves each (b6 b5, b4 b3, b2 b1):</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Move</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01</code></td>
+<td>by dx</td>
+</tr>
+<tr>
+<td><code>10</code></td>
+<td>by dy</td>
+</tr>
+<tr>
+<td><code>11</code></td>
+<td>by dx and dy</td>
+</tr>
+<tr>
+<td><code>00</code></td>
+<td>escape: the next two bits are <code>00</code> pen up or down (toggles), <code>01</code> reverse dx, <code>10</code> reverse dy, <code>11</code> reverse both</td>
+</tr>
+</tbody>
+</table>
+<p>The pen starts down. The drawing point is left at the end.</p>
+<h3 id="incremental-polygon-filled-3b">INCREMENTAL POLYGON (filled) <code>3B</code></h3>
+<p>The same data as INCREMENTAL LINE; the outline traced is filled as a polygon. The pen escape has no meaning. The drawing point is left at the start.</p>
+<h3 id="set-color-3c">SET COLOR <code>3C</code></h3>
+<p>See <a href="#colour">Colour</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Colour mode</th>
+<th>Operands</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>a colour</td>
+<td>Draw in that colour.</td>
+</tr>
+<tr>
+<td>1 or 2</td>
+<td>a colour, repeating</td>
+<td>The selected entry takes the colour; each further colour goes to the next entry in the order below.</td>
+</tr>
+<tr>
+<td>any</td>
+<td>none</td>
+<td>Selects the transparent colour. <strong>Here:</strong> black.</td>
+</tr>
+</tbody>
+</table>
+<p>"Next entry" is the standard's reversed counting: for a 16-entry map starting from 0, the order is 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15. To load consecutive entries, select each one.</p>
+<h3 id="wait-3d">WAIT <code>3D</code></h3>
+<p>A fixed byte <code>5C</code>, then interval bytes, each 0 to 63 tenths of a second, added together. Without the <code>5C</code> the command is ignored. <strong>Here:</strong> the library reports <code>Event::Wait(tenths)</code> and continues; pausing is the caller's business.</p>
+<h3 id="select-color-3e">SELECT COLOR <code>3E</code></h3>
+<table>
+<thead>
+<tr>
+<th>Operands</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td>Colour mode 0.</td>
+</tr>
+<tr>
+<td>one single value</td>
+<td>Colour mode 1; draw with that entry.</td>
+</tr>
+<tr>
+<td>two single values</td>
+<td>Colour mode 2; draw with the first entry on a background of the second.</td>
+</tr>
+</tbody>
+</table>
+<p>An entry is the operand's <strong>most significant bits</strong>: with one byte and a 16-entry map, entry e is <code>40 + 4e</code>. Entry 7 is <code>5C</code>; entry 12 is <code>70</code>.</p>
+<h3 id="blink-3f">BLINK <code>3F</code></h3>
+<p>Groups of four operands, repeating: a single value naming the <strong>blink-to</strong> entry, then three fixed bytes: the ON interval, the OFF interval and a start delay, in tenths of a second.</p>
+<p>The selected entry shows the blink-to entry's colour for the ON interval, then its own for the OFF interval, repeatedly. A second group applies to the next entry (in the reversed counting above), and so on. The delay is measured from the start of the most recently defined blink. Intervals of zero, or a BLINK with no operands, end blinking of the selected entry. Blinks are applied in the order defined, so one blink can take the colour another has just produced. <strong>Here:</strong> up to 32 blinks at once.</p>
+<h2 id="colour">Colour</h2>
+<p>The picture is stored as <strong>colour-map entry numbers</strong>. The map has 2^n entries; 16 is the classic size and this renderer's default (<code>--palette-bits 4</code>), up to 256.</p>
+<h3 id="the-default-colour-map">The default colour map</h3>
+<p>The lower half of the map is greys, evenly spaced from black to white; the upper half is hues, evenly spaced round the colour circle from blue. For 16 entries:</p>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>Colour</th>
+<th>R G B</th>
+<th>Entry</th>
+<th>Colour</th>
+<th>R G B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>black</td>
+<td>0 0 0</td>
+<td>8</td>
+<td>blue</td>
+<td>0 0 255</td>
+</tr>
+<tr>
+<td>1</td>
+<td></td>
+<td>36 36 36</td>
+<td>9</td>
+<td>violet</td>
+<td>191 0 255</td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td>72 72 72</td>
+<td>10</td>
+<td>magenta-red</td>
+<td>255 0 127</td>
+</tr>
+<tr>
+<td>3</td>
+<td></td>
+<td>109 109 109</td>
+<td>11</td>
+<td>red-orange</td>
+<td>255 63 0</td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td>145 145 145</td>
+<td>12</td>
+<td>yellow</td>
+<td>255 255 0</td>
+</tr>
+<tr>
+<td>5</td>
+<td></td>
+<td>182 182 182</td>
+<td>13</td>
+<td>yellow-green</td>
+<td>63 255 0</td>
+</tr>
+<tr>
+<td>6</td>
+<td></td>
+<td>218 218 218</td>
+<td>14</td>
+<td>green-cyan</td>
+<td>0 255 127</td>
+</tr>
+<tr>
+<td>7</td>
+<td>white</td>
+<td>255 255 255</td>
+<td>15</td>
+<td>cyan-blue</td>
+<td>0 191 255</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="The default colour map" src="images/03-colour-map.png"></p>
+<p>Nominal black is entry 0 and nominal white is the last grey (7).</p>
+<h3 id="colour-modes">Colour modes</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Entered by</th>
+<th>SET COLOR</th>
+<th>Drawing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>SELECT COLOR with no operand; power-up; NSR</td>
+<td>names an RGB colour to draw with</td>
+<td><strong>Here:</strong> the terminal finds an entry already holding that colour, or defines the lowest unused entry (never 0 or 7); with none left, the nearest colour.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>SELECT COLOR with one operand</td>
+<td>redefines the selected entry</td>
+<td>in the selected entry</td>
+</tr>
+<tr>
+<td>2</td>
+<td>SELECT COLOR with two operands</td>
+<td>redefines the selected entry</td>
+<td>in the first entry; character fields, texture gaps and hatching gaps are painted in the second</td>
+</tr>
+</tbody>
+</table>
+<p>Redefining an entry recolours everything already drawn with it.</p>
+<h2 id="text">Text</h2>
+<p>In a character set (primary, supplementary, mosaic, DRCS), a byte draws a character in the <strong>character field</strong> at the cursor and advances the cursor along the path.</p>
+<ul>
+<li>The field's size comes from TEXT or the C1 size controls; the default is 1/40 by 5/128 (40 by 20).</li>
+<li>The cursor is the field's lower left corner at rotation 0. It moves with the drawing point unless TEXT's second byte separates them, so POINT SET positions text.</li>
+<li>Past the end of a line the cursor moves to the start of the next row; past the last row it returns to the first, or the text area scrolls in scroll mode.</li>
+<li>In colour mode 2 the whole field is painted in the background colour first. In modes 0 and 1 only the strokes are drawn.</li>
+<li>Space advances and draws nothing (in mode 2, the background). <code>7F</code> is ignored.</li>
+</ul>
+<p><strong>The font. Here:</strong> the renderer has no font of its own. Primary and supplementary characters are drawn from a stroke font the caller supplies (<a href="#tools">Tools</a>); without one they are blank. A stroke font is drawn on a 7 by 10 grid: grid x at x/8 of the field's width and y at y/10 of its height, with a square pen 1/12 of the field's height, as PP3 draws its font at the default size.</p>
+<p><strong>Proportional spacing. Here:</strong> on a horizontal path each glyph is moved so that its leftmost stroke is at the cursor, and the cursor advances by the glyph's width in strokes plus two eighths of the field. A space advances a whole field. On vertical paths spacing is fixed.</p>
+<h3 id="the-supplementary-set">The supplementary set</h3>
+<p>Reached with SS2 (<code>19</code>) for one character, or by shifting G2 in. <code>40</code>-<code>4F</code> are <strong>non-spacing accents</strong>: they draw without advancing, so an accent is sent before its letter (<code>19 42 65</code> is é, <code>19 48 75</code> is ü, <code>19 4B 63</code> is ç).</p>
+<p><img alt="The supplementary set, 20 to 7F, as the recovered PP3 font draws it" src="images/14-supplementary.png"></p>
+<h2 id="mosaics">Mosaics</h2>
+<p>Codes <code>20</code>-<code>3F</code> and <code>60</code>-<code>7F</code> of the mosaic set are block characters; <code>40</code>-<code>5E</code> are blank and <code>5F</code> is the full block. The field is divided into two columns and three rows, and each of six bits fills one cell:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>left</th>
+<th>right</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top</td>
+<td>b1 (<code>01</code>)</td>
+<td>b2 (<code>02</code>)</td>
+</tr>
+<tr>
+<td>middle</td>
+<td>b3 (<code>04</code>)</td>
+<td>b4 (<code>08</code>)</td>
+</tr>
+<tr>
+<td>bottom</td>
+<td>b5 (<code>10</code>)</td>
+<td>b7 (<code>40</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><code>20</code> is empty, <code>7F</code> full. Mosaics take the text size, colour and rotation. While underline is on they are <strong>separated</strong>: each cell is drawn slightly smaller, leaving a gap. <strong>Here:</strong> the gap is a tenth of the field rather than one pel.</p>
+<h2 id="macros">Macros</h2>
+<p><code>DEF MACRO</code>, a name byte <code>20</code>-<code>7F</code>, the body, <code>END</code>. The body is recorded, not executed; <code>DEFP MACRO</code> records and executes. The name is the character that will invoke the macro from the macro set.</p>
+<ul>
+<li>A body is ended by END or by any DEF control, which begins the next definition. Nothing else ends it: shifts, escapes and controls inside the body are recorded.</li>
+<li>Defining a macro with an empty body deletes it.</li>
+<li>A macro is invoked by its name byte in the macro set (designate it, then SS2 or SS3, or shift it in). Its bytes are processed as if received at that point, in the state the terminal is in then. An undefined name does nothing.</li>
+<li>Macros may invoke macros. A macro that invokes itself while being defined with DEFP is ignored.</li>
+<li>CAN (<code>18</code>) ends every macro being executed.</li>
+<li>RESET byte 2 b5 deletes all macros.</li>
+</ul>
+<p><strong>Here:</strong> a body may be 4096 bytes and all bodies together 65,536; nesting stops at 16 levels; and processing stops, with <code>Event::LimitReached</code>, after 4,000,000 bytes have been processed in one call, expansion included.</p>
+<h2 id="drcs">DRCS</h2>
+<p><code>DEF DRCS</code>, a code byte <code>20</code>-<code>7F</code>, drawing, <code>END</code>. While the definition is open, every PDI and character draws into the character's bitmap instead of the display.</p>
+<ul>
+<li>The bitmap has the shape of the character field at the time DEF DRCS is received. Coordinates inside it run from (0, 0) at its lower left, with the field's <strong>longer side as 1</strong>: a 1/16 by 1/16 field is the square (0, 0) to (1, 1); a default field, taller than wide, is 0.64 wide and 1 high.</li>
+<li>Only which pels are drawn is kept, not their colour. When used, the character is drawn in the current colour.</li>
+<li>The drawing point is at (0, 0) when the definition begins and afterwards.</li>
+<li>A DEF DRCS received while a DRCS definition is open ends it and begins the <strong>next code</strong> (after <code>7F</code>, <code>20</code>), with no code byte: consecutive characters need only one DEF DRCS each between their drawings.</li>
+<li>An undefined DRCS character is a space.</li>
+<li>RESET byte 2 b6 deletes all DRCS characters.</li>
+</ul>
+<p><strong>Here:</strong> the bitmap is 128 pixels on its longer side and is scaled to the field when drawn.</p>
+<h2 id="fill-patterns">Fill patterns</h2>
+<p><code>DEF TEXTURE</code>, a byte <code>41</code>-<code>44</code> naming pattern A to D, drawing, <code>END</code>. The drawing is recorded like a DRCS character, in a bitmap shaped like the <strong>mask size</strong> (TEXTURE's second operand) at the time. TEXTURE fill patterns 4 to 7 then fill with A to D, repeating at the mask size across the screen from the origin, so that adjoining shapes filled with one pattern line up. Clear pels of the pattern leave what was there (mode 2: the background colour).</p>
+<h2 id="the-display">The display</h2>
+<ul>
+<li>The unit screen is 1 by 1 with (0, 0) at the lower left. A 4:3 display shows y from 0 to <strong>25/32</strong>. <strong>Here:</strong> this is measured from PP3, whose 480 lines show exactly 20 rows of 5/128; the canvas's full width is x from 0 to 1 and its full height is y from 0 to 25/32, whatever its shape.</li>
+<li><strong>Here:</strong> coordinates are rounded to the nearest pixel. Filled shapes are also stroked along their edges with the pel, so a fill reaches as far as an outline of the same shape would.</li>
+<li>The power-up state: sets and shifts as <a href="#the-code-table">above</a>; default DOMAIN; colour mode 0 drawing in white on the default map; default text; cursor at home; drawing point at (0, 0).</li>
+</ul>
+<h2 id="limits">Limits</h2>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Limit here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Canvas</td>
+<td>4096 by 4096 pixels</td>
+</tr>
+<tr>
+<td>Colour map</td>
+<td>4 to 256 entries</td>
+</tr>
+<tr>
+<td>Operand bytes kept for one PDI</td>
+<td>32,768; more are dropped</td>
+</tr>
+<tr>
+<td>Vertices of a polygon, arc curve or incremental polygon</td>
+<td>4096</td>
+</tr>
+<tr>
+<td>One macro</td>
+<td>4096 bytes</td>
+</tr>
+<tr>
+<td>All macros</td>
+<td>65,536 bytes</td>
+</tr>
+<tr>
+<td>Macro nesting</td>
+<td>16</td>
+</tr>
+<tr>
+<td>Bytes processed in one call, with expansion</td>
+<td>4,000,000</td>
+</tr>
+<tr>
+<td>Blinks at once</td>
+<td>32</td>
+</tr>
+<tr>
+<td>DRCS or pattern bitmap</td>
+<td>128 pixels on the longer side</td>
+</tr>
+<tr>
+<td>Characters drawn by one REPEAT TO EOL</td>
+<td>1024</td>
+</tr>
+<tr>
+<td>A page file read by <code>naplps-render</code></td>
+<td>1 megabyte</td>
+</tr>
+</tbody>
+</table>
+<p>Period terminals had less: 16 colours, 256 vertices, and a few kilobytes for macros and DRCS together. A page meant to run on them should stay well inside those.</p>
+<h2 id="tools">Tools</h2>
+<h3 id="naplps-render"><code>naplps-render</code></h3>
+<pre><code>naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE]
+              [--tenths N] [--dac-bits N] [--preamble] PAGE OUT.ppm
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--width</code>, <code>--height</code></td>
+<td>The picture's size in pixels. Default 640 by 480.</td>
+</tr>
+<tr>
+<td><code>--palette-bits</code></td>
+<td>The colour map has 2^N entries. Default 4.</td>
+</tr>
+<tr>
+<td><code>--font</code></td>
+<td>A stroke font file. Without it, text is blank.</td>
+</tr>
+<tr>
+<td><code>--tenths</code></td>
+<td>Show the colour map as BLINK leaves it N tenths of a second after the first blink began. WAITs are not honoured: the whole page is always drawn.</td>
+</tr>
+<tr>
+<td><code>--dac-bits</code></td>
+<td>Show colours as a display with N-bit colour registers would (6 for VGA, as PP3). Default 8, exact.</td>
+</tr>
+<tr>
+<td><code>--preamble</code></td>
+<td>Process the oracle's reset sequence before the page, to compare with PP3.</td>
+</tr>
+</tbody>
+</table>
+<p>It prints a warning if processing stopped at the processing limit, and exits with status 2 on an error.</p>
+<h3 id="the-library">The library</h3>
+<pre><code class="language-rust">use naplps::{Canvas, Event, StrokeFont, Terminal};
+
+let mut canvas = Canvas::new(640, 480)?;
+let mut terminal = Terminal::new(4);             // a 16-entry colour map
+terminal.set_font(StrokeFont::parse(&amp;font_text)?);
+let mut events = terminal.feed(&amp;mut canvas, &amp;page);   // may be called with any piece of a page
+events.extend(terminal.finish(&amp;mut canvas));          // runs a PDI still waiting for operands
+let colours = terminal.palette().at(0);               // the colour map, blinks applied at a time
+// canvas.pixels() are colour-map entries, row by row from the top; colours[entry] is its RGB.
+</code></pre>
+<p><code>feed</code> returns <code>Event::Wait(tenths)</code>, <code>Event::Bell</code> and <code>Event::LimitReached</code> in the order they occurred. The library does no input or output, has no clock and uses no floating point; it is <code>no_std</code>.</p>
+<h3 id="the-stroke-font-file">The stroke font file</h3>
+<p>Text, one glyph per line under <code>[primary]</code> and <code>[supplementary]</code> headings; <code>#</code> begins a comment line:</p>
+<pre><code>[primary]
+41 0 6 0,2,3,9 3,9,6,2 1,5,5,5
+</code></pre>
+<p>The fields are the character's code in hexadecimal, two metric bytes carried from the source font (not used for drawing), then line segments <code>x1,y1,x2,y2</code> on the 7 by 10 grid, x 0 to 6 and y 0 to 9 from the bottom. A segment whose ends are equal is a dot.</p>
+<h3 id="the-example-helper">The example helper</h3>
+<p><a href="examples/naplps_page.py"><code>examples/naplps_page.py</code></a> builds pages in Python; <a href="examples/examples.py"><code>examples/examples.py</code></a> holds every example of the guide; <code>docs/examples/build.sh</code> renders them into <code>docs/images/</code>.</p>
+<h2 id="what-this-renderer-does-not-do">What this renderer does not do</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Word wrap (<code>1B 55</code>)</td>
+<td>Recorded; lines break at the edge, not between words.</td>
+</tr>
+<tr>
+<td>Cursor display and styles</td>
+<td>No cursor is drawn.</td>
+</tr>
+<tr>
+<td>Unprotected fields, PROTECT, UNPROTECT, DEFT transmit macros</td>
+<td>Not recorded or transmitted: pages cannot take input.</td>
+</tr>
+<tr>
+<td>Three-dimensional coordinates</td>
+<td>z is read and discarded.</td>
+</tr>
+<tr>
+<td>Arcs of more than three points</td>
+<td>Drawn as straight segments, not a spline.</td>
+</tr>
+<tr>
+<td>Proportional spacing on vertical paths</td>
+<td>Fixed spacing is used.</td>
+</tr>
+<tr>
+<td>Line textures with the default pel</td>
+<td>Drawn solid; set a pel with DOMAIN.</td>
+</tr>
+<tr>
+<td>Separated mosaics</td>
+<td>The gap is a tenth of the field, not one pel.</td>
+</tr>
+<tr>
+<td>Text at sizes far from the default, and rotated</td>
+<td>Drawn, but PP3 thickens and places its strokes differently; see <a href="verification.md"><code>verification.md</code></a>.</td>
+</tr>
+<tr>
+<td>WAIT</td>
+<td>Reported to the caller; <code>naplps-render</code> does not pause or stop at it.</td>
+</tr>
+<tr>
+<td>Border colour</td>
+<td>There is no border.</td>
+</tr>
+<tr>
+<td>The transparent colour</td>
+<td>Black.</td>
+</tr>
+</tbody>
+</table>
+</main>
+</body>
+</html>

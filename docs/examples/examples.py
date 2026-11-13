@@ -1,4 +1,4 @@
-"""The example pages of docs/guide.md. Run: python3 docs/examples/examples.py OUTDIR
+"""The example pages of docs/guide.html. Run: python3 docs/examples/examples.py OUTDIR
 
 Writes one .nap file per example. docs/examples/build.sh renders them to docs/images/.
 """

@@ -1,7 +1,7 @@
-"""A small NAPLPS page builder for the examples in docs/guide.md and docs/reference.md.
+"""A small NAPLPS page builder for the examples in docs/guide.html and docs/reference.html.
 
 Python 3 standard library only. Every function returns bytes in NAPLPS's 7-bit form, so a page
-is these pieces concatenated. docs/reference.md describes each encoding; the section numbers
+is these pieces concatenated. docs/reference.html describes each encoding; the section numbers
 below are those of ANSI X3.110-1983 / CSA T500-1983.
 """
 

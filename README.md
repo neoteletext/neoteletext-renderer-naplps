@@ -4,8 +4,8 @@ NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol
 
 ## Making pages
 
-- [docs/guide.md](docs/guide.md): a tutorial from an empty file to a finished, animated page, every example a real page with its picture.
-- [docs/reference.md](docs/reference.md): every byte, control and drawing command, the operand encodings, the limits, and where this renderer departs from the standard.
+- [docs/guide.html](docs/guide.html): a tutorial from an empty file to a finished, animated page, every example a real page with its picture.
+- [docs/reference.html](docs/reference.html): every byte, control and drawing command, the operand encodings, the limits, and where this renderer departs from the standard.
 
 ## What is here
 

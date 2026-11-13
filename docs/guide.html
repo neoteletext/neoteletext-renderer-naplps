@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Making NAPLPS pages: a guide</title>
+<style>:root { --fg: #1d1d1f; --bg: #ffffff; --muted: #5b5b66; --rule: #d9d9e0; --code-bg: #f3f3f6; --link: #0b57d0; }
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #e6e6ea; --bg: #16161a; --muted: #a0a0ab; --rule: #34343c; --code-bg: #222228; --link: #8ab4f8; }
+}
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; padding: 2rem 1rem 4rem; background: var(--bg); color: var(--fg);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 52rem; margin: 0 auto; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 1rem; }
+h2 { font-size: 1.45rem; margin: 2.5rem 0 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--rule); }
+h3 { font-size: 1.15rem; margin: 2rem 0 0.5rem; }
+a { color: var(--link); }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 3px; }
+pre { background: var(--code-bg); padding: 0.8rem 1rem; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--rule); padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--rule); }</style>
+</head>
+<body>
+<main>
+<h1 id="making-naplps-pages-a-guide">Making NAPLPS pages: a guide</h1>
+<p>This guide takes you from an empty file to a finished, animated NAPLPS page. Every example in it is a real page in <a href="examples/examples.py"><code>examples/examples.py</code></a>, built with the 130-line helper <a href="examples/naplps_page.py"><code>examples/naplps_page.py</code></a>, and every picture is that page drawn by this repository's renderer. <a href="reference.html"><code>reference.html</code></a> is the companion: it lists every byte, command and limit, and says where this renderer departs from the standard.</p>
+<p>Contents: <a href="#1-what-a-page-is">1. What a page is</a> · <a href="#2-setting-up">2. Setting up</a> · <a href="#3-hello">3. Hello</a> · <a href="#4-coordinates">4. Coordinates</a> · <a href="#5-shapes">5. Shapes</a> · <a href="#6-colour">6. Colour</a> · <a href="#7-lines-and-fills">7. Lines and fills</a> · <a href="#8-text">8. Text</a> · <a href="#9-mosaics">9. Mosaics</a> · <a href="#10-macros">10. Macros</a> · <a href="#11-your-own-characters">11. Your own characters</a> · <a href="#12-scribbles">12. Scribbles</a> · <a href="#13-time">13. Time</a> · <a href="#14-a-whole-page">14. A whole page</a> · <a href="#15-checking-a-page">15. Checking a page</a> · <a href="#16-what-goes-wrong">16. What goes wrong</a></p>
+<h2 id="1-what-a-page-is">1. What a page is</h2>
+<p>NAPLPS (ANSI X3.110-1983, CSA T500-1983) is the videotex format of Telidon and Prodigy. A page is a stream of bytes that a terminal acts on in order, as they arrive. There is no header, no length and no end marker: a page is whatever was sent.</p>
+<p>Each byte is one of three things:</p>
+<table>
+<thead>
+<tr>
+<th>Bytes</th>
+<th>What they are</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00</code>-<code>1F</code></td>
+<td>Controls (C0): carriage return, clear screen, and the shifts that choose what the other bytes mean.</td>
+</tr>
+<tr>
+<td><code>20</code>-<code>7F</code></td>
+<td>Whatever the <strong>current set</strong> says: text characters, drawing commands, mosaic blocks, macro names.</td>
+</tr>
+<tr>
+<td><code>1B</code> then more</td>
+<td>Escape sequences: more controls (C1), and choosing which sets are available.</td>
+</tr>
+</tbody>
+</table>
+<p>Two sets do nearly all the work:</p>
+<ul>
+<li>the <strong>primary set</strong> is ASCII. <code>48 65 6C 6C 6F</code> draws <code>Hello</code> at the text cursor;</li>
+<li>the <strong>PDI set</strong> (picture description instructions) draws. In it, <code>20</code>-<code>3F</code> are <strong>opcodes</strong> (line, rectangle, select colour, ...) and <code>40</code>-<code>7F</code> are their <strong>operands</strong> (coordinates, colours, flags), six bits of data in each byte.</li>
+</ul>
+<p><code>0E</code> (SO, shift out) switches to the PDI set, and <code>0F</code> (SI, shift in) switches back to text. A page is mostly: SO, draw; SI, write; SO, draw.</p>
+<p>A PDI has no length either. It is an opcode followed by as many operand bytes as were sent, and it runs when the next byte that is not an operand arrives. That is why one LINE opcode can draw a polyline of any number of points.</p>
+<p>This is the 7-bit form, which every example here uses and which works on any channel. The 8-bit form (drawing commands at <code>A0</code>-<code>FF</code>, no SO and SI) is in the <a href="reference.html#the-8-bit-form">reference</a>.</p>
+<h2 id="2-setting-up">2. Setting up</h2>
+<p>You need this repository built, Python 3, and a font.</p>
+<pre><code>cargo build --release -p naplps-render
+</code></pre>
+<p>The renderer contains no font. The examples use the stroke font recovered from the period terminal program PP3, in <code>~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes</code>. Without <code>--font</code>, text positions advance but no glyphs are drawn.</p>
+<p>To build one page and look at it:</p>
+<pre><code>python3 docs/examples/examples.py tmp/pages
+target/release/naplps-render --font ~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes tmp/pages/01-hello.nap tmp/hello.ppm
+ffmpeg -loglevel error -y -i tmp/hello.ppm tmp/hello.png
+</code></pre>
+<p><code>naplps-render</code> writes a PPM picture, 640 by 480 unless you pass <code>--width</code> and <code>--height</code>. <code>docs/examples/build.sh</code> does all of this for every example and writes <code>docs/images/</code>.</p>
+<p>The helper is not a framework. Each of its functions returns <code>bytes</code>, and a page is those bytes added together, so you can always see and count what you are sending:</p>
+<pre><code class="language-python">from naplps_page import *
+
+page = SO + reset_all() + select(7) + text_at(0.35, 0.4, &quot;Hello, NAPLPS&quot;)
+open(&quot;hello.nap&quot;, &quot;wb&quot;).write(page)
+</code></pre>
+<h2 id="3-hello">3. Hello</h2>
+<p>That page is 25 bytes:</p>
+<pre><code>0E             SO: the PDI set; opcodes and operands follow
+20 7F 7F       RESET, both operand bytes all ones: everything to its default, screen cleared
+3E 5C          SELECT COLOR, entry 7 of the colour map (white)
+24 49 5C 56    POINT SET (absolute): move the drawing point to (0.35, 0.4)
+0F             SI: the primary set; text follows
+48 65 6C ...   &quot;Hello, NAPLPS&quot;
+0E             SO: back to the PDI set
+</code></pre>
+<p><img alt="Hello, NAPLPS in white on black" src="images/01-hello.png"></p>
+<p>Three habits are worth forming here.</p>
+<p><strong>Start every page with RESET.</strong> A terminal keeps its state between pages: colours, text size, macros, even the meaning of operand bytes. <code>20 7F 7F</code> clears all of it and blanks the screen, so your page looks the same whatever came before. (<code>reset_all()</code> in the helper.)</p>
+<p><strong>Position text with a drawing command.</strong> The text cursor follows the drawing point, so POINT SET puts the cursor where the next character's lower left corner will be.</p>
+<p><strong>Leave the page in the PDI set</strong>, or at least in a known state, if more pages follow.</p>
+<h2 id="4-coordinates">4. Coordinates</h2>
+<p>The screen is a unit square. x runs from 0 at the left to 1 at the right; y runs from 0 at the bottom <strong>upward</strong>. A 4:3 display shows the part of the square from y = 0 up to y = 25/32 (0.78125). Anything drawn above that is off the top of the screen.</p>
+<pre><code>(0, 0.78) ---------------- (1, 0.78)
+    |                          |
+    |      the visible page    |
+    |                          |
+(0, 0)   ----------------   (1, 0)
+</code></pre>
+<p>Coordinates are fractions, not pixels, so a page drawn for a 256-line terminal in 1983 renders sharply at any size today.</p>
+<p>A coordinate pair is a <strong>multi-value operand</strong>: three bytes by default, carrying nine bits of x and nine of y, each a sign bit and eight fraction bits. The finest step is therefore 1/256 of the screen, and a value is a multiple of 1/256 from -1 to just under 1. The bits are interleaved, three of x then three of y in each byte, most significant first:</p>
+<pre><code>x = 0.35 -&gt; 0.35 x 256 = 90  -&gt; 0 01011010  -&gt; 001 011 010
+y = 0.40 -&gt; 0.40 x 256 = 102 -&gt; 0 01100110  -&gt; 001 100 110
+
+byte 1:  1  001 001  = 49
+byte 2:  1  011 100  = 5C
+byte 3:  1  010 110  = 56
+</code></pre>
+<p>The leading 1 is bit 7, which marks an operand byte. Negative values are two's complement and appear in relative moves: <code>xy(-0.15, 0.28)</code>.</p>
+<p><code>1.0</code> itself cannot be written in this form: the largest value is 255/256. Use 0.999 for "the right edge", as the examples do.</p>
+<p>The last operand of a command may be cut short; its missing bytes count as zero. <code>xy(0.5, 0.25, length=1)</code> is one byte and exact, so a rectangle half the screen wide and a quarter high needs one size byte, not three. You can also change the length for the whole page with DOMAIN (<a href="reference.html#domain-21">reference</a>) when you need finer steps than 1/256.</p>
+<h2 id="5-shapes">5. Shapes</h2>
+<p>There are five geometric primitives: point, line, arc, rectangle and polygon. Each has <strong>four opcodes</strong>. For lines, arcs, rectangles and polygons the pattern is the same:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Starts at the drawing point</th>
+<th>"SET": its first operand is the start</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>line: <strong>absolute</strong> operands; shapes: <strong>outlined</strong></td>
+<td>first opcode</td>
+<td>third opcode</td>
+</tr>
+<tr>
+<td>line: <strong>relative</strong> operands; shapes: <strong>filled</strong></td>
+<td>second opcode</td>
+<td>fourth opcode</td>
+</tr>
+</tbody>
+</table>
+<p>Every shape leaves the <strong>drawing point</strong> somewhere defined, and the next shape can start from it.</p>
+<pre><code class="language-python">page = SO + reset_all()
+# A filled rectangle: lower left corner, then width and height.
+page += select(BLUE) + pdi(SET_RECT_FILLED, xy(0.05, 0.45), xy(0.25, 0.25))
+# A line from point to point, then on to a third point.
+page += select(YELLOW) + pdi(SET_LINE_ABS, xy(0.38, 0.45), xy(0.50, 0.70), xy(0.62, 0.45))
+# A filled circle: a point on it, then the step to the opposite point.
+page += select(RED) + pdi(SET_ARC_FILLED, xy(0.70, 0.575), xy(0.25, 0))
+# A filled polygon: first vertex, then the step to each following vertex.
+page += select(GREEN) + pdi(SET_POLY_FILLED, xy(0.05, 0.08), xy(0.30, 0), xy(-0.15, 0.28))
+# An arc through three points, outlined: start, step to a middle point, step to the end.
+page += select(CYAN) + pdi(SET_ARC_OUTLINED, xy(0.40, 0.10), xy(0.11, 0.20), xy(0.11, -0.20))
+# An outlined rectangle.
+page += select(WHITE) + pdi(SET_RECT_OUTLINED, xy(0.70, 0.08), xy(0.25, 0.28))
+</code></pre>
+<p><img alt="Six shapes: square, open triangle, circle, triangle, arc, outlined rectangle" src="images/02-shapes.png"></p>
+<p>Things to know about each:</p>
+<ul>
+<li><strong>Rectangle</strong>: a corner, then a width and height, which may be negative. Afterwards the drawing point has moved across by the width, so repeated operands draw a row of rectangles: a bar chart is one opcode.</li>
+<li><strong>Line</strong>: <code>SET_LINE_ABS</code> takes points; <code>SET_LINE_REL</code> takes steps. More operands continue the line.</li>
+<li><strong>Polygon</strong>: always <strong>steps</strong> between vertices, never absolute points, and closed for you. The helper's <code>polygon([...])</code> takes absolute points and works out the steps. At most 4096 vertices here; the standard promises 256.</li>
+<li><strong>Arc</strong>: three points define the circle the arc lies on: start, a point on the way, end. With only two points, the arc is the whole circle whose diameter they span, which is how <code>circle()</code> in the helper works. A <strong>filled arc</strong> fills the area between the arc and its chord. Circles are round: they are worked out on the unit screen, not in pixels.</li>
+<li><strong>Point</strong>: <code>POINT_SET_ABS</code> and <code>POINT_SET_REL</code> only move the drawing point. <code>POINT_ABS</code> and <code>POINT_REL</code> also draw a dot there.</li>
+</ul>
+<h2 id="6-colour">6. Colour</h2>
+<p>A terminal has a <strong>colour map</strong>: a small table of colours, 16 entries on the terminals of the time and by default here. You draw with an entry's number, and you can change what colour an entry holds.</p>
+<p>The default map is half greys and half hues:</p>
+<p><img alt="The default 16-entry colour map: greys 0 to 7, hues 8 to 15" src="images/03-colour-map.png"></p>
+<p>Entry 0 is black and entry 7 is white. The hues start at blue and go round the colour circle through magenta, red, yellow and green to cyan.</p>
+<p><strong>SELECT COLOR</strong> chooses the entry to draw with: <code>select(11)</code>. Everything after it, shapes and text alike, uses that entry.</p>
+<p><strong>SET COLOR</strong> changes the colour the selected entry holds. The helper's <code>define(entry, red, green, blue)</code> does both:</p>
+<pre><code class="language-python">page = SO + reset_all()
+palette = [(0x1B, 0x26, 0x4F), (0x27, 0x4C, 0x77), (0x60, 0x96, 0xBA), (0xA3, 0xCE, 0xF1), (0xE7, 0xEC, 0xEF)]
+for index, (red, green, blue) in enumerate(palette):
+    page += define(8 + index, red, green, blue)
+for index in range(5):
+    page += select(8 + index) + pdi(SET_RECT_FILLED, xy(0, 0.78 - (index + 1) * 0.157), xy(0.999, 0.157))
+page += select(BLACK) + text_at(0.06, 0.05, &quot;five entries of the map, redefined&quot;)
+</code></pre>
+<p><img alt="Five horizontal bands in a blue palette" src="images/04-own-colours.png"></p>
+<p>A colour operand has six bits per primary in its three bytes, so 64 levels each of red, green and blue.</p>
+<p><strong>Changing an entry changes everything already drawn with it.</strong> The picture is stored as entry numbers, not colours. This is the most useful fact in NAPLPS: draw a scene once, then recolour entries to turn day into night, make water shimmer or reveal something hidden, at a cost of nine bytes per colour change. <a href="#13-time">Section 13</a> uses it.</p>
+<p>Plan the map before you draw. Sixteen entries is the budget for the whole page; leaving 0 as black and 7 as white keeps text legible while you work, and a palette of five to eight related colours usually looks better than all sixteen.</p>
+<p>There are three <strong>colour modes</strong>. The examples use mode 1 (colour map) throughout. Mode 2 adds a background colour that text and textures paint behind themselves, <code>select(BLACK, YELLOW)</code>, as in section 8. Mode 0 takes an RGB colour directly with SET COLOR and lets the terminal find a map entry for it; it is the power-up default, which is one more reason to start with a RESET that selects mode 1. Details are in the <a href="reference.html#colour">reference</a>.</p>
+<h2 id="7-lines-and-fills">7. Lines and fills</h2>
+<p><strong>TEXTURE</strong> sets how lines are drawn and how filled shapes are filled, in one operand byte: the fill pattern in bits 6 to 4, a highlight flag in bit 3, the line texture in bits 2 and 1.</p>
+<pre><code class="language-python">page = SO + reset_all() + select(WHITE)
+# DOMAIN: one-byte single values, three-byte coordinates, and a logical pel of 1/256 by 1/256.
+# Line textures and hatching are measured in pels: with the default pel, lines stay solid.
+page += pdi(DOMAIN, fixed(0b001000), xy(1 / 256, 1 / 256))
+# Line textures 0 to 3: solid, dotted, dashed, dot-dash.
+for texture in range(4):
+    y = 0.72 - texture * 0.05
+    page += pdi(TEXTURE, fixed(texture)) + pdi(SET_LINE_ABS, xy(0.05, y), xy(0.95, y))
+# Fill patterns 0 to 3: solid, vertical, horizontal and cross hatching.
+for pattern in range(4):
+    x = 0.05 + pattern * 0.235
+    page += select(YELLOW) + pdi(TEXTURE, fixed(pattern &lt;&lt; 3))
+    page += pdi(SET_RECT_FILLED, xy(x, 0.30), xy(0.19, 0.19))
+# The same with highlight: the outline drawn in black (in mode 2, in the background colour).
+for pattern in range(4):
+    x = 0.05 + pattern * 0.235
+    page += select(CYAN) + pdi(TEXTURE, fixed(pattern &lt;&lt; 3 | 0b100))
+    page += pdi(SET_ARC_FILLED, xy(x, 0.14), xy(0.19, 0))
+</code></pre>
+<p><img alt="Four line textures, four fill patterns on squares, the same on circles" src="images/05-textures.png"></p>
+<p>The <strong>logical pel</strong> is NAPLPS's brush: a small rectangle stamped along every line. It is set by DOMAIN, the command that also sets operand lengths. With a pel of 1/256 the lines above are three pixels thick at 640 by 480, and the dots, dashes and hatching are measured in the same pel. A larger pel gives thicker lines and coarser hatching: a pel of 1/64 draws with a marker.</p>
+<p>After a RESET the pel is the smallest the display can show (one pixel), and <strong>line textures need a real pel</strong>: with the default, textured lines are drawn solid. Send a DOMAIN with a pel if you use them.</p>
+<p>Hatching leaves gaps, and what shows in the gaps is whatever was there before (in colour mode 2, the background colour). Hatch over a solid fill of a second colour for two-colour shading.</p>
+<p>Four more fill patterns, numbers 4 to 7, are yours to define: <a href="#11-your-own-characters">section 11</a>.</p>
+<h2 id="8-text">8. Text</h2>
+<p>Text is drawn in a <strong>character field</strong>, a rectangle whose size you control. The default is 1/40 of the screen wide and 5/128 high: 40 columns by 20 rows.</p>
+<pre><code class="language-python">page = SO + reset_all() + select(WHITE)
+page += text_at(0.04, 0.70, &quot;Normal text: 40 columns by 20 rows&quot;)
+page += SI + SMALL_TEXT + SO + text_at(0.04, 0.65, &quot;SMALL TEXT: 80 columns&quot;)
+page += SI + MEDIUM_TEXT + SO + text_at(0.04, 0.59, &quot;MEDIUM TEXT: 32 columns&quot;)
+page += SI + DOUBLE_HEIGHT + SO + text_at(0.04, 0.49, &quot;DOUBLE HEIGHT&quot;)
+page += SI + DOUBLE_SIZE + SO + text_at(0.04, 0.39, &quot;DOUBLE SIZE&quot;)
+page += SI + NORMAL_TEXT + SO
+page += select(YELLOW) + pdi(POINT_SET_ABS, xy(0.04, 0.32)) + SI
+page += UNDERLINE_START + b&quot;underlined&quot; + UNDERLINE_STOP + b&quot;  &quot; + REVERSE_VIDEO + b&quot;reversed&quot; + NORMAL_VIDEO + SO
+# TEXT: proportional spacing (first byte, bits 6 and 5 = 11) and a 1/16 by 1/10 field.
+page += select(CYAN) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 16, 1 / 10))
+page += text_at(0.04, 0.17, &quot;Proportional&quot;)
+# TEXT: rotated a quarter turn (bits 2 and 1 = 01) and running upward (bits 4 and 3 = 10).
+page += select(GREEN) + pdi(TEXT, fixed(0b001001, 0), xy(1 / 32, 3 / 64))
+page += text_at(0.97, 0.08, &quot;rotated, path up&quot;)
+# Colour mode 2: text on a background colour.
+page += pdi(TEXT, fixed(0, 0), xy(1 / 40, 5 / 128)) + select(BLACK, YELLOW)
+page += text_at(0.04, 0.05, &quot; black on yellow, colour mode 2 &quot;)
+</code></pre>
+<p><img alt="Text at five sizes, underlined and reversed, proportional, rotated, and on a background" src="images/06-text.png"></p>
+<p>There are two ways to change how text looks.</p>
+<p><strong>The C1 controls</strong> are two-byte escape sequences that set one thing each: five preset sizes, underline, reverse video. They are the quick way to get the standard sizes.</p>
+<p><strong>The TEXT command</strong> is a PDI that sets everything at once:</p>
+<ul>
+<li>its first byte holds the <strong>spacing</strong> between characters (1, 5/4, 3/2 of the field, or proportional), the <strong>path</strong> the text runs along (right, left, up, down) and the <strong>rotation</strong> of each character (0, 90, 180, 270 degrees);</li>
+<li>its second byte holds the cursor style, how the cursor and drawing point move together, and the <strong>spacing between rows</strong>;</li>
+<li>then a coordinate pair gives the field's width and height, any size you like.</li>
+</ul>
+<p>Rotation turns the characters; path moves the cursor. Vertical text that reads upward needs both, as above. Rotation alone gives sideways letters marching to the right.</p>
+<p>The font is made of strokes, so it scales to any field size, and the stroke thickness grows with the field.</p>
+<p><strong>Proportional spacing</strong> closes up the gaps a fixed pitch leaves around narrow letters. Use it for anything that should read as typeset rather than as a terminal.</p>
+<p>Line breaks are yours to send: CR (<code>0D</code>) returns to the left edge and LF (<code>0A</code>) moves down a row, so <code>b"first\r\nsecond"</code> is two lines. A line that reaches the right edge continues on the next row, but breaks wherever it happens to be: <strong>this renderer does not word-wrap</strong>.</p>
+<p>Accented letters and symbols come from the supplementary set, one character at a time through SS2 (<code>19</code>). An accent is sent before its letter: <code>SS2 + b"\x42" + b"e"</code> is é. The whole set is pictured in the <a href="reference.html#the-supplementary-set">reference</a>.</p>
+<h2 id="9-mosaics">9. Mosaics</h2>
+<p>Mosaic characters are the block graphics of teletext: each character field is divided into two columns and three rows of cells, and the character's code says which cells are filled.</p>
+<p><img alt="A space invader in green mosaic blocks" src="images/07-mosaics.png"></p>
+<p>The mosaic set starts in G3, reached one character at a time with SS3 (<code>1D</code>). The code is <code>20</code> plus one bit per cell:</p>
+<pre><code>+----+----+
+| 01 | 02 |
++----+----+
+| 04 | 08 |
++----+----+
+| 10 | 40 |
++----+----+
+</code></pre>
+<p>So <code>SS3 + b"\x7f"</code> is a full block and <code>SS3 + b"\x23"</code> is the top row. Mosaics take the text size, so <code>DOUBLE_SIZE</code> makes big blocks, and underline mode turns them into <em>separated</em> mosaics with a gap round each cell.</p>
+<p>Mosaics are compact for coarse pictures and textures, and they are the bridge from teletext art. For anything smooth, polygons are both smaller and better looking.</p>
+<h2 id="10-macros">10. Macros</h2>
+<p>A macro is a stored piece of page that you replay by sending one byte. Anything can go in a macro: drawing, text, colour changes, other macros. They are how pages stay small.</p>
+<pre><code class="language-python">page = SO + reset_all() + MACROS_INTO_G3
+# Macro 2/1: a small four-pointed star at the drawing point, using relative PDIs only.
+star = pdi(POLY_FILLED, xy(0.012, 0.03), xy(0.012, -0.03), xy(-0.012, -0.03), xy(-0.012, 0.03))
+star += pdi(POINT_SET_REL, xy(-0.012, -0.012))
+star += pdi(POLY_FILLED, xy(0.012, 0.012), xy(0.012, -0.012), xy(0.012, 0.012), xy(-0.012, 0.012), xy(-0.012, -0.012))
+page += DEF_MACRO + b&quot;\x21&quot; + SO + star + END
+page += define(8, 0x0B, 0x13, 0x40) + pdi(SET_RECT_FILLED, xy(0, 0), xy(0.999, 0.78))
+for index, (x, y) in enumerate(positions):
+    page += select(WHITE if index % 3 else YELLOW) + pdi(POINT_SET_ABS, xy(x, y)) + SS3 + b&quot;\x21&quot;
+</code></pre>
+<p><img alt="Ten stars on a dark blue sky, some white and some yellow" src="images/08-macros.png"></p>
+<p>The steps:</p>
+<ol>
+<li><strong>Make the macro set reachable.</strong> <code>MACROS_INTO_G3</code> (<code>1B 2F 7A</code>) puts the macro set in G3, in place of the mosaics. Do it once.</li>
+<li><strong>Define.</strong> <code>DEF_MACRO</code>, then a name (any byte from <code>20</code> to <code>7F</code>; 96 macros), then the body, then <code>END</code>. Nothing is drawn while a DEF MACRO is recorded.</li>
+<li><strong>Invoke.</strong> <code>SS3</code> and the name. The body is processed as if it had been sent at that point.</li>
+</ol>
+<p>The star is written with <strong>relative</strong> opcodes (<code>POLY_FILLED</code> starts at the drawing point), so it appears wherever the drawing point is, in whatever colour is selected. That is the pattern for any reusable symbol: position, colour, invoke.</p>
+<p>Start the body with SO or SI. A macro replays bytes, not meanings: if the page is in text mode when you invoke a macro that assumes the PDI set, its opcodes come out as letters.</p>
+<p><code>DEFP_MACRO</code> defines a macro and runs it at the same time, which saves sending the first use twice. Macros may invoke other macros, sixteen deep.</p>
+<h2 id="11-your-own-characters">11. Your own characters</h2>
+<p>A <strong>DRCS</strong> character (dynamically redefinable character set) is a shape you draw once and then use as a letter: it follows the text size, colour, rotation, cursor and REPEAT like any character.</p>
+<pre><code class="language-python">page = SO + reset_all() + DRCS_INTO_G3 + select(RED)
+# DEF DRCS 2/1: a heart, drawn in a unit square that becomes the character field.
+heart = pdi(SET_ARC_FILLED, xy(0.10, 0.65), xy(0.40, 0)) + pdi(SET_ARC_FILLED, xy(0.50, 0.65), xy(0.40, 0))
+heart += pdi(SET_POLY_FILLED, xy(0.12, 0.56), xy(0.76, 0), xy(-0.38, -0.50))
+page += pdi(TEXT, fixed(0, 0), xy(1 / 16, 1 / 16)) + DEF_DRCS + b&quot;\x21&quot; + SO + heart + END
+for row in range(4):
+    page += select([RED, MAGENTA_RED, YELLOW, WHITE][row]) + pdi(POINT_SET_ABS, xy(0.12 + row * 0.03, 0.60 - row * 0.15))
+    page += SS3 + b&quot;\x21&quot; + REPEAT + fixed(9)
+</code></pre>
+<p><img alt="Four rows of ten hearts, each row a different colour" src="images/09-drcs.png"></p>
+<p>Between <code>DEF_DRCS</code> and <code>END</code>, drawing goes into the character instead of onto the screen. You draw as if the character field were the whole screen: its longer side is the unit length, so a square field is the unit square, (0, 0) to (1, 1). The shape is kept as a one-colour bitmap and drawn in whatever colour is selected when you use it.</p>
+<p>Set the text size before you define: the character takes the shape of the current field.</p>
+<p><code>REPEAT</code> and a count (<code>ESC 46</code>, then one operand byte, up to 63) draws the last character again that many times. Ten hearts cost four bytes.</p>
+<p><strong>Your own fill patterns</strong> work the same way. <code>DEF_TEXTURE</code> and a name from <code>41</code> to <code>44</code> (A to D) records a drawing as fill pattern 4 to 7, tiled at the mask size that TEXTURE's second operand sets. Then <code>pdi(TEXTURE, fixed(4 &lt;&lt; 3))</code> fills with it:</p>
+<pre><code class="language-python">page = SO + reset_all()
+# TEXTURE's second operand is the mask size: the pattern repeats every 1/16 of the screen.
+page += pdi(TEXTURE, fixed(0), xy(1 / 16, 1 / 16))
+# DEF TEXTURE A (fill pattern 4): a diagonal stripe drawn in the unit square.
+page += DEF_TEXTURE + b&quot;\x41&quot; + SO + pdi(SET_POLY_FILLED, xy(0, 0), xy(0.3, 0), xy(0.69, 0.999), xy(-0.3, 0)) + END
+page += select(BLUE) + pdi(SET_RECT_FILLED, xy(0.10, 0.14), xy(0.80, 0.50))
+page += select(YELLOW) + pdi(TEXTURE, fixed(4 &lt;&lt; 3), xy(1 / 16, 1 / 16)) + pdi(SET_RECT_FILLED, xy(0.10, 0.14), xy(0.80, 0.50))
+</code></pre>
+<p><img alt="A blue rectangle overlaid with yellow diagonal stripes from a defined fill pattern" src="images/13-own-texture.png"></p>
+<p>The pattern's gaps leave what was underneath, so the blue rectangle drawn first shows between the stripes.</p>
+<h2 id="12-scribbles">12. Scribbles</h2>
+<p>Curves and outlines that would take three bytes a point as a polyline take <strong>two bits a move</strong> as an incremental line.</p>
+<pre><code class="language-python">page = SO + reset_all() + select(GREEN)
+# INCREMENTAL LINE: a step size, then two-bit moves: 01 dx, 10 dy, 11 both, 00 an escape.
+page += pdi(POINT_SET_ABS, xy(0.05, 0.30)) + pdi(INCREMENTAL_LINE, xy(1 / 64, 1 / 32)) + data
+</code></pre>
+<p><img alt="A zigzag drawn as an incremental line" src="images/10-scribble.png"></p>
+<p>The first operand is a step, (dx, dy). After it, each byte holds three moves of two bits:</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Move</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01</code></td>
+<td>by dx</td>
+</tr>
+<tr>
+<td><code>10</code></td>
+<td>by dy</td>
+</tr>
+<tr>
+<td><code>11</code></td>
+<td>by dx and dy</td>
+</tr>
+<tr>
+<td><code>00</code></td>
+<td>escape: the next two bits are an instruction, not a move</td>
+</tr>
+</tbody>
+</table>
+<p>After an escape: <code>00</code> lifts or lowers the pen, <code>01</code> reverses dx, <code>10</code> reverses dy, <code>11</code> reverses both. The zigzag above climbs with <code>11</code>, runs flat with <code>01</code>, then sends <code>00 10</code> to turn dy downward.</p>
+<p><code>INCREMENTAL_POLY_FILLED</code> reads the same moves and fills the outline they trace, which is how period artists drew coastlines and faces cheaply. <code>INCREMENTAL_POINT</code> is a bitmap: a rectangle of pels, each with its own colour, for the rare place only a bitmap will do.</p>
+<h2 id="13-time">13. Time</h2>
+<p>A page is drawn in the order its bytes arrive, and in 1983 they arrived at 120 characters a second: every page was an animation of its own drawing. Two commands let you control time deliberately.</p>
+<p><strong>WAIT</strong> pauses. <code>wait(15)</code> holds for a second and a half before what follows. Use it to reveal a page in stages.</p>
+<p><strong>BLINK</strong> makes a colour-map entry alternate between its own colour and another entry's colour, on a schedule, for ever:</p>
+<pre><code class="language-python">page = SO + reset_all()
+page += define(8, 0x10, 0x10, 0x30) + pdi(SET_RECT_FILLED, xy(0, 0), xy(0.999, 0.78))
+page += define(9, 0xFF, 0xD0, 0x40) + pdi(SET_ARC_FILLED, xy(0.38, 0.39), xy(0.24, 0))
+page += select(WHITE) + text_at(0.36, 0.12, &quot;blinking beacon&quot;)
+# BLINK: entry 9 (selected) takes entry 8's colour for 5 tenths, then its own for 5.
+page += select(9) + pdi(BLINK, fixed(8 &lt;&lt; 2, 5, 5, 0))
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>At the start</th>
+<th>Half a second later</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="The beacon dark" src="images/11-animation.png"></td>
+<td><img alt="The beacon lit" src="images/11-animation-5.png"></td>
+</tr>
+</tbody>
+</table>
+<p>The beacon was drawn once, in entry 9. BLINK then gives entry 9 the background's colour for half a second, its own for half a second, and so on. Nothing is redrawn.</p>
+<p>Several BLINKs with different delays make a chase: draw a ring of lamps in entries 9 to 12, blink each with the same intervals and a delay one step later than the last, and the light runs round the ring. With WAIT and SET COLOR you can also change entries by hand, one step at a time: a sunset is a WAIT and three SET COLORs, repeated.</p>
+<p>To see time in this renderer:</p>
+<ul>
+<li>the library reports each WAIT as an event and carries on drawing, so the caller decides how to pause. <code>naplps-render</code> draws the whole page, pauses ignored;</li>
+<li><code>naplps-render --tenths N</code> shows the colour map as BLINK has it N tenths of a second after the first BLINK began. Render at several values to see each state.</li>
+</ul>
+<h2 id="14-a-whole-page">14. A whole page</h2>
+<p>This postcard uses most of the above in 263 bytes: a seven-colour palette defined up front, flat shapes drawn back to front, a macro for the ripples, and proportional display type.</p>
+<pre><code class="language-python">page = SO + reset_all() + MACROS_INTO_G3
+sky, sun, far, near, sea, foam, ink = 8, 9, 10, 11, 12, 13, 14
+for entry, colour in [(sky, (0xF6, 0xB2, 0x6B)), (sun, (0xFF, 0xF1, 0xC1)), ...]:
+    page += define(entry, *colour)
+page += select(sky) + pdi(SET_RECT_FILLED, xy(0, 0), xy(0.999, 0.78))
+page += select(sun) + circle(0.68, 0.47, 0.13)
+page += select(far) + polygon([(0, 0.30), (0.14, 0.44), (0.27, 0.36), ...])
+page += select(near) + polygon([(0, 0.25), (0.10, 0.34), (0.22, 0.27), ...])
+page += select(sea) + pdi(SET_RECT_FILLED, xy(0, 0), xy(0.999, 0.26))
+# Macro 2/1: one ripple, a thin bar at the drawing point.
+page += DEF_MACRO + b&quot;\x21&quot; + SO + pdi(RECT_FILLED, xy(0.07, 0.006)) + END
+page += select(foam)
+for x, y in ripples:
+    page += pdi(POINT_SET_ABS, xy(x, y)) + SS3 + b&quot;\x21&quot;
+page += select(ink) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 14, 1 / 9)) + text_at(0.05, 0.62, &quot;DUSK&quot;)
+</code></pre>
+<p><img alt="A dusk landscape: orange sky, pale sun, two mountain ranges, sea with ripples, the word DUSK" src="images/12-postcard.png"></p>
+<p>How pages like this are put together:</p>
+<ol>
+<li><strong>Palette first.</strong> Choose the colours and give them entry numbers before drawing anything. Name them in your code.</li>
+<li><strong>Back to front.</strong> There are no layers: later shapes cover earlier ones. Sky, then sun, then far hills, then near hills, then sea.</li>
+<li><strong>Big flat shapes.</strong> A polygon costs three bytes a vertex whatever its size. Detail is what costs.</li>
+<li><strong>Macros for anything repeated</strong>, written with relative opcodes.</li>
+<li><strong>Text last</strong>, so nothing covers it.</li>
+</ol>
+<p>Because every entry is named, this page is one step from an animation: a WAIT, then new colours for <code>sky</code>, <code>sun</code> and <code>sea</code>, and dusk becomes night.</p>
+<p><strong>Size is part of the craft.</strong> Period pages were a few hundred bytes to a few kilobytes; at 1200 bits a second, each kilobyte was eight seconds of waiting. Ways to stay small: omit trailing zero operand bytes; use relative forms with short operands; draw rows of rectangles with one opcode; use incremental lines for irregular outlines; put anything used three times in a macro.</p>
+<h2 id="15-checking-a-page">15. Checking a page</h2>
+<p><strong>Render it</strong> and look at it, at 640 by 480 and at a larger size. Pages are resolution-independent, but a pel or a hatch chosen at one size can look different at another.</p>
+<p><strong>Check it in period software</strong> if exactness matters. This repository's oracle drives PP3, a 1980s NAPLPS terminal program, and captures its screen: see <a href="verification.md"><code>verification.md</code></a>. The renderer agrees with PP3 to the pixel on most of the standard's features, and <code>verification.md</code> lists where it does not yet.</p>
+<p><strong>Read it back.</strong> <code>xxd -g1 page.nap</code> shows the bytes; with the <a href="reference.html">reference</a> beside you, a page is readable in hex. SO and SI (<code>0E</code>, <code>0F</code>) and opcodes (<code>20</code>-<code>3F</code>) are the landmarks.</p>
+<h2 id="16-what-goes-wrong">16. What goes wrong</h2>
+<table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Letters and punctuation where a drawing should be</td>
+<td>The page was in text mode: send SO before PDIs. Or a macro body did not begin with SO.</td>
+</tr>
+<tr>
+<td>Nothing drawn, or a shape in the wrong place</td>
+<td>y is measured from the bottom and only 0 to 0.78 is visible. Or a polygon was given absolute points: it takes steps.</td>
+</tr>
+<tr>
+<td>The first shape is missing</td>
+<td>No RESET, and the terminal was in a state left by another page: mode, DOMAIN, or a definition still open.</td>
+</tr>
+<tr>
+<td>A colour is wrong everywhere</td>
+<td>SET COLOR changed an entry that earlier drawing used. Entries are shared by everything drawn with them.</td>
+</tr>
+<tr>
+<td>SET COLOR seems to do nothing</td>
+<td>Colour mode 0 is in force (the power-up default), where SET COLOR chooses a colour to draw with rather than defining an entry. <code>reset_all()</code> selects mode 1.</td>
+</tr>
+<tr>
+<td>Textured lines are solid</td>
+<td>The logical pel is at its default. Set one with DOMAIN (section 7).</td>
+</tr>
+<tr>
+<td>Text is blank</td>
+<td>No font was given to the renderer (<code>--font</code>).</td>
+</tr>
+<tr>
+<td>Text wraps in mid-word</td>
+<td>This renderer does not word-wrap. Send CR LF where lines should break.</td>
+</tr>
+<tr>
+<td>Vertical text marches sideways</td>
+<td>Rotation without path. Set both in TEXT (section 8).</td>
+</tr>
+<tr>
+<td>A blinking shape is invisible in a still</td>
+<td>BLINK starts in its ON interval, showing the other entry's colour. Render with <code>--tenths</code> (section 13).</td>
+</tr>
+<tr>
+<td>A macro or DRCS character does nothing</td>
+<td>Its set was not designated (<code>MACROS_INTO_G3</code>, <code>DRCS_INTO_G3</code>), or the other one replaced it in G3: use G2 and SS2 for one of them.</td>
+</tr>
+<tr>
+<td>A shape near the right or top edge is cut or missing</td>
+<td>1.0 cannot be encoded; the helper clips to 255/256. Negative or overflowing steps wrap.</td>
+</tr>
+</tbody>
+</table>
+</main>
+</body>
+</html>

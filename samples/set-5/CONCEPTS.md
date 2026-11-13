@@ -4,7 +4,7 @@ You are the designer. Earlier runs made 110 NAPLPS sample pages that the owner l
 
 ## Sources
 
-- **Read `~/devel/neoteletext-naplps/docs/guide.md` (section 8 especially) and `~/devel/neoteletext-naplps/docs/reference.md` (C0 controls, C1 controls, TEXT, FIELD, Text, the supplementary set, Mosaics, DRCS) first.** They list every text facility, its bytes, and what this renderer does not do.
+- **Read `~/devel/neoteletext-naplps/docs/guide.html` (section 8 especially) and `~/devel/neoteletext-naplps/docs/reference.html` (C0 controls, C1 controls, TEXT, FIELD, Text, the supplementary set, Mosaics, DRCS) first.** They list every text facility, its bytes, and what this renderer does not do.
 - The renderer's source is the ground truth: `~/devel/neoteletext-naplps/crates/naplps/src/terminal.rs` (text_command, character, advance_step, row_step, carriage_return, line_feed, scroll, active_position_set, nsr, the C0 and C1 dispatch) and `text.rs`.
 - `encoder/` is a working encoder (Python 3, standard library only) from an earlier set; the earlier generators in `reference/*/pages/` show its use. Extend it freely.
 
