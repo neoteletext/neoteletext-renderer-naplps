@@ -15,7 +15,8 @@ pub enum LineTexture {
     Solid,
     /// One pel on, one off.
     Dotted,
-    /// Three pels on, one off.
+    /// Three pels on, three off (section 5.3.2.4.2: the dash and the inter-dash spacing are
+    /// three pels).
     Dashed,
     /// Three on, one off, one on, one off.
     DotDash,
@@ -114,18 +115,26 @@ pub(crate) fn point(surface: &mut dyn Surface, style: &Style, at: Point) {
     stamp(surface, style, x, y, style.colour);
 }
 
-/// Whether step `index` of a textured line is drawn; `unit` is the pel length along the line.
+/// Whether the pel is stamped at step `index` of a textured line; `unit` is the pel's length
+/// along the line in pixels. Each stamp covers `unit` pixels, so a run of n pels is stamped at
+/// its first n x unit - (unit - 1) steps: a dot and the space after it are one pel each, a dash
+/// and the space after it three pels each, and dot-dash is a dash, a space, a dot and a space
+/// (section 5.3.2.4.2, Table 12).
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
 )]
 fn texture_on(texture: LineTexture, index: i64, unit: i64) -> bool {
-    let cell = index / unit.max(1);
+    let unit = unit.max(1);
+    let run = |pels: i64| pels * unit - (unit - 1);
     match texture {
         LineTexture::Solid => true,
-        LineTexture::Dotted => cell % 2 == 0,
-        LineTexture::Dashed => cell % 4 != 3,
-        LineTexture::DotDash => !matches!(cell % 6, 3 | 5),
+        LineTexture::Dotted => index % (2 * unit) < run(1),
+        LineTexture::Dashed => index % (6 * unit) < run(3),
+        LineTexture::DotDash => {
+            let at = index % (6 * unit);
+            at < run(3) || (4 * unit..4 * unit + run(1)).contains(&at)
+        }
     }
 }
 
@@ -209,8 +218,12 @@ pub(crate) fn polyline(
 pub(crate) fn fill_colour(surface: &dyn Surface, style: &Style, masks: &Masks, x: i32, y: i32) -> Option<u8> {
     let (pel_w, pel_h) = hatch_pixels(surface, style.pel);
     let from_bottom = surface.height().saturating_sub(1).saturating_sub(y);
+    // Section 5.3.2.4.4: "if the logical pel size is (0,0), solid texture patterns will always be
+    // drawn" for the predefined patterns.
+    let zero_pel = style.pel.x == 0 && style.pel.y == 0;
     let on = match style.fill {
         FillPattern::Solid => true,
+        FillPattern::Vertical | FillPattern::Horizontal | FillPattern::Cross if zero_pel => true,
         FillPattern::Vertical => (x / pel_w) % 2 == 0,
         FillPattern::Horizontal => (from_bottom / pel_h) % 2 == 0,
         FillPattern::Cross => (x / pel_w) % 2 == 0 || (from_bottom / pel_h) % 2 == 0,

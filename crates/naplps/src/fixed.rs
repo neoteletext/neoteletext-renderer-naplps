@@ -29,6 +29,12 @@ impl Point {
         Self { x, y }
     }
 
+    /// The point with both coordinates negated.
+    #[must_use]
+    pub const fn negated(self) -> Self {
+        Self { x: self.x.saturating_neg(), y: self.y.saturating_neg() }
+    }
+
     /// The sum, saturating at the limits of [`Unit`].
     #[must_use]
     pub const fn plus(self, other: Self) -> Self {

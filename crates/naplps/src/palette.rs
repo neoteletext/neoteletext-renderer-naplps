@@ -185,6 +185,18 @@ impl Palette {
         u8::try_from(nearest).unwrap_or(0)
     }
 
+    /// A colour-map entry not used since the last reset (never nominal black or white), given
+    /// `colour`; `None` when every entry is in use. BLINK START in colour mode 0 needs an entry of
+    /// its own (section 6.2.8.1).
+    pub fn allocate_unused(&mut self, colour: Rgb) -> Option<u8> {
+        let black = usize::from(self.black());
+        let white = usize::from(self.white());
+        let index = self.used.iter().enumerate().position(|(index, used)| !used && index != black && index != white)?;
+        let entry = u8::try_from(index).ok()?;
+        self.set(entry, colour);
+        Some(entry)
+    }
+
     /// Starts a blink process, replacing any for the same pair; zero intervals end it instead
     /// (section 5.3.2.7.4). The start is relative to the most recently defined process.
     pub fn blink(&mut self, from: u8, to: u8, on: u32, off: u32, delay: u32) {
@@ -220,7 +232,9 @@ impl Palette {
     #[must_use]
     pub fn at(&self, tenths: u32) -> Vec<Rgb> {
         let mut entries = self.entries.clone();
-        for blink in &self.blinks {
+        // Section 5.3.2.7: processes acting at once run from the most recently defined to the
+        // least, each taking the colour map the one before it left.
+        for blink in self.blinks.iter().rev() {
             if tenths < blink.start {
                 continue;
             }
@@ -266,7 +280,8 @@ fn widen(primary: u8, bits: u32) -> u8 {
 #[allow(clippy::arithmetic_side_effects, reason = "colour arithmetic on entries below 256 and intensities below 256")]
 fn grey(index: usize, count: usize) -> Rgb {
     let steps = u32::try_from(count.saturating_sub(1)).unwrap_or(1).max(1);
-    let level = u32::try_from(index).unwrap_or(0).saturating_mul(FULL) / steps;
+    // Rounded to the nearest level, as section 5.3.2.5.2 rounds the hues' second primary.
+    let level = u32::try_from(index).unwrap_or(0).saturating_mul(FULL).saturating_add(steps / 2) / steps;
     let level = u8::try_from(level).unwrap_or(u8::MAX);
     [level, level, level]
 }
@@ -292,7 +307,10 @@ fn hue(index: usize, count: usize) -> Rgb {
         *slot = FULL;
     }
     // The second primary: the distance from the closest primary over 60 degrees.
-    let mix = distance(first).saturating_mul(FULL) / MIX_DEGREES.saturating_mul(count).max(1);
+    // Section 5.3.2.5.2: P2 is normalised by the largest value the primary can hold "and then
+    // rounded".
+    let denominator = MIX_DEGREES.saturating_mul(count).max(1);
+    let mix = distance(first).saturating_mul(FULL).saturating_add(denominator / 2) / denominator;
     if let Some(slot) = rgb.get_mut(second_slot) {
         *slot = mix.min(FULL);
     }
@@ -327,9 +345,12 @@ mod tests {
         assert_eq!(palette.colour(7), [255, 255, 255]);
         assert_eq!(palette.colour(8), [0, 0, 255]); // 0 degrees: blue
         // 90 degrees: red is closest (30 degrees away), blue second: blue = 30/60 of full.
-        assert_eq!(palette.colour(10), [255, 0, 127]);
-        // 135 degrees: red closest (15 away), green second: green = 15/60 of full.
-        assert_eq!(palette.colour(11), [255, 63, 0]);
+        assert_eq!(palette.colour(10), [255, 0, 128]);
+        // 135 degrees: red closest (15 away), green second: green = 15/60 of full, rounded.
+        assert_eq!(palette.colour(11), [255, 64, 0]);
+        // Greys rounded to the nearest level: 255 x 3 / 7 = 109.3, 255 x 4 / 7 = 145.7.
+        assert_eq!(palette.colour(3), [109, 109, 109]);
+        assert_eq!(palette.colour(4), [146, 146, 146]);
     }
 
     #[test]
@@ -364,5 +385,15 @@ mod tests {
         assert_eq!(palette.at(0)[1], [255, 255, 255]);
         assert_eq!(palette.at(3)[1], palette.colour(1));
         assert_eq!(palette.at(5)[1], [255, 255, 255]);
+    }
+    #[test]
+    fn simultaneous_blinks_run_from_the_most_recent() {
+        // Entry 1 blinks to entry 2, then entry 2 blinks to entry 3, both on at time 0: the most
+        // recent runs first, so entry 1 takes entry 2's new colour, which is entry 3's.
+        let mut palette = Palette::new(4);
+        palette.blink(1, 2, 5, 5, 0);
+        palette.blink(2, 3, 5, 5, 0);
+        let colours = palette.at(0);
+        assert_eq!(colours.get(1).copied(), Some(palette.colour(3)));
     }
 }

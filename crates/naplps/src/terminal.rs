@@ -33,6 +33,9 @@ pub enum CharSet {
     Macro,
     /// The dynamically redefinable character set.
     Drcs,
+    /// A null set, designated by any sequence this standard does not define: every code is a
+    /// null operation (section 4.3.2).
+    Null,
 }
 
 /// Something the caller may act on.
@@ -135,6 +138,10 @@ enum Mode {
 }
 
 /// The whole presentation state.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent one-bit states of the standard: highlight, CAN, power-up, the byte before REPEAT, RESET during a DRCS download"
+)]
 pub struct Terminal {
     palette: Palette,
     font: Option<StrokeFont>,
@@ -175,6 +182,13 @@ pub struct Terminal {
     pending_accent: Option<u8>,
     /// Word wrap's buffered word (section 6.2.7.11).
     word: Vec<(CharSet, u8)>,
+    /// Whether the byte before this one was a spacing character, which REPEAT and REPEAT TO EOL
+    /// need (section 6.2.7.2).
+    last_was_spacing: bool,
+    /// Whether the REPEAT being processed follows a spacing character.
+    repeat_allowed: bool,
+    /// RESET cleared the DRCS while a DRCS definition was open.
+    drcs_cleared: bool,
 }
 
 /// Most events kept from one call.
@@ -229,6 +243,9 @@ impl Terminal {
             border: 0,
             pending_accent: None,
             word: Vec::new(),
+            last_was_spacing: false,
+            repeat_allowed: false,
+            drcs_cleared: false,
         }
     }
 
@@ -342,6 +359,13 @@ impl Terminal {
     }
 
     fn dispatch(&mut self, canvas: &mut Canvas, byte: u8) -> Option<u8> {
+        // REPEAT is ESC 4/6 in the 7-bit form, so the ESC does not come between REPEAT and the
+        // character before it; nor do the shifts, which pages send between a character in GL and
+        // a REPEAT (PP3 repeats across them: sample page 113's dot leaders, SI . SO ESC 4/6).
+        self.repeat_allowed = self.last_was_spacing;
+        if !matches!(byte, ESC | SO | SI | SS2 | SS3) {
+            self.last_was_spacing = false;
+        }
         match core::mem::replace(&mut self.pending, Pending::None) {
             Pending::None => {}
             Pending::Escape(mut collected) => return self.escape(canvas, &mut collected, byte),
@@ -356,21 +380,26 @@ impl Terminal {
                 // A control code in the sequence discards it (Dillon, Cursor Position).
             }
             Pending::Nsr(first) => {
-                if (0x40..=0x7F).contains(&byte) {
+                // Section 6.1.6.5 item 6: two bytes from columns 4 to 7 (or 12 to 15) position the
+                // cursor; bytes from columns 2 and 3 (or 10 and 11) are ignored; a control ends
+                // the sequence and is executed.
+                let column = byte & 0x7F;
+                let control = byte < 0x20 || (0x80..0xA0).contains(&byte);
+                if !control {
                     match first {
-                        None => self.pending = Pending::Nsr(Some(byte)),
-                        Some(row) => self.nsr_position(row, byte),
+                        None => self.pending = Pending::Nsr(Some(column)),
+                        Some(row) if row >= 0x40 && column >= 0x40 => self.nsr_position(row, column),
+                        Some(_) => {}
                     }
                     return None;
-                }
-                if let Some(row) = first {
-                    let _ = self.dispatch(canvas, row);
                 }
             }
             Pending::Repeat => {
                 let count = byte & 0x7F;
                 if (0x40..=0x7F).contains(&count) {
-                    self.repeat(canvas, u32::from(count & DATA_MASK));
+                    if self.last_spacing.is_some() {
+                        self.repeat(canvas, u32::from(count & DATA_MASK));
+                    }
                     return None;
                 }
             }
@@ -385,6 +414,7 @@ impl Terminal {
                 None
             }
             0x80..=0x9F => {
+                self.single_shift = None;
                 self.flush(canvas);
                 self.control1(canvas, byte);
                 None
@@ -392,7 +422,10 @@ impl Terminal {
             _ => {
                 let gr = byte >= 0xA0;
                 let code = byte & 0x7F;
-                let set_index = if gr { self.gr } else { self.single_shift.take().unwrap_or(self.gl) };
+                // A byte after SS2 or SS3 comes from the shifted set, from GR too with b8 ignored
+                // (section 6.1.3.3).
+                let shifted = self.single_shift.take();
+                let set_index = shifted.unwrap_or(if gr { self.gr } else { self.gl });
                 let set = self.g_sets.get(set_index).copied().unwrap_or(CharSet::Primary);
                 self.auto_wrapped = 0;
                 self.graphic(canvas, set, code)
@@ -402,6 +435,7 @@ impl Terminal {
 
     fn graphic(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) -> Option<u8> {
         match set {
+            CharSet::Null => None,
             CharSet::Macro => {
                 if code == 0x7F {
                     return None;
@@ -439,6 +473,10 @@ impl Terminal {
         // Section 6.1: these belong to other layers and neither act nor end a PDI.
         if matches!(byte, 0x00..=0x06 | 0x10..=0x17) {
             return;
+        }
+        // A C0 control after SS2 or SS3 cancels the single shift (section 6.1.3.3).
+        if !matches!(byte, SS2 | SS3) {
+            self.single_shift = None;
         }
         if matches!(byte, SO | SI | SS2 | SS3) {
             // Code-set shifts do not end a PDI's data (the next bytes may still be data), nor a
@@ -543,7 +581,8 @@ impl Terminal {
             0x7D => Some(CharSet::Mosaic),
             0x7A => Some(CharSet::Macro),
             0x7B => Some(CharSet::Drcs),
-            _ => None,
+            // Section 4.3.2: "All other designation sequences shall designate ... a null G-set".
+            _ => Some(CharSet::Null),
         };
         if let (Some(target), Some(set)) = (target, set)
             && let Some(slot) = self.g_sets.get_mut(target)
@@ -572,8 +611,17 @@ impl Terminal {
             0x85 => {
                 self.end_recording();
             }
-            0x86 => self.pending = Pending::Repeat,
-            0x87 => self.repeat_to_end(canvas),
+            0x86 => {
+                if !self.repeat_allowed {
+                    self.last_spacing = None; // a null operation; its count byte is still consumed
+                }
+                self.pending = Pending::Repeat;
+            }
+            0x87 => {
+                if self.repeat_allowed {
+                    self.repeat_to_end(canvas);
+                }
+            }
             0x88 => self.text.reverse = true,
             0x89 => self.text.reverse = false,
             0x8A => self.text.size = Point::new(fraction(1, 80), fraction(5, 128)),
@@ -582,6 +630,14 @@ impl Terminal {
             0x8D => self.text.size = Point::new(fraction(1, 40), fraction(5, 64)),
             0x8E => {
                 let to = if self.mode == Mode::MapWithBackground { self.background } else { self.palette.black() };
+                if self.mode == Mode::Direct {
+                    // Section 6.2.8.1: in colour mode 0 BLINK START gives the drawing colour an
+                    // entry of its own, so that only what is drawn from now on blinks.
+                    let colour = self.palette.colour(self.colour);
+                    if let Some(entry) = self.palette.allocate_unused(colour) {
+                        self.colour = entry;
+                    }
+                }
                 self.palette.blink(self.colour, to, BLINK_START_ON, BLINK_START_OFF, 0);
             }
             0x8F => self.text.size = Point::new(fraction(1, 20), fraction(5, 64)),
@@ -686,11 +742,21 @@ impl Terminal {
             }
             _ => self.pdi_on(canvas, opcode, &data),
         }
+        if core::mem::take(&mut self.drcs_cleared)
+            && let Some(Recording::Drcs { mask, .. }) = &mut recording
+        {
+            // Section 6.2.3: such a RESET "will clear the character pattern definition in
+            // progress, but the downloading operation will continue".
+            mask.clear();
+        }
         if self.recording.is_none() {
             self.recording = recording;
         }
-        if matches!(self.text.motion, Motion::Together | Motion::PointLeads) {
-            self.cursor = self.point;
+        if opcode == TEXT_OPCODE && matches!(self.text.motion, Motion::Together | Motion::CursorLeads) {
+            // Section 5.3.2.3.7: TEXT aligns the drawing point with the cursor.
+            self.sync_point();
+        } else if matches!(self.text.motion, Motion::Together | Motion::PointLeads) {
+            self.cursor = self.point.plus(self.alignment().negated());
         }
     }
 
@@ -758,15 +824,26 @@ impl Terminal {
                     raster::point(surface, &self.style(), self.point);
                 }
             }
-            0x28..=0x2B => {
-                if opcode >= 0x2A {
-                    let Some(start) = reader.point(domain) else { return };
-                    self.point = start;
-                }
+            0x28 | 0x29 => {
+                // Each further operand continues from the last end point: a line graph
+                // (section 5.3.3.2.1).
                 let relative = opcode & 1 == 1;
                 while let Some(value) = reader.point(domain) {
                     let end = if relative { self.point.plus(value) } else { value };
                     raster::line(surface, &self.style(), self.point, end, self.colour, false);
+                    self.point = end;
+                }
+            }
+            0x2A | 0x2B => {
+                // Section 5.3.3.2.4: "If more than two operands are present, lines are drawn from
+                // the first to the second point, then from the third to the fourth point, etc."
+                // A start point with no end point after it only moves the drawing point.
+                let relative = opcode & 1 == 1;
+                while let Some(start) = reader.point(domain) {
+                    self.point = start;
+                    let Some(value) = reader.point(domain) else { break };
+                    let end = if relative { start.plus(value) } else { value };
+                    raster::line(surface, &self.style(), start, end, self.colour, false);
                     self.point = end;
                 }
             }
@@ -842,9 +919,8 @@ impl Terminal {
                     (Some(size), None) => Some((self.point, size)),
                     _ => None,
                 };
-                if let Some((origin, _)) = self.field {
-                    self.point = origin;
-                }
+                // With no operands the field is the unit screen and its origin (0, 0).
+                self.point = self.field.map_or(Point::default(), |(origin, _)| origin);
             }
             0x39 => self.incremental_point(surface, &mut reader),
             0x3A | 0x3B => self.incremental_line(surface, &mut reader, opcode == 0x3B),
@@ -880,7 +956,10 @@ impl Terminal {
                 self.palette.reset();
                 self.colour = self.palette.white();
             }
-            0b10 if self.mode != Mode::Direct => self.palette.reset(),
+            0b10 if self.mode != Mode::Direct => {
+                self.mode = Mode::Map;
+                self.palette.reset();
+            }
             0b10 | 0b11 => {
                 self.mode = Mode::Map;
                 self.palette.reset();
@@ -928,6 +1007,7 @@ impl Terminal {
         }
         if second & 0b10_0000 != 0 {
             self.drcs.fill(None);
+            self.drcs_cleared = true;
         }
     }
 
@@ -1046,14 +1126,17 @@ impl Terminal {
         let (origin, size) = self.field.unwrap_or((Point::default(), Point::new(ONE, self.display_top)));
         let (left, right) = ordered(origin.x, origin.x.saturating_add(size.x));
         let (bottom, top) = ordered(origin.y, origin.y.saturating_add(size.y));
-        let (xn, xd) = surface.scale_x();
-        let (yn, yd) = surface.scale_y();
-        let one = i64::from(ONE);
-        let smallest_x = Unit::try_from(one.saturating_mul(xd) / xn.max(1)).unwrap_or(1).max(1);
-        let smallest_y = Unit::try_from(one.saturating_mul(yd) / yn.max(1)).unwrap_or(1).max(1);
-        let pel_x = if self.pel.x == 0 { smallest_x } else { self.pel.x };
-        let pel_y = if self.pel.y == 0 { smallest_y } else { self.pel.y };
+        // Section 5.3.3.6.3: a zero pel dimension is "the smallest positive value specifiable
+        // within the current domain".
+        let bits_per_axis =
+            u32::try_from(self.domain.multi_bytes).unwrap_or(3) * if self.domain.three_d { 2 } else { 3 };
+        let smallest = (ONE >> bits_per_axis.saturating_sub(1).min(24)).max(1);
+        let pel_x = if self.pel.x == 0 { smallest } else { self.pel.x };
+        let pel_y = if self.pel.y == 0 { smallest } else { self.pel.y };
         let start = self.point;
+        if start.x < left || start.x >= right || start.y < bottom || start.y >= top {
+            return; // a starting pel outside the active field: the command is not executed
+        }
         let mut at = start;
         let mut bits: Vec<bool> = Vec::new();
         while let Some(byte) = reader.byte() {
@@ -1063,10 +1146,10 @@ impl Terminal {
         }
         let mut style = self.style();
         style.pel = Point::new(pel_x, pel_y);
-        for chunk in bits.chunks(usize::try_from(packing).unwrap_or(1)) {
-            if chunk.len() < usize::try_from(packing).unwrap_or(1) {
-                break;
-            }
+        let packing_bits = usize::try_from(packing).unwrap_or(1);
+        let mut position = 0usize;
+        while let Some(chunk) = bits.get(position..position + packing_bits) {
+            position += packing_bits;
             let entry = if self.mode == Mode::Direct {
                 {
                     let mut primaries = [0u32; 3];
@@ -1098,6 +1181,9 @@ impl Terminal {
             at.x = at.x.saturating_add(pel_x);
             let beyond = if pel_x > 0 { at.x.saturating_add(pel_x) > right } else { at.x.saturating_add(pel_x) < left };
             if beyond {
+                // "any remaining bits in the byte of the string operand currently being
+                // interpreted are discarded" at the end of a row.
+                position = position.div_ceil(6) * 6;
                 at.x = if pel_x > 0 { left } else { right.saturating_sub(pel_x.saturating_abs()) };
                 at.y = at.y.saturating_add(pel_y);
                 let outside =
@@ -1127,7 +1213,11 @@ impl Terminal {
                     escape = false;
                     match opcode {
                         0 => {
-                            if !filled {
+                            if filled {
+                                // Section 5.3.3.6.5: treated as a null, "and the following nibble is
+                                // interpreted as the 'modify parameter' instruction".
+                                escape = true;
+                            } else {
                                 draw = !draw;
                             }
                         }
@@ -1255,7 +1345,19 @@ impl Terminal {
 
     fn sync_point(&mut self) {
         if matches!(self.text.motion, Motion::Together | Motion::CursorLeads) {
-            self.point = self.cursor;
+            self.point = self.cursor.plus(self.alignment());
+        }
+    }
+
+    /// Where the drawing point sits relative to the cursor when they are aligned: the character
+    /// field's origin for the underscore and block cursors, its centre for the cross-hair and
+    /// custom cursors (section 5.3.2.3.7).
+    fn alignment(&self) -> Point {
+        if self.text.cursor_style >= CURSOR_CROSS_HAIR {
+            let (u, v) = self.field_now(Point::default()).axes();
+            Point::new(u.x.saturating_add(v.x) / 2, u.y.saturating_add(v.y) / 2)
+        } else {
+            Point::default()
         }
     }
 
@@ -1438,6 +1540,7 @@ impl Terminal {
     /// characters are buffered into words and a word that does not fit on the rest of the line
     /// starts the next (section 6.2.7.11); anything else ends the word first.
     fn character(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) {
+        self.last_was_spacing = !is_accent(set, code) && set != CharSet::Null;
         let alphanumeric = matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs);
         if self.text.word_wrap && alphanumeric {
             if set == CharSet::Primary && code == SPACE {
@@ -1606,7 +1709,7 @@ impl Terminal {
                     let shape = mask.map_or(Shape::Blank, Shape::Bitmap);
                     text::draw(surface, field, &shape, ink);
                 }
-                CharSet::Pdi | CharSet::Macro => {}
+                CharSet::Pdi | CharSet::Macro | CharSet::Null => {}
             }
         }
         if self.recording.is_none() {
@@ -1706,6 +1809,11 @@ fn eight_bits(value: u32, width: u32) -> u8 {
     let scaled = if width >= 8 { value >> (width - 8) } else { value << (8 - width) };
     u8::try_from(scaled & 0xFF).unwrap_or(u8::MAX)
 }
+
+/// The TEXT opcode (section 5.3.2.3).
+const TEXT_OPCODE: u8 = 0x22;
+/// TEXT's cursor style for the cross-hair cursor; the custom cursor (3) aligns as it does.
+const CURSOR_CROSS_HAIR: u8 = 2;
 
 /// SPACE in the primary set.
 const SPACE: u8 = 0x20;
@@ -1894,7 +2002,7 @@ mod tests {
     /// A test font: e (primary 6/5) a box, i one column, l one column at x = 3 (so that a
     /// proportional l's field starts a column before the previous l's stroke), and the acute
     /// accent (supplementary 4/2) a stroke above the field's top grid row.
-    const FONT: &str = "[primary]\n65 0 0 1,1,5,1 5,1,5,6 5,6,1,6 1,6,1,1\n69 0 0 3,1,3,6\n6c 0 0 3,1,3,8\n[supplementary]\n42 0 0 2,8,4,9\n";
+    const FONT: &str = "[primary]\n30 0 0 1,1,5,8\n65 0 0 1,1,5,1 5,1,5,6 5,6,1,6 1,6,1,1\n69 0 0 3,1,3,6\n6c 0 0 3,1,3,8\n[supplementary]\n42 0 0 2,8,4,9\n";
 
     fn on_large_canvas(bytes: &[u8]) -> (Terminal, Canvas) {
         let mut canvas = Canvas::new(640, 480).unwrap();
@@ -1975,8 +2083,14 @@ mod tests {
         // Section 5.3.2.4.2: with a pel width of zero, nonvertical lines are solid. TEXTURE
         // dotted, then a horizontal line across the screen.
         let (_, canvas, _) = run(&[SO, 0x20, 0x7F, 0x7F, 0x23, 0x41, 0x2A, 0x41, 0x44, 0x40, 0x59, 0x7C, 0x78]);
-        let row: Vec<u8> = canvas.pixels().chunks(64).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
-        assert!(!row.contains(&0), "a dotted line with the default pel is solid: {row:?}");
+        let row: Vec<u8> =
+            canvas.pixels().chunks(640).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
+        let first = row.iter().position(|&entry| entry != 0).unwrap();
+        let last = row.iter().rposition(|&entry| entry != 0).unwrap();
+        assert!(
+            row[first..=last].iter().all(|&entry| entry != 0),
+            "a dotted line with the default pel is solid: {row:?}"
+        );
     }
 
     #[test]
@@ -2000,5 +2114,149 @@ mod tests {
         let column = ONE / 8;
         assert_eq!(terminal.cursor.x, 7 * column);
         assert!(terminal.cursor.y < ONE / 2, "the word moved down a line");
+    }
+    #[test]
+    fn set_and_line_draws_pairs_of_points() {
+        // SET & LINE (absolute) with three points: a line from the first to the second; the third,
+        // with no end point after it, only moves the drawing point (section 5.3.3.2.4).
+        let (terminal, canvas, _) =
+            run(&[SO, 0x20, 0x7F, 0x7F, 0x2A, 0x42, 0x58, 0x50, 0x4A, 0x48, 0x68, 0x58, 0x63, 0x72]);
+        let lit_right_of =
+            |x: usize| canvas.pixels().chunks(640).any(|row| row.iter().skip(x).any(|&entry| entry != 0));
+        assert!(!lit_right_of(240), "no line from the second point to the third");
+        assert!(terminal.point.x > ONE / 2, "the drawing point moved to the third point");
+    }
+
+    #[test]
+    fn an_unknown_designation_makes_a_null_set() {
+        // ESC 2/8 7/9 designates an undefined set into G0: its characters are null operations.
+        let (_, canvas) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, ESC, 0x28, 0x79, SI, b'e']);
+        assert_eq!(lit(&canvas), 0);
+    }
+
+    #[test]
+    fn a_control_cancels_a_single_shift() {
+        // SS2, CR, e: the e is the primary set's (section 6.1.3.3), which the test font draws.
+        let (_, canvas) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, SS2, 0x0D, b'e']);
+        assert!(lit(&canvas) > 0);
+    }
+
+    #[test]
+    fn hatching_with_a_zero_pel_is_solid() {
+        // TEXTURE vertical hatching (0x48), a filled rectangle, the default pel (section 5.3.2.4.4).
+        let (_, canvas, _) = run(&[SO, 0x20, 0x7F, 0x7F, 0x23, 0x48, 0x33, 0x49, 0x40, 0x40, 0x51, 0x40, 0x40]);
+        let row: Vec<u8> =
+            canvas.pixels().chunks(640).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
+        let lit_row: Vec<u8> =
+            row.iter().copied().skip_while(|&entry| entry == 0).take_while(|&entry| entry != 0).collect();
+        assert!(lit_row.len() >= 300, "a solid run across the rectangle, not one-pixel bands: {row:?}");
+    }
+
+    #[test]
+    fn reset_colour_bits_10_select_colour_mode_one() {
+        // SELECT COLOR with two operands (mode 2), then RESET byte 1 with b3 b2 = 10.
+        let (terminal, _, _) = run(&[SO, 0x3E, 0x70, 0x4C, 0x20, 0x44]);
+        assert_eq!(terminal.mode, Mode::Map);
+    }
+
+    #[test]
+    fn reset_during_a_drcs_download_clears_the_character_being_defined() {
+        // DEF DRCS 2/1: a filled rectangle, then RESET clearing the DRCS (byte 2 b6), END; the
+        // character, designated into G3 and shown, is blank (section 6.2.3).
+        let mut bytes = vec![DEF_DRCS, 0x21, SO, 0x31, 0x5B, 0x7F, 0x7F, 0x20, 0x40, 0x60, END];
+        bytes.extend_from_slice(&[ESC, 0x2F, 0x20, 0x7B, SS3, 0x21]);
+        let (_, canvas, _) = run(&bytes);
+        assert_eq!(lit(&canvas), 0);
+    }
+
+    #[test]
+    fn field_with_no_operands_moves_the_drawing_point_home() {
+        let (terminal, _, _) = run(&[SO, 0x24, 0x52, 0x40, 0x40, 0x38, 0x24]);
+        assert_eq!(terminal.point, Point::default());
+    }
+
+    #[test]
+    fn incremental_polygon_reads_a_modify_after_a_null_toggle() {
+        // Moves: dx, dy, then escape 00 00 (a null toggle in a polygon), whose following pair 01
+        // reverses dx (section 5.3.3.6.5), then dx (now leftward): a square, not a long sliver.
+        let (_, canvas, _) = run(&[
+            SO,
+            0x20,
+            0x7F,
+            0x7F,
+            0x24,
+            0x49,
+            0x40,
+            0x40,
+            0x3B,
+            0x40,
+            0x64,
+            0x40,
+            0x40 | 0b01_10_00,
+            0x40 | 0b00_01_01,
+        ]);
+        let rightmost =
+            canvas.pixels().chunks(640).filter_map(|row| row.iter().rposition(|&entry| entry != 0)).max().unwrap();
+        assert!(rightmost < 300, "rightmost lit column {rightmost}");
+    }
+
+    #[test]
+    fn nsr_ignores_bytes_from_columns_two_and_three() {
+        // NSR followed by two digits: they are ignored, not drawn (section 6.1.6.5 item 6).
+        let (_, canvas) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, 0x1F, b'0', b'0']);
+        assert_eq!(lit(&canvas), 0);
+    }
+
+    #[test]
+    fn repeat_after_a_control_does_nothing() {
+        // e, CR, REPEAT 3: the byte before REPEAT is a control, so REPEAT is a null operation.
+        let (_, once) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, b'e']);
+        let (_, repeated) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, b'e', 0x0D, ESC, 0x46, 0x43]);
+        assert_eq!(lit(&once), lit(&repeated));
+        // Straight after the e, it repeats, and a shift between them does not count.
+        let (_, after_e) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, b'e', ESC, 0x46, 0x43]);
+        assert!(lit(&after_e) > lit(&once));
+        let (_, across_so) = on_large_canvas(&[SO, 0x20, 0x7F, 0x7F, SI, b'e', SO, ESC, 0x46, 0x43]);
+        assert_eq!(lit(&across_so), lit(&after_e));
+    }
+
+    #[test]
+    fn blink_start_in_colour_mode_zero_blinks_only_what_follows() {
+        // RESET to colour mode 0 (byte 1 b3 b2 = 01), a white rectangle, then BLINK START: the
+        // rectangle's entry does not blink (section 6.2.8.1).
+        let (terminal, canvas, _) = run(&[SO, 0x20, 0x4A, 0x40, 0x33, 0x49, 0x40, 0x40, 0x49, 0x40, 0x40, ESC, 0x4E]);
+        let drawn = *canvas.pixels().iter().find(|&&entry| entry != 0).unwrap();
+        assert!(terminal.palette().blinks().iter().all(|blink| blink.from != drawn));
+        assert!(terminal.palette().blinks().iter().any(|blink| blink.from == terminal.colour));
+    }
+
+    #[test]
+    fn dashes_and_their_gaps_are_three_pels() {
+        // DOMAIN with a 1/64 pel (ten pixels on this 640-pixel canvas), TEXTURE dashed, a line.
+        let (_, canvas, _) = run(&[
+            SO, 0x20, 0x7F, 0x7F, 0x21, 0x48, 0x40, 0x40, 0x64, 0x23, 0x42, 0x2A, 0x41, 0x44, 0x40, 0x59, 0x7C, 0x78,
+        ]);
+        let row: Vec<u8> =
+            canvas.pixels().chunks(640).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
+        let gap = row.iter().skip(1).skip_while(|&&entry| entry != 0).take_while(|&&entry| entry == 0).count();
+        assert_eq!(gap, 30, "three pels: {row:?}");
+    }
+
+    #[test]
+    fn text_with_a_cross_hair_cursor_aligns_the_drawing_point_to_the_field_centre() {
+        // POINT SET, then TEXT choosing the cross-hair cursor (byte 2 b6 b5 = 10).
+        let (terminal, _, _) = run(&[SO, 0x24, 0x52, 0x40, 0x40, 0x22, 0x40, 0x60]);
+        let half = Point::new(fraction(1, 80), fraction(5, 256));
+        assert_eq!(terminal.point, terminal.cursor.plus(half));
+    }
+
+    #[test]
+    fn incremental_point_outside_the_field_draws_nothing() {
+        // FIELD at (1/2, 1/4) of size (1/4, 1/4), then the drawing point moved outside it.
+        let (_, canvas, _) = run(&[
+            SO, 0x20, 0x7F, 0x7F, 0x38, 0x51, 0x40, 0x40, 0x49, 0x40, 0x40, 0x24, 0x40, 0x5B, 0x52, 0x39, 0x44, 0x7F,
+            0x7F, 0x7F,
+        ]);
+        assert_eq!(lit(&canvas), 0);
     }
 }
