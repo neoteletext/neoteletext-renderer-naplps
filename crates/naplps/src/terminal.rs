@@ -1971,11 +1971,12 @@ mod tests {
     }
 
     #[test]
-    fn line_textures_work_with_the_default_pel() {
-        // TEXTURE dotted, then a horizontal line across the screen.
+    fn line_textures_are_solid_with_the_default_pel() {
+        // Section 5.3.2.4.2: with a pel width of zero, nonvertical lines are solid. TEXTURE
+        // dotted, then a horizontal line across the screen.
         let (_, canvas, _) = run(&[SO, 0x20, 0x7F, 0x7F, 0x23, 0x41, 0x2A, 0x41, 0x44, 0x40, 0x59, 0x7C, 0x78]);
         let row: Vec<u8> = canvas.pixels().chunks(64).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
-        assert!(row.contains(&0), "a dotted line has gaps: {row:?}");
+        assert!(!row.contains(&0), "a dotted line with the default pel is solid: {row:?}");
     }
 
     #[test]

@@ -139,10 +139,11 @@ pub(crate) fn line(surface: &mut dyn Surface, style: &Style, from: Point, to: Po
     let dy = i64::from(y1).saturating_sub(i64::from(y0));
     let steps = dx.abs().max(dy.abs());
     let (pel_w, pel_h) = pel_pixels(surface, style.pel);
-    // Textures are measured in pels; the default pel is the smallest the display can show
-    // (section 5.3.2.2), one pixel, so a dotted line is then one pixel on, one off.
+    // Section 5.3.2.4.2: "If logical pel size dx = 0, all nonvertical lines are solid. If logical
+    // pel size dy = 0, all nonhorizontal lines are solid."
     let x_major = dx.abs() >= dy.abs();
-    let textured = !solid && style.line != LineTexture::Solid;
+    let textured =
+        !solid && style.line != LineTexture::Solid && if x_major { style.pel.x != 0 } else { style.pel.y != 0 };
     let unit = i64::from(if x_major { pel_w } else { pel_h });
     for index in 0..=steps {
         let x = i64::from(x0).saturating_add(super_div(dx.saturating_mul(index), steps));
