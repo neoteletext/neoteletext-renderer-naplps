@@ -701,9 +701,13 @@ impl Terminal {
                     .filter_map(|(_, m)| m.as_ref())
                     .map(Vec::len)
                     .sum();
-                let _ = transmit; // stored like any macro; never transmitted (decision D7)
+                // Section 6.2.2.3: transmit macros "when called, are not executed, but are
+                // transmitted". Nothing is ever transmitted (REQ-5910), so a transmit macro is kept
+                // as nothing: defining one deletes any macro of its name (they share the 96 names)
+                // and calling it does nothing.
                 if let Some(slot) = self.macros.get_mut(index) {
-                    *slot = if bytes.is_empty() || others.saturating_add(bytes.len()) > MAX_ALL_MACRO_BYTES {
+                    *slot = if transmit || bytes.is_empty() || others.saturating_add(bytes.len()) > MAX_ALL_MACRO_BYTES
+                    {
                         None
                     } else {
                         Some(bytes)
@@ -2295,5 +2299,16 @@ mod tests {
         let (terminal, _, _) = run(&[SO, 0x24, 0x5A, 0x78, 0x68]);
         assert!(terminal.cursor.x.saturating_add(fraction(1, 40)) <= ONE, "{}", terminal.cursor.x);
         assert!(terminal.point.x > terminal.cursor.x, "the drawing point itself is not moved");
+    }
+    #[test]
+    fn a_transmit_macro_is_not_executed_when_called() {
+        // DEFT MACRO 2/1 holding a rectangle, then the macro set into G2 and SS2 2/1: nothing is
+        // drawn (section 6.2.2.3), and nothing is sent (REQ-5910).
+        let mut bytes = vec![ESC, 0x2E, 0x20, 0x7A, 0x82, 0x21, SO];
+        bytes.extend_from_slice(&RECT_HALF_QUARTER);
+        bytes.extend_from_slice(&[END, SS2, 0x21]);
+        let (_, canvas, events) = run(&bytes);
+        assert_eq!(lit(&canvas), 0);
+        assert_eq!(events, Vec::new());
     }
 }
