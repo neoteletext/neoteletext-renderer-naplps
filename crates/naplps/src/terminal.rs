@@ -756,7 +756,7 @@ impl Terminal {
             // Section 5.3.2.3.7: TEXT aligns the drawing point with the cursor.
             self.sync_point();
         } else if matches!(self.text.motion, Motion::Together | Motion::PointLeads) {
-            self.cursor = self.point.plus(self.alignment().negated());
+            self.cursor = self.inside_unit_screen(self.point.plus(self.alignment().negated()));
         }
     }
 
@@ -1347,6 +1347,23 @@ impl Terminal {
         if matches!(self.text.motion, Motion::Together | Motion::CursorLeads) {
             self.point = self.cursor.plus(self.alignment());
         }
+    }
+
+    /// `cursor` moved as little as possible so that its character field lies inside the unit
+    /// screen (section 5.3.2.3.7: "Should such a situation arise, the cursor shall be adjusted
+    /// as close as possible to the drawing point without violating the above condition").
+    fn inside_unit_screen(&self, cursor: Point) -> Point {
+        let (x0, y0, x1, y1) = self.field_box(cursor);
+        let shift = |low: Unit, high: Unit| {
+            if low < 0 {
+                low.saturating_neg()
+            } else if high > ONE {
+                ONE.saturating_sub(high)
+            } else {
+                0
+            }
+        };
+        cursor.plus(Point::new(shift(x0, x1), shift(y0, y1)))
     }
 
     /// Where the drawing point sits relative to the cursor when they are aligned: the character
@@ -2258,5 +2275,25 @@ mod tests {
             0x7F, 0x7F,
         ]);
         assert_eq!(lit(&canvas), 0);
+    }
+    #[test]
+    fn outlined_arcs_take_the_line_texture() {
+        // DOMAIN with a 1/64 pel, TEXTURE dotted, then a circle (SET & ARC outlined with one
+        // step): a dotted circle lights fewer pixels than a solid one.
+        let circle = |texture: u8| {
+            let mut bytes = vec![SO, 0x20, 0x7F, 0x7F, 0x21, 0x48, 0x40, 0x40, 0x64, 0x23, 0x40 | texture];
+            bytes.extend_from_slice(&[0x2E, 0x49, 0x44, 0x46, 0x50, 0x40, 0x40]);
+            lit(&run(&bytes).1)
+        };
+        let (solid, dotted) = (circle(0), circle(1));
+        assert!(dotted * 3 < solid * 2, "dotted {dotted} against solid {solid}");
+    }
+    #[test]
+    fn the_cursor_field_stays_inside_the_unit_screen() {
+        // POINT SET at x = 0.99: the cursor follows the drawing point, but its 1/40 field may not
+        // cross the right edge (section 5.3.2.3.7).
+        let (terminal, _, _) = run(&[SO, 0x24, 0x5A, 0x78, 0x68]);
+        assert!(terminal.cursor.x.saturating_add(fraction(1, 40)) <= ONE, "{}", terminal.cursor.x);
+        assert!(terminal.point.x > terminal.cursor.x, "the drawing point itself is not moved");
     }
 }

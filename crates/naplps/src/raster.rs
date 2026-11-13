@@ -564,11 +564,62 @@ pub(crate) fn arc(
                 }
             }
         }
+    } else if style.line != LineTexture::Solid && style.pel.x != 0 && style.pel.y != 0 {
+        textured_arc(surface, style, &ellipse, on_arc);
     } else {
         for (x, y) in ellipse.pixels() {
             if on_arc((x * SUBPIXELS, y * SUBPIXELS)) {
                 stamp(surface, style, clamp_i32(x), clamp_i32(y), style.colour);
             }
+        }
+    }
+}
+
+/// An outlined arc in a line texture (section 5.3.2.4.2 applies textures to ARC): its pixels
+/// walked in order round the centre, from one end of the arc to the other, with the pattern of
+/// [`texture_on`] measured in the pel's width; the two ends are always drawn.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
+)]
+fn textured_arc(surface: &mut dyn Surface, style: &Style, ellipse: &Ellipse, on_arc: impl Fn((i64, i64)) -> bool) {
+    let centre = ellipse.centre;
+    let mut pixels: Vec<(i64, i64)> =
+        ellipse.pixels().into_iter().filter(|&(x, y)| on_arc((x * SUBPIXELS, y * SUBPIXELS))).collect();
+    if pixels.is_empty() {
+        return;
+    }
+    // Order by angle about the centre: the half-plane first, then the cross product.
+    let offset = |&(x, y): &(i64, i64)| (i128::from(x * SUBPIXELS - centre.0), i128::from(y * SUBPIXELS - centre.1));
+    let half = |(dx, dy): (i128, i128)| i32::from(dy < 0 || (dy == 0 && dx < 0));
+    pixels.sort_by(|a, b| {
+        let (da, db) = (offset(a), offset(b));
+        half(da).cmp(&half(db)).then_with(|| (db.0 * da.1).cmp(&(da.0 * db.1)))
+    });
+    // Start the walk after the widest step between neighbours: the gap between a partial arc's
+    // ends (for a full circle any start does).
+    let count = pixels.len();
+    let distance = |a: (i64, i64), b: (i64, i64)| (a.0 - b.0).abs().max((a.1 - b.1).abs());
+    let widest = (0..count)
+        .max_by_key(|&index| match (pixels.get(index), pixels.get((index + 1) % count)) {
+            (Some(&a), Some(&b)) => distance(a, b),
+            _ => 0,
+        })
+        .map_or(0, |index| (index + 1) % count);
+    pixels.rotate_left(widest);
+    let (pel_w, _) = pel_pixels(surface, style.pel);
+    let unit = i64::from(pel_w);
+    let mut walked = 0i64;
+    let Some(&first) = pixels.first() else { return };
+    let mut previous = first;
+    for (index, &pixel) in pixels.iter().enumerate() {
+        walked += distance(previous, pixel);
+        previous = pixel;
+        let end = index == 0 || index + 1 == count;
+        if end || texture_on(style.line, walked, unit) {
+            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), style.colour);
+        } else if let Some(background) = style.background {
+            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), background);
         }
     }
 }
