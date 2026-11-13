@@ -1,0 +1,212 @@
+[
+  {
+    "number": 111,
+    "title": "Mere Type Bureau",
+    "purpose": "A printer's specimen and type-order proof",
+    "style": "Ivory, ink and vermilion; asymmetric type specimen",
+    "techniques": [
+      "five C1 size presets",
+      "120-pixel TEXT field",
+      "small-print TEXT field",
+      "proportional display type"
+    ],
+    "covers": [
+      1,
+      2,
+      3
+    ],
+    "animated": false,
+    "file": "111-mere-type.nap",
+    "bytes": 795
+  },
+  {
+    "number": 112,
+    "title": "The Little Journey",
+    "purpose": "A pocket phrase card for travellers",
+    "style": "Midnight blue, warm paper and coral; three editorial language bands",
+    "techniques": [
+      "non-spacing accents in French, German and Spanish",
+      "supplementary arrows and quotation marks",
+      "precise POINT SET text placement"
+    ],
+    "covers": [
+      2,
+      9,
+      10
+    ],
+    "animated": false,
+    "file": "112-pocket-phrases.nap",
+    "bytes": 781
+  },
+  {
+    "number": 113,
+    "title": "The Copper Spoon",
+    "purpose": "A seasonal supper menu with prices and serving sizes",
+    "style": "Forest green on cream with copper-red headings",
+    "techniques": [
+      "REPEAT dot leaders",
+      "REPEAT TO EOL rule and fill",
+      "underline",
+      "reverse video",
+      "colour mode 2",
+      "supplementary currency and fractions"
+    ],
+    "covers": [
+      8,
+      9,
+      11,
+      12
+    ],
+    "animated": false,
+    "file": "113-copper-spoon.nap",
+    "bytes": 851
+  },
+  {
+    "number": 114,
+    "title": "North Quay Radio",
+    "purpose": "A settled harbour watch log showing the latest received messages",
+    "style": "Teal phosphor terminal with a cream title and amber channel badge",
+    "techniques": [
+      "active FIELD",
+      "automatic character-edge wrapping",
+      "CR/LF inside FIELD",
+      "SCROLL ON and OFF",
+      "colour mode 2",
+      "3/2 row spacing"
+    ],
+    "covers": [
+      4,
+      8,
+      12
+    ],
+    "animated": false,
+    "file": "114-quay-radio.nap",
+    "bytes": 957
+  },
+  {
+    "number": 115,
+    "title": "Turning Leaves",
+    "purpose": "A library display of books to read from a different angle",
+    "style": "Ochre and oxblood book cloth against warm white",
+    "techniques": [
+      "all four text paths",
+      "all four rotations",
+      "90-degree upward spine",
+      "270-degree downward spine",
+      "180-degree leftward cover title"
+    ],
+    "covers": [
+      5,
+      6
+    ],
+    "animated": false,
+    "file": "115-turning-leaves.nap",
+    "bytes": 682
+  },
+  {
+    "number": 116,
+    "title": "The Quiet Between",
+    "purpose": "A four-stanza broadside poem for a reading room",
+    "style": "Pale blue paper, deep blue type and a distant ochre moon",
+    "techniques": [
+      "character spacing 1, 5/4, 3/2 and proportional",
+      "row spacing 1, 5/4, 3/2 and 2",
+      "CR/LF in stanza fields"
+    ],
+    "covers": [
+      3,
+      4,
+      12
+    ],
+    "animated": false,
+    "file": "116-quiet-between.nap",
+    "bytes": 688
+  },
+  {
+    "number": 117,
+    "title": "Pen & Point",
+    "purpose": "A workshop card explaining four plotter coupling modes",
+    "style": "Prussian-blue technical diagrams with ivory strokes and amber reference marks",
+    "techniques": [
+      "TEXT together motion",
+      "cursor leads",
+      "drawing point leads",
+      "independent motion",
+      "visible text-to-line geometry"
+    ],
+    "covers": [
+      7,
+      10
+    ],
+    "animated": false,
+    "file": "117-pen-and-point.nap",
+    "bytes": 1072
+  },
+  {
+    "number": 118,
+    "title": "Isle Air Boarding Card",
+    "purpose": "A boarding card for the fictional Merehaven to Oriel service",
+    "style": "Cream ticket with cobalt route panel and vermilion validation marks",
+    "techniques": [
+      "APH home",
+      "APS row and column",
+      "NSR with position",
+      "HT/APF",
+      "LF/APD",
+      "VT/APU",
+      "CR/APR",
+      "POINT SET exact placement"
+    ],
+    "covers": [
+      10
+    ],
+    "animated": false,
+    "file": "118-isle-air.nap",
+    "bytes": 678
+  },
+  {
+    "number": 119,
+    "title": "The Glass Horizon",
+    "purpose": "A cinema programme for a fictional evening screening",
+    "style": "Black, apricot and lilac; large marquee typography and mosaic lamps",
+    "techniques": [
+      "DRCS star in ordinary text",
+      "mosaics mixed with text",
+      "separated mosaics",
+      "REPEAT mosaic border",
+      "BLINK START on optional ornament",
+      "palette BLINK on text"
+    ],
+    "covers": [
+      11,
+      13,
+      14,
+      15
+    ],
+    "animated": true,
+    "file": "119-glass-horizon.nap",
+    "bytes": 588
+  },
+  {
+    "number": 120,
+    "title": "The Ribbon Check",
+    "purpose": "A typewriter service slip and complete keyboard impression",
+    "style": "Ivory service sheet on a grey desk, black type and red workshop annotations",
+    "techniques": [
+      "every printable ASCII character 20-7E",
+      "BS overstrike",
+      "HT/APF",
+      "CR/LF",
+      "fixed-pitch text",
+      "small-print fields"
+    ],
+    "covers": [
+      2,
+      10,
+      16
+    ],
+    "animated": false,
+    "file": "120-ribbon-check.nap",
+    "bytes": 795
+  }
+]
