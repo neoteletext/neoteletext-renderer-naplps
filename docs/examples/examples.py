@@ -21,8 +21,9 @@ def shapes():
     page = SO + reset_all()
     # A filled rectangle: lower left corner, then width and height.
     page += select(BLUE) + pdi(SET_RECT_FILLED, xy(0.05, 0.45), xy(0.25, 0.25))
-    # A line from point to point, then on to a third point.
-    page += select(YELLOW) + pdi(SET_LINE_ABS, xy(0.38, 0.45), xy(0.50, 0.70), xy(0.62, 0.45))
+    # A line from point to point, then on to a third point: POINT SET, then LINE. (SET & LINE
+    # takes its points in pairs, one line from each pair.)
+    page += select(YELLOW) + pdi(POINT_SET_ABS, xy(0.38, 0.45)) + pdi(LINE_ABS, xy(0.50, 0.70), xy(0.62, 0.45))
     # A filled circle: a point on it, then the step to the opposite point.
     page += select(RED) + pdi(SET_ARC_FILLED, xy(0.70, 0.575), xy(0.25, 0))
     # A filled polygon: first vertex, then the step to each following vertex.

@@ -55,7 +55,10 @@ class Page:
     def line(self,pts,c=None,width=1):
         if c is not None:self.color(c)
         self.pel(width)
-        return self.cmd(0x2a,b''.join(xy(x/640,(480-y)/Y_SCALE) for x,y in pts))
+        points=[xy(x/640,(480-y)/Y_SCALE) for x,y in pts]
+        if len(points)<=2: return self.cmd(0x2a,b''.join(points))
+        # SET & LINE pairs its points (T500 5.3.3.2.4); a connected line is POINT SET, then LINE.
+        return self.cmd(0x24,points[0]).cmd(0x28,b''.join(points[1:]))
     def poly(self,pts,c=None,fill=True):
         if c is not None:self.color(c)
         self.pel(1)
