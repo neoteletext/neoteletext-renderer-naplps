@@ -2,12 +2,14 @@
 //!
 //! ```text
 //! naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N]
-//!               [--dac-bits N] [--preamble] PAGE OUT.ppm
+//!               [--stage N] [--border N] [--dac-bits N] [--preamble] PAGE OUT.ppm
 //! ```
 //!
 //! `--font` loads a stroke font in the library's text form (without one, text moves the cursor
 //! but draws no glyphs). `--tenths` shows the colour map that many tenths of a second into BLINK
-//! animation. `--dac-bits 6` shows colours as a VGA card's 6-bit colour registers do, as PP3's
+//! animation. `--stage N` stops after the page's Nth WAIT, showing the page as it stands during
+//! that pause (0, the default, draws the whole page). `--border N` surrounds the picture with N
+//! pixels of the page's border colour (RESET, Table 15). `--dac-bits 6` shows colours as a VGA card's 6-bit colour registers do, as PP3's
 //! screen does (each primary rounded to 6 bits, then widened by repeating its top bits, as DOSBox
 //! shows them). `--preamble` first sends the oracle's page preamble, so a frame compares with the
 //! PP3 reference of the same page.
@@ -37,6 +39,8 @@ const DEFAULT_WIDTH: u32 = 640;
 const DEFAULT_HEIGHT: u32 = 480;
 /// A 16-entry colour map, as PP3's VGA mode.
 const DEFAULT_PALETTE_BITS: u32 = 4;
+/// The widest border drawn: as wide as the largest canvas.
+const MAX_BORDER: u32 = 4096;
 /// The oracle's page preamble (neoteletext-naplps `naplps-oracle`, `PAGE_PREAMBLE`): ESC % A,
 /// CAN, ESC 2/2 4/6, ESC 4/5 (END), NSR to row 0 column 0, SO, RESET 7F 7F.
 const ORACLE_PREAMBLE: [u8; 16] =
@@ -60,6 +64,8 @@ fn run() -> Result<(), String> {
     let mut tenths = 0u32;
     let mut preamble = false;
     let mut dac_bits = 8u32;
+    let mut stage = 0u32;
+    let mut border = 0u32;
     let mut operands = Vec::new();
     let mut arguments = std::env::args().skip(1);
     while let Some(argument) = arguments.next() {
@@ -71,13 +77,15 @@ fn run() -> Result<(), String> {
             "--font" => font_path = Some(value("--font")?),
             "--tenths" => tenths = number(&value("--tenths")?)?,
             "--preamble" => preamble = true,
+            "--stage" => stage = number(&value("--stage")?)?,
+            "--border" => border = number(&value("--border")?)?.min(MAX_BORDER),
             "--dac-bits" => dac_bits = number(&value("--dac-bits")?)?.clamp(1, 8),
             other if other.starts_with("--") => return Err(format!("unknown option {other}")),
             other => operands.push(other.to_owned()),
         }
     }
     let [page_path, out_path] = operands.as_slice() else {
-        return Err("usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--preamble] PAGE OUT.ppm".to_owned());
+        return Err("usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] PAGE OUT.ppm".to_owned());
     };
     let length = fs::metadata(page_path).map_err(|error| format!("{page_path}: {error}"))?.len();
     if length > MAX_PAGE_BYTES {
@@ -94,16 +102,53 @@ fn run() -> Result<(), String> {
     if preamble {
         events.extend(terminal.feed(&mut canvas, &ORACLE_PREAMBLE));
     }
-    events.extend(terminal.feed(&mut canvas, &page));
-    events.extend(terminal.finish(&mut canvas));
+    if stage == 0 {
+        events.extend(terminal.feed(&mut canvas, &page));
+        events.extend(terminal.finish(&mut canvas));
+    } else {
+        // A byte at a time, so drawing stops at the WAIT: the library reports a WAIT when the
+        // byte after its data arrives, and draws nothing of what follows before then.
+        let mut waits = 0u32;
+        for byte in &page {
+            let more = terminal.feed(&mut canvas, core::slice::from_ref(byte));
+            waits = waits.saturating_add(
+                u32::try_from(more.iter().filter(|event| matches!(event, Event::Wait(_))).count()).unwrap_or(u32::MAX),
+            );
+            events.extend(more);
+            if waits >= stage {
+                break;
+            }
+        }
+        if waits < stage {
+            events.extend(terminal.finish(&mut canvas));
+            eprintln!(
+                "naplps-render: {page_path}: the page has {waits} WAITs, fewer than --stage {stage}; drawn whole"
+            );
+        }
+    }
     if events.contains(&Event::LimitReached) {
         eprintln!("naplps-render: {page_path}: processing stopped at the limit on bytes processed");
     }
     let colours = terminal.palette().at(tenths);
-    let mut ppm = format!("P6\n{} {}\n255\n", canvas.width(), canvas.height()).into_bytes();
-    for &entry in canvas.pixels() {
-        let colour = colours.get(usize::from(entry)).copied().unwrap_or([0, 0, 0]);
-        ppm.extend_from_slice(&naplps::palette::through_register(colour, dac_bits));
+    let rgb = |entry: u8| {
+        naplps::palette::through_register(colours.get(usize::from(entry)).copied().unwrap_or([0, 0, 0]), dac_bits)
+    };
+    let (width, height) = (canvas.width(), canvas.height());
+    let (outer_width, outer_height) =
+        (width.saturating_add(border.saturating_mul(2)), height.saturating_add(border.saturating_mul(2)));
+    let border_rgb = rgb(terminal.border());
+    let mut ppm = format!("P6\n{outer_width} {outer_height}\n255\n").into_bytes();
+    for y in 0..outer_height {
+        for x in 0..outer_width {
+            let inside = (border..border.saturating_add(width)).contains(&x)
+                && (border..border.saturating_add(height)).contains(&y);
+            let colour = if inside {
+                canvas.pixel(x.saturating_sub(border), y.saturating_sub(border)).map_or([0, 0, 0], rgb)
+            } else {
+                border_rgb
+            };
+            ppm.extend_from_slice(&colour);
+        }
     }
     let mut file = fs::File::create(out_path).map_err(|error| format!("{out_path}: {error}"))?;
     file.write_all(&ppm).map_err(|error| format!("{out_path}: {error}"))?;

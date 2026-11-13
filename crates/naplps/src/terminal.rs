@@ -169,6 +169,12 @@ pub struct Terminal {
     processed: usize,
     cancel: bool,
     started: bool,
+    /// The border's colour-map entry (RESET, Table 15).
+    border: u8,
+    /// A non-spacing accent waiting for the letter it goes over.
+    pending_accent: Option<u8>,
+    /// Word wrap's buffered word (section 6.2.7.11).
+    word: Vec<(CharSet, u8)>,
 }
 
 /// Most events kept from one call.
@@ -220,6 +226,9 @@ impl Terminal {
             processed: 0,
             cancel: false,
             started: false,
+            border: 0,
+            pending_accent: None,
+            word: Vec::new(),
         }
     }
 
@@ -282,8 +291,16 @@ impl Terminal {
         core::mem::take(&mut self.events)
     }
 
-    /// Ends a page: runs a PDI still collecting data.
+    /// The border's colour-map entry: the area of the screen outside the display area, which the
+    /// caller draws, if it has one (RESET, section 5.3.2.9, Table 15). Nominal black at first.
+    #[must_use]
+    pub fn border(&self) -> u8 {
+        self.border
+    }
+
+    /// Ends a page: draws a word or accent still buffered and runs a PDI still collecting data.
     pub fn finish(&mut self, canvas: &mut Canvas) -> Vec<Event> {
+        self.settle(canvas);
         self.flush(canvas);
         core::mem::take(&mut self.events)
     }
@@ -398,6 +415,7 @@ impl Terminal {
             }
             CharSet::Pdi => {
                 if code < 0x40 {
+                    self.settle(canvas);
                     self.flush(canvas);
                     self.pdi = Some((code, Vec::new()));
                 } else if let Some((_, data)) = &mut self.pdi
@@ -423,8 +441,10 @@ impl Terminal {
             return;
         }
         if matches!(byte, SO | SI | SS2 | SS3) {
-            // Code-set shifts do not end a PDI's data (the next bytes may still be data).
+            // Code-set shifts do not end a PDI's data (the next bytes may still be data), nor a
+            // word (section 6.2.7.11).
         } else {
+            self.settle(canvas);
             self.flush(canvas);
         }
         let wrapped = self.auto_wrapped;
@@ -534,6 +554,7 @@ impl Terminal {
     }
 
     fn control1(&mut self, canvas: &mut Canvas, code: u8) {
+        self.settle(canvas);
         match code {
             0x80..=0x84 => {
                 let previous_drcs = matches!(self.recording, Some(Recording::Drcs { .. }));
@@ -574,7 +595,6 @@ impl Terminal {
             // PROTECT, UNPROTECT, cursor display and the reserved codes: no display effect here.
             _ => {}
         }
-        let _ = canvas;
     }
 
     /// Starts DEF MACRO (0), DEFP (1), DEFT (2), DEF DRCS (3) or DEF TEXTURE (4) for `number`.
@@ -869,6 +889,14 @@ impl Terminal {
             _ => {}
         }
         let screen = (first >> 3) & 0b111;
+        // Table 15: 011 border to nominal black, 100 border to the drawing colour, 101 both to
+        // the drawing colour, 110 the display to the drawing colour and the border to black, 111
+        // both to black.
+        match screen {
+            0b011 | 0b110 | 0b111 => self.border = self.palette.black(),
+            0b100 | 0b101 => self.border = self.colour,
+            _ => {}
+        }
         let clear = match screen {
             0b001 | 0b111 => Some(self.palette.black()),
             0b010 | 0b101 | 0b110 => Some(self.colour),
@@ -1243,15 +1271,20 @@ impl Terminal {
     }
 
     fn carriage_return(&mut self) {
+        self.cursor = self.line_start();
+        self.sync_point();
+    }
+
+    /// Where a carriage return puts the cursor: the start of the current line along the path.
+    fn line_start(&self) -> Point {
         let area = self.area();
         let (x0, y0, x1, y1) = self.field_box(self.cursor);
-        self.cursor = match self.text.path {
+        match self.text.path {
             Path::Right => Point::new(self.cursor.x.saturating_add(area.0.saturating_sub(x0)), self.cursor.y),
             Path::Left => Point::new(self.cursor.x.saturating_add(area.2.saturating_sub(x1)), self.cursor.y),
             Path::Up => Point::new(self.cursor.x, self.cursor.y.saturating_add(area.1.saturating_sub(y0))),
             Path::Down => Point::new(self.cursor.x, self.cursor.y.saturating_add(area.3.saturating_sub(y1))),
-        };
-        self.sync_point();
+        }
     }
 
     /// Line feed (`down`) or vertical tab: wraps to the opposite boundary, or scrolls in scroll
@@ -1401,19 +1434,139 @@ impl Terminal {
         self.sync_point();
     }
 
+    /// One character from a graphic set. In word wrap mode, primary, supplementary and DRCS
+    /// characters are buffered into words and a word that does not fit on the rest of the line
+    /// starts the next (section 6.2.7.11); anything else ends the word first.
     fn character(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) {
-        if code == 0x7F && matches!(set, CharSet::Primary | CharSet::Supplementary) {
-            return; // DEL
+        let alphanumeric = matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs);
+        if self.text.word_wrap && alphanumeric {
+            if set == CharSet::Primary && code == SPACE {
+                self.end_word(canvas, true);
+                return;
+            }
+            if self.word.len() >= MAX_WORD {
+                self.end_word(canvas, false);
+            }
+            self.word.push((set, code));
+            return;
         }
-        let spacing = !(set == CharSet::Supplementary && (0x40..=0x4F).contains(&code));
-        let field = self.field_now(self.cursor);
-        let proportional = self.proportional_extent(set, code);
-        let ink = Ink {
+        self.end_word(canvas, false);
+        self.draw_character(canvas, set, code);
+    }
+
+    /// Draws a buffered word, first starting a new line if it does not fit on this one, and then
+    /// the SPACE that ended it, which is dropped if the word filled the line (section 6.2.7.11).
+    fn end_word(&mut self, canvas: &mut Canvas, space: bool) {
+        let word = core::mem::take(&mut self.word);
+        if !word.is_empty() && !self.word_fits(&word) && self.cursor != self.line_start() {
+            self.carriage_return();
+            self.line_feed(canvas, true);
+        }
+        self.auto_wrapped = 0;
+        for &(set, code) in &word {
+            self.draw_character(canvas, set, code);
+        }
+        if space {
+            if self.auto_wrapped == 2 {
+                self.auto_wrapped = 0; // the line ended with the word: the SPACE is dropped
+            } else {
+                self.draw_character(canvas, CharSet::Primary, SPACE);
+            }
+        }
+    }
+
+    /// Whether every character of `word` fits on the rest of the current line.
+    fn word_fits(&self, word: &[(CharSet, u8)]) -> bool {
+        let area = self.area();
+        let mut at = self.cursor;
+        for &(set, code) in word {
+            if is_accent(set, code) {
+                continue;
+            }
+            if !self.fits(at, area) {
+                return false;
+            }
+            at = at.plus(self.step_for(set, code));
+        }
+        true
+    }
+
+    /// Draws a buffered word and a waiting accent: before anything that is not text.
+    fn settle(&mut self, canvas: &mut Canvas) {
+        self.end_word(canvas, false);
+        if let Some(accent) = self.pending_accent.take() {
+            let field = self.field_now(self.cursor);
+            let ink = self.ink(0);
+            self.paint(canvas, CharSet::Supplementary, accent, field, ink);
+        }
+    }
+
+    /// The step along the path after `code`: proportional for a stroke glyph in proportional
+    /// spacing (DEC-5813), otherwise the spacing's fixed step.
+    fn step_for(&self, set: CharSet, code: u8) -> Point {
+        let step = self.advance_step();
+        match self.proportional_extent(set, code) {
+            Some((left, right)) => {
+                let width = i64::from(right.saturating_sub(left)).saturating_add(PROPORTIONAL_GAP);
+                Point::new(eighths(step.x, width), eighths(step.y, width))
+            }
+            None => step,
+        }
+    }
+
+    fn ink(&self, field_from: i64) -> Ink {
+        Ink {
             colour: self.colour,
             background: (self.mode == Mode::MapWithBackground).then_some(self.background),
             reverse: self.text.reverse,
             underline: None,
-        };
+            field_from,
+        }
+    }
+
+    /// Draws one character at the cursor and moves the cursor on. A non-spacing accent (the
+    /// supplementary set's 4/0 to 4/15) waits for the next character and is drawn over it, so
+    /// that the letter's field, painted in colour mode 2, does not cover it (section 5.3.2.3.4).
+    fn draw_character(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) {
+        if code == 0x7F && matches!(set, CharSet::Primary | CharSet::Supplementary) {
+            return; // DEL
+        }
+        if is_accent(set, code) {
+            self.settle_accent(canvas);
+            self.pending_accent = Some(code);
+            return;
+        }
+        let mut field = self.field_now(self.cursor);
+        let mut field_from = 0;
+        if let Some((left, _)) = self.proportional_extent(set, code) {
+            // The glyph's leftmost stroke sits at the cursor; its field is painted from there on.
+            let (u, _) = field.axes();
+            let shift = Point::new(eighths(u.x, left), eighths(u.y, left));
+            field.origin = field.origin.plus(Point::new(shift.x.saturating_neg(), shift.y.saturating_neg()));
+            field_from = i64::from(left).saturating_mul(text::FIELD_ONE) / text::STROKE_X_DIVISOR;
+        }
+        let ink = self.ink(field_from);
+        self.paint(canvas, set, code, field, ink);
+        if let Some(accent) = self.pending_accent.take() {
+            let over = Ink { field_from: text::FIELD_ONE, ..ink };
+            self.paint(canvas, CharSet::Supplementary, accent, field, over);
+        }
+        self.last_spacing = Some((set, code));
+        let step = self.step_for(set, code);
+        self.advance(canvas, step);
+    }
+
+    /// Draws a waiting accent on its own, before another accent replaces it.
+    fn settle_accent(&mut self, canvas: &mut Canvas) {
+        if let Some(accent) = self.pending_accent.take() {
+            let field = self.field_now(self.cursor);
+            let ink = self.ink(0);
+            self.paint(canvas, CharSet::Supplementary, accent, field, ink);
+        }
+    }
+
+    /// Draws one character's shape into `field`, on the definition being recorded if any.
+    fn paint(&mut self, canvas: &mut Canvas, set: CharSet, code: u8, field: Field, ink: Ink) {
         let underline = |surface: &dyn Surface, terminal: &Self| {
             terminal.text.underline.then(|| text::underline_share(surface, terminal.pel.y, terminal.text.size.y))
         };
@@ -1428,29 +1581,23 @@ impl Terminal {
             let mut ink = ink;
             match set {
                 CharSet::Primary | CharSet::Supplementary => {
-                    ink.underline = underline(surface, self);
+                    if ink.field_from < text::FIELD_ONE {
+                        ink.underline = underline(surface, self);
+                    }
                     let font_set = if set == CharSet::Primary { FontSet::Primary } else { FontSet::Supplementary };
-                    let glyph = if code == 0x20 {
+                    let glyph = if code == SPACE && set == CharSet::Primary {
                         None
                     } else {
                         self.font.as_ref().and_then(|font| font.glyph(font_set, code))
                     };
                     let shape = glyph.map_or(Shape::Blank, |glyph| Shape::Strokes(&glyph.segments));
-                    let mut field = field;
-                    if let Some((left, _)) = proportional {
-                        // The glyph's leftmost stroke sits at the cursor.
-                        let (u, _) = field.axes();
-                        let shift = Point::new(eighths(u.x, left), eighths(u.y, left));
-                        field.origin =
-                            field.origin.plus(Point::new(shift.x.saturating_neg(), shift.y.saturating_neg()));
-                    }
                     text::draw(surface, field, &shape, ink);
                 }
                 CharSet::Mosaic => {
                     let code = if code == 0x5F { 0x7F } else { code };
                     let is_mosaic = (0x20..=0x3F).contains(&code) || (0x60..=0x7F).contains(&code);
-                    let shape =
-                        if is_mosaic { Shape::Mosaic { code, separated: self.text.underline } } else { Shape::Blank };
+                    let separation = self.text.underline.then(|| text::separation(surface, self.pel, self.text.size));
+                    let shape = if is_mosaic { Shape::Mosaic { code, separation } } else { Shape::Blank };
                     text::draw(surface, field, &shape, ink);
                 }
                 CharSet::Drcs => {
@@ -1464,15 +1611,6 @@ impl Terminal {
         }
         if self.recording.is_none() {
             self.recording = recording;
-        }
-        if spacing {
-            self.last_spacing = Some((set, code));
-            let mut step = self.advance_step();
-            if let Some((left, right)) = proportional {
-                let width = i64::from(right.saturating_sub(left)).saturating_add(PROPORTIONAL_GAP);
-                step = Point::new(eighths(step.x, width), eighths(step.y, width));
-            }
-            self.advance(canvas, step);
         }
     }
 
@@ -1567,6 +1705,19 @@ fn eight_bits(value: u32, width: u32) -> u8 {
     }
     let scaled = if width >= 8 { value >> (width - 8) } else { value << (8 - width) };
     u8::try_from(scaled & 0xFF).unwrap_or(u8::MAX)
+}
+
+/// SPACE in the primary set.
+const SPACE: u8 = 0x20;
+
+/// The longest word word wrap buffers: a word as long as the longest possible line (section
+/// 6.2.7.11: a character that makes a word as long as a line ends it). 80 columns of SMALL TEXT
+/// at proportional spacing's narrowest step (two eighths of a field) is 320 characters.
+const MAX_WORD: usize = 320;
+
+/// Whether a character is a non-spacing accent: the supplementary set's 4/0 to 4/15 (section 5.2).
+fn is_accent(set: CharSet, code: u8) -> bool {
+    set == CharSet::Supplementary && (0x40..=0x4F).contains(&code)
 }
 
 /// TEXT's spacing field value for proportional spacing (section 5.3.2.3.4: 11).
@@ -1739,5 +1890,114 @@ mod tests {
         assert_eq!(terminal.cursor.x, ONE / 32 / 8 * 2 + ONE / 32 / 8 * 6);
         let _ = terminal.feed(&mut canvas, b" ");
         assert_eq!(terminal.cursor.x, ONE / 32 / 8 * 8 + ONE / 32, "a space steps the whole field");
+    }
+    /// A test font: e (primary 6/5) a box, i one column, l one column at x = 3 (so that a
+    /// proportional l's field starts a column before the previous l's stroke), and the acute
+    /// accent (supplementary 4/2) a stroke above the field's top grid row.
+    const FONT: &str = "[primary]\n65 0 0 1,1,5,1 5,1,5,6 5,6,1,6 1,6,1,1\n69 0 0 3,1,3,6\n6c 0 0 3,1,3,8\n[supplementary]\n42 0 0 2,8,4,9\n";
+
+    fn on_large_canvas(bytes: &[u8]) -> (Terminal, Canvas) {
+        let mut canvas = Canvas::new(640, 480).unwrap();
+        let mut terminal = Terminal::new(4);
+        terminal.set_font(StrokeFont::parse(FONT).unwrap());
+        let _ = terminal.feed(&mut canvas, bytes);
+        let _ = terminal.finish(&mut canvas);
+        (terminal, canvas)
+    }
+
+    /// RESET, a 1/16 by 1/10 field (TEXT with `spacing` in its first byte), mode 2 drawing in
+    /// entry 7 on entry 12, the cursor at (1/8, 1/4), then `text` in the primary set.
+    fn mode_two_text(spacing: u8, text: &[u8]) -> Canvas {
+        let mut bytes = vec![
+            SO,
+            0x20,
+            0x7F,
+            0x7F,
+            0x22,
+            0x40 | spacing,
+            0x40,
+            0x40,
+            0x53,
+            0x42,
+            0x3E,
+            0x5C,
+            0x70,
+            0x24,
+            0x41,
+            0x60,
+            0x40,
+            SI,
+        ];
+        bytes.extend_from_slice(text);
+        on_large_canvas(&bytes).1
+    }
+
+    #[test]
+    fn an_accent_survives_its_letter_in_colour_mode_two() {
+        let accented = mode_two_text(0, &[SS2, 0x42, b'e']);
+        let plain = mode_two_text(0, b"e");
+        assert_ne!(accented.pixels(), plain.pixels(), "the accent was painted over (TODO-5902)");
+    }
+
+    #[test]
+    fn proportional_text_in_colour_mode_two_keeps_earlier_letters() {
+        let all = mode_two_text(0b11_0000, b"lll");
+        let ink =
+            |canvas: &Canvas| canvas.pixels().iter().fold(0usize, |count, &entry| count + usize::from(entry == 7));
+        let one_l = mode_two_text(0b11_0000, b"l");
+        // Three l: more ink than two would leave (TODO-5903 left only the last l).
+        assert!(ink(&all) > 2 * ink(&one_l), "{} against {}", ink(&all), ink(&one_l));
+    }
+
+    #[test]
+    fn separated_mosaics_are_reduced_by_the_pel() {
+        // A 1/16 by 1/10 field, DOMAIN with a 1/64 pel, a full mosaic block, contiguous then
+        // separated (UNDERLINE START).
+        let page = |separated: bool| {
+            let mut bytes =
+                vec![SO, 0x20, 0x7F, 0x7F, 0x21, 0x48, 0x40, 0x40, 0x64, 0x22, 0x40, 0x40, 0x40, 0x53, 0x42];
+            bytes.extend_from_slice(&[0x24, 0x41, 0x60, 0x40, SI]);
+            if separated {
+                bytes.extend_from_slice(&[ESC, 0x59]);
+            }
+            bytes.extend_from_slice(&[SS3, 0x7F]);
+            lit(&on_large_canvas(&bytes).1)
+        };
+        let (contiguous, separated) = (page(false), page(true));
+        // Each block is 1/32 of the screen wide and the pel 1/64, so a lit block keeps about half
+        // its width and half its height: about a quarter of the area (a tenth of the field would
+        // keep four fifths).
+        assert!(separated > 0 && separated * 3 < contiguous, "{separated} of {contiguous}");
+    }
+
+    #[test]
+    fn line_textures_work_with_the_default_pel() {
+        // TEXTURE dotted, then a horizontal line across the screen.
+        let (_, canvas, _) = run(&[SO, 0x20, 0x7F, 0x7F, 0x23, 0x41, 0x2A, 0x41, 0x44, 0x40, 0x59, 0x7C, 0x78]);
+        let row: Vec<u8> = canvas.pixels().chunks(64).find(|row| row.iter().any(|&entry| entry != 0)).unwrap().to_vec();
+        assert!(row.contains(&0), "a dotted line has gaps: {row:?}");
+    }
+
+    #[test]
+    fn reset_sets_the_border() {
+        // SELECT COLOR entry 12, then RESET with b6 b5 b4 = 100: the border to the drawing colour.
+        let (terminal, _, _) = run(&[SO, 0x3E, 0x70, 0x20, 0x60]);
+        assert_eq!(terminal.border(), 12);
+        let (terminal, _, _) = run(&[SO, 0x3E, 0x70, 0x20, 0x60, 0x20, 0x58]);
+        assert_eq!(terminal.border(), 0, "011: the border to nominal black");
+    }
+
+    #[test]
+    fn word_wrap_moves_a_word_that_does_not_fit_to_the_next_line() {
+        // A 1/8 field: 8 per line. The cursor at column 6, then WORD WRAP ON and "ll ll".
+        let mut bytes =
+            vec![SO, 0x20, 0x7F, 0x7F, 0x22, 0x40, 0x40, 0x40, 0x63, 0x42, 0x24, 0x5A, 0x40, 0x40, SI, ESC, 0x55];
+        bytes.extend_from_slice(b"llll ll");
+        let (terminal, _) = on_large_canvas(&bytes);
+        // "llll" does not fit in the two columns left, so it starts the next line and "ll" follows
+        // a space: the cursor ends 7 columns along the second line.
+        let column = ONE / 8;
+        assert_eq!(terminal.cursor.x, 7 * column);
+        assert!(terminal.cursor.y < ONE / 2, "the word moved down a line");
     }
 }

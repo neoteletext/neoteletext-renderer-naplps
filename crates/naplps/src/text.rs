@@ -28,7 +28,7 @@ const STROKE_Y_DIVISOR: i64 = 10;
 /// See [`STROKE_X_DIVISOR`]: the pen's side as a share of the field height.
 const PEN_DIVISOR: i64 = 12;
 /// Fraction precision of field coordinates.
-const FIELD_ONE: i64 = 1 << 16;
+pub(crate) const FIELD_ONE: i64 = 1 << 16;
 
 /// What fills a character field.
 pub(crate) enum Shape<'a> {
@@ -38,8 +38,10 @@ pub(crate) enum Shape<'a> {
     Strokes(&'a [[u8; 4]]),
     /// A DRCS character's bitmap, scaled to the field.
     Bitmap(&'a Mask),
-    /// A mosaic character's code (section 5.4): bits 1 to 5 and 7 are the six blocks.
-    Mosaic { code: u8, separated: bool },
+    /// A mosaic character's code (section 5.4): bits 1 to 5 and 7 are the six blocks. In
+    /// separated mode, how much each lit block is reduced across and up, in fractions of
+    /// [`FIELD_ONE`] of the field.
+    Mosaic { code: u8, separation: Option<(i64, i64)> },
 }
 
 /// One character's placement.
@@ -83,6 +85,13 @@ pub(crate) struct Ink {
     pub(crate) reverse: bool,
     /// Underline height in field fractions of [`FIELD_ONE`], zero for none.
     pub(crate) underline: Option<Unit>,
+    /// Where along the field's width, in fractions of [`FIELD_ONE`], painting the field itself
+    /// (the background in colour mode 2, the field in reverse video) begins: 0 for the whole
+    /// field. A proportionally spaced glyph's field starts before the cursor, over the previous
+    /// character, so its field is painted from the cursor on (section 5.3.2.3.4: the character
+    /// field's width does not change, and the background fills it); [`FIELD_ONE`] paints only
+    /// the strokes, as for an accent drawn over its letter.
+    pub(crate) field_from: i64,
 }
 
 /// Draws one character.
@@ -146,7 +155,7 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
                     let mask_y = i64::from(mask.height()) - 1 - mv * i64::from(mask.height()) / FIELD_ONE;
                     mask.bit(mask_x, mask_y)
                 }
-                Shape::Mosaic { code, separated } => mosaic(*code, mu, mv, *separated),
+                Shape::Mosaic { code, separation } => mosaic(*code, mu, mv, *separation),
             };
             if let Some(height) = ink.underline
                 && v < i64::from(height)
@@ -156,6 +165,10 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
             // Normal: the shape in the drawing colour, the rest of the field in the background
             // (mode 2 only). Reverse: the other way round; in modes 0 and 1 that leaves the shape
             // undrawn and fills the rest in the drawing colour.
+            let stroke = covered && !ink.reverse;
+            if !stroke && u < ink.field_from {
+                continue;
+            }
             let entry = match (ink.reverse, covered) {
                 (false, true) | (true, false) => Some(ink.colour),
                 (false, false) | (true, true) => ink.background,
@@ -169,25 +182,24 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
 
 /// Whether a mosaic block covers field position (`u`, `v`) (section 5.4): the field is cut into
 /// two columns and three rows; bits 1 and 2 are the top row, 3 and 4 the middle, 5 and 7 the
-/// bottom. Separated mosaics shrink the field by one pel at the right and top first; here by one
-/// tenth, as a pel is not known to this function's caller at this size.
+/// bottom. In separated mode each lit block is reduced across by the logical pel's width and up
+/// by its height, kept against the block's left and bottom edges (section 5.4: "left and bottom
+/// justified within the normal element area"); a pel as large as the block leaves nothing lit.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry inside one character field: coordinates within 2^27 sub-pixels, field fractions within 2^16, products within i64"
 )]
-fn mosaic(code: u8, u: i64, v: i64, separated: bool) -> bool {
-    let (mut u, mut v) = (u, v);
-    if separated {
-        let shrink = FIELD_ONE / 10;
-        if u >= FIELD_ONE - shrink || v >= FIELD_ONE - shrink {
+fn mosaic(code: u8, u: i64, v: i64, separation: Option<(i64, i64)>) -> bool {
+    let column = i64::from(u * 2 >= FIELD_ONE);
+    let row_from_bottom = (v * 3 / FIELD_ONE).clamp(0, 2);
+    if let Some((across, up)) = separation {
+        let right = (column + 1) * FIELD_ONE / 2;
+        let top = (row_from_bottom + 1) * FIELD_ONE / 3;
+        if u >= right - across || v >= top - up {
             return false;
         }
-        u = u * FIELD_ONE / (FIELD_ONE - shrink);
-        v = v * FIELD_ONE / (FIELD_ONE - shrink);
     }
-    let column = i32::from(u * 2 >= FIELD_ONE);
-    let row_from_top = 2 - (v * 3 / FIELD_ONE).clamp(0, 2);
-    let bit = match (row_from_top, column) {
+    let bit = match (2 - row_from_bottom, column) {
         (0, 0) => 0x01,
         (0, _) => 0x02,
         (1, 0) => 0x04,
@@ -196,6 +208,26 @@ fn mosaic(code: u8, u: i64, v: i64, separated: bool) -> bool {
         _ => 0x40,
     };
     code & bit != 0
+}
+
+/// How much separated mosaics reduce each block, across and up, in fractions of [`FIELD_ONE`] of
+/// a field of `size`: the logical pel, or one pixel where the pel is the default, zero size
+/// (section 5.3.2.2: the smallest the display can show).
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "unit lengths below 2^31 and field fractions within 2^16: products within i64, divisors checked"
+)]
+pub(crate) fn separation(surface: &dyn Surface, pel: Point, size: Point) -> (i64, i64) {
+    let one = i64::from(crate::fixed::ONE);
+    let (xn, xd) = surface.scale_x();
+    let (yn, yd) = surface.scale_y();
+    let pixel_x = (one * xd + xn - 1) / xn.max(1);
+    let pixel_y = (one * yd + yn - 1) / yn.max(1);
+    let across = i64::from(pel.x.saturating_abs()).max(pixel_x);
+    let up = i64::from(pel.y.saturating_abs()).max(pixel_y);
+    let width = i64::from(size.x.saturating_abs()).max(1);
+    let height = i64::from(size.y.saturating_abs()).max(1);
+    ((across * FIELD_ONE / width).min(FIELD_ONE), (up * FIELD_ONE / height).min(FIELD_ONE))
 }
 
 /// The underline's height as a share of the field ([`FIELD_ONE`] is the whole field): one pel
