@@ -147,8 +147,9 @@ byte 3:  1  010 110  = 56
 <pre><code class="language-python">page = SO + reset_all()
 # A filled rectangle: lower left corner, then width and height.
 page += select(BLUE) + pdi(SET_RECT_FILLED, xy(0.05, 0.45), xy(0.25, 0.25))
-# A line from point to point, then on to a third point.
-page += select(YELLOW) + pdi(SET_LINE_ABS, xy(0.38, 0.45), xy(0.50, 0.70), xy(0.62, 0.45))
+# A line from point to point, then on to a third point: POINT SET, then LINE. (SET &amp; LINE
+# takes its points in pairs, one line from each pair.)
+page += select(YELLOW) + pdi(POINT_SET_ABS, xy(0.38, 0.45)) + pdi(LINE_ABS, xy(0.50, 0.70), xy(0.62, 0.45))
 # A filled circle: a point on it, then the step to the opposite point.
 page += select(RED) + pdi(SET_ARC_FILLED, xy(0.70, 0.575), xy(0.25, 0))
 # A filled polygon: first vertex, then the step to each following vertex.
@@ -162,7 +163,7 @@ page += select(WHITE) + pdi(SET_RECT_OUTLINED, xy(0.70, 0.08), xy(0.25, 0.28))
 <p>Things to know about each:</p>
 <ul>
 <li><strong>Rectangle</strong>: a corner, then a width and height, which may be negative. Afterwards the drawing point has moved across by the width, so repeated operands draw a row of rectangles: a bar chart is one opcode.</li>
-<li><strong>Line</strong>: <code>SET_LINE_ABS</code> takes points; <code>SET_LINE_REL</code> takes steps. More operands continue the line.</li>
+<li><strong>Line</strong>: <code>SET_LINE_ABS</code> takes points in <strong>pairs</strong>, one line per pair, and <code>SET_LINE_REL</code> takes a start and a step per line. For a connected line, set the start with <code>POINT_SET_ABS</code>, then send <code>LINE_ABS</code> (or <code>LINE_REL</code>) with every further point: each continues from the last.</li>
 <li><strong>Polygon</strong>: always <strong>steps</strong> between vertices, never absolute points, and closed for you. The helper's <code>polygon([...])</code> takes absolute points and works out the steps. At most 4096 vertices here; the standard promises 256.</li>
 <li><strong>Arc</strong>: three points define the circle the arc lies on: start, a point on the way, end. With only two points, the arc is the whole circle whose diameter they span, which is how <code>circle()</code> in the helper works. A <strong>filled arc</strong> fills the area between the arc and its chord. Circles are round: they are worked out on the unit screen, not in pixels.</li>
 <li><strong>Point</strong>: <code>POINT_SET_ABS</code> and <code>POINT_SET_REL</code> only move the drawing point. <code>POINT_ABS</code> and <code>POINT_REL</code> also draw a dot there.</li>
@@ -210,7 +211,7 @@ for pattern in range(4):
 </code></pre>
 <p><img alt="Four line textures, four fill patterns on squares, the same on circles" src="images/05-textures.png"></p>
 <p>The <strong>logical pel</strong> is NAPLPS's brush: a small rectangle stamped along every line. It is set by DOMAIN, the command that also sets operand lengths. With a pel of 1/256 the lines above are three pixels thick at 640 by 480, and the dots, dashes and hatching are measured in the same pel. A larger pel gives thicker lines and coarser hatching: a pel of 1/64 draws with a marker.</p>
-<p>After a RESET the pel is the smallest the display can show (one pixel), and <strong>line textures need a real pel</strong>: with the default, textured lines are drawn solid. Send a DOMAIN with a pel if you use them.</p>
+<p>After a RESET the pel has no size, and the standard says such lines are drawn solid (section 5.3.2.4.2): <strong>line textures need a real pel</strong>. A dot and its gap are one pel each, a dash and its gap three. Send a DOMAIN with a pel if you use them.</p>
 <p>Hatching leaves gaps, and what shows in the gaps is whatever was there before (in colour mode 2, the background colour). Hatch over a solid fill of a second colour for two-colour shading.</p>
 <p>Four more fill patterns, numbers 4 to 7, are yours to define: <a href="#11-your-own-characters">section 11</a>.</p>
 <h2 id="8-text">8. Text</h2>
@@ -246,7 +247,7 @@ page += text_at(0.04, 0.05, &quot; black on yellow, colour mode 2 &quot;)
 <p>Rotation turns the characters; path moves the cursor. Vertical text that reads upward needs both, as above. Rotation alone gives sideways letters marching to the right.</p>
 <p>The font is made of strokes, so it scales to any field size, and the stroke thickness grows with the field.</p>
 <p><strong>Proportional spacing</strong> closes up the gaps a fixed pitch leaves around narrow letters. Use it for anything that should read as typeset rather than as a terminal.</p>
-<p>Line breaks are yours to send: CR (<code>0D</code>) returns to the left edge and LF (<code>0A</code>) moves down a row, so <code>b"first\r\nsecond"</code> is two lines. A line that reaches the right edge continues on the next row, but breaks wherever it happens to be: <strong>this renderer does not word-wrap</strong>.</p>
+<p>Line breaks are yours to send: CR (<code>0D</code>) returns to the left edge and LF (<code>0A</code>) moves down a row, so <code>b"first\r\nsecond"</code> is two lines. A line that reaches the right edge continues on the next row, and by default breaks wherever it happens to be. <strong>Word wrap</strong> (<code>ESC 55</code>; <code>ESC 56</code> turns it off) moves a word that would cross the edge whole to the next line, breaking at spaces.</p>
 <p>Accented letters and symbols come from the supplementary set, one character at a time through SS2 (<code>19</code>). An accent is sent before its letter: <code>SS2 + b"\x42" + b"e"</code> is é. The whole set is pictured in the <a href="reference.html#the-supplementary-set">reference</a>.</p>
 <h3 id="8-text-pages">Ten pages of text</h3>
 <p>These ten pages from the <a href="../samples/README.md">sample collection</a> (set 5) use every text facility between them, each in a page with a real purpose. They are drawn here by this renderer at 640 by 480; their generators are in <code>samples/set-5/pages/</code>, and <code>samples/set-5/DESIGN.md</code> has a table of which page uses which facility.</p>
@@ -329,6 +330,7 @@ for index, (x, y) in enumerate(positions):
 <p>The star is written with <strong>relative</strong> opcodes (<code>POLY_FILLED</code> starts at the drawing point), so it appears wherever the drawing point is, in whatever colour is selected. That is the pattern for any reusable symbol: position, colour, invoke.</p>
 <p>Start the body with SO or SI. A macro replays bytes, not meanings: if the page is in text mode when you invoke a macro that assumes the PDI set, its opcodes come out as letters.</p>
 <p><code>DEFP_MACRO</code> defines a macro and runs it at the same time, which saves sending the first use twice. Macros may invoke other macros, sixteen deep.</p>
+<p>These are <strong>local</strong> macros, and they are safe: replaying one does nothing the page could not do by sending its bytes directly. The standard's other kind, the <strong>transmit</strong> macro (<code>DEFT_MACRO</code>), sends its bytes to the host when called. It is not supported: pages come from many sources, and one that could make a key send bytes upstream could disguise what a key does. Defining one deletes any macro of that name, and calling it does nothing.</p>
 <h2 id="11-your-own-characters">11. Your own characters</h2>
 <p>A <strong>DRCS</strong> character (dynamically redefinable character set) is a shape you draw once and then use as a letter: it follows the text size, colour, rotation, cursor and REPEAT like any character.</p>
 <pre><code class="language-python">page = SO + reset_all() + DRCS_INTO_G3 + select(RED)
@@ -342,6 +344,7 @@ for row in range(4):
 </code></pre>
 <p><img alt="Four rows of ten hearts, each row a different colour" src="images/09-drcs.png"></p>
 <p>Between <code>DEF_DRCS</code> and <code>END</code>, drawing goes into the character instead of onto the screen. You draw as if the character field were the whole screen: its longer side is the unit length, so a square field is the unit square, (0, 0) to (1, 1). The shape is kept as a one-colour bitmap and drawn in whatever colour is selected when you use it.</p>
+<p><strong>Draw definitions in any colour but nominal black.</strong> The colour you draw in is not kept, except that drawing in entry 0 clears what it covers instead of setting it (section 6.2.3). Select a non-zero entry before <code>DEF_DRCS</code> or <code>DEF_TEXTURE</code>, or the character or pattern comes out empty.</p>
 <p>Set the text size before you define: the character takes the shape of the current field.</p>
 <p><code>REPEAT</code> and a count (<code>ESC 46</code>, then one operand byte, up to 63) draws the last character again that many times. Ten hearts cost four bytes.</p>
 <p><strong>Your own fill patterns</strong> work the same way. <code>DEF_TEXTURE</code> and a name from <code>41</code> to <code>44</code> (A to D) records a drawing as fill pattern 4 to 7, tiled at the mask size that TEXTURE's second operand sets. Then <code>pdi(TEXTURE, fixed(4 &lt;&lt; 3))</code> fills with it:</p>
@@ -487,7 +490,7 @@ page += select(ink) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 14, 1 / 9)) + text_at
 </tr>
 <tr>
 <td>Textured lines are solid</td>
-<td>The logical pel is at its default. Set one with DOMAIN (section 7).</td>
+<td>The logical pel is at its default, which has no size, so lines are solid as the standard says. Set one with DOMAIN (section 7).</td>
 </tr>
 <tr>
 <td>Text is blank</td>
@@ -495,7 +498,7 @@ page += select(ink) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 14, 1 / 9)) + text_at
 </tr>
 <tr>
 <td>Text wraps in mid-word</td>
-<td>This renderer does not word-wrap. Send CR LF where lines should break.</td>
+<td>Word wrap is off after RESET. Send <code>ESC 55</code> to turn it on, or send CR LF where lines should break.</td>
 </tr>
 <tr>
 <td>Vertical text marches sideways</td>

@@ -265,7 +265,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <tr>
 <td><code>1C</code></td>
 <td>APS</td>
-<td>Cursor to a row and column, given by the next two bytes, each <code>20</code> plus the number, in character fields of the current size. <strong>Here:</strong> rows are counted upward from the bottom of the screen; this has not been checked against PP3.</td>
+<td>Cursor to a row and column, given by the next two bytes, each <code>20</code> plus the number, in character fields of the current size. Rows are counted upward from the bottom of the screen (section 6.1.2.4).</td>
 </tr>
 <tr>
 <td><code>1E</code></td>
@@ -308,7 +308,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>82</code></td>
 <td><code>1B 42</code></td>
 <td>DEFT MACRO</td>
-<td>A transmit macro. <strong>Here:</strong> stored like any macro; nothing is transmitted.</td>
+<td>A transmit macro, which when called is not executed but sent to the host (section 6.2.2.3). <strong>Here:</strong> never sent and never executed: defining one deletes any macro of that name, and calling it does nothing. Pages reach NeoTeletext from many sources, and a page that could make a key send bytes upstream could make a key labelled one thing send another.</td>
 </tr>
 <tr>
 <td><code>83</code></td>
@@ -380,7 +380,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>8E</code></td>
 <td><code>1B 4E</code></td>
 <td>BLINK START</td>
-<td>The current colour blinks to black (mode 2: to the background). <strong>Here:</strong> half a second each way.</td>
+<td>The current colour blinks to black (mode 2: to the background). In colour mode 0 the drawing colour first gets an unused entry of its own, so only what is drawn afterwards blinks (section 6.2.8.1). <strong>Here:</strong> half a second each way.</td>
 </tr>
 <tr>
 <td><code>8F</code></td>
@@ -392,7 +392,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>90</code></td>
 <td><code>1B 50</code></td>
 <td>PROTECT</td>
-<td><strong>Here:</strong> no effect.</td>
+<td><strong>Here:</strong> no effect. A page takes no input: the viewer's keys and the channel's input path are NeoTeletext's, as for teletext pages.</td>
 </tr>
 <tr>
 <td><code>91</code>-<code>94</code></td>
@@ -404,7 +404,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>95</code> <code>96</code></td>
 <td><code>1B 55</code> <code>56</code></td>
 <td>WORD WRAP ON, OFF</td>
-<td><strong>Here:</strong> recorded, not applied: lines break at the edge.</td>
+<td>A word that would cross the edge of the field moves whole to the next line (section 6.2.7.11). <strong>Here:</strong> words break at spaces only, not after hyphens or other special characters.</td>
 </tr>
 <tr>
 <td><code>97</code> <code>98</code></td>
@@ -422,7 +422,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>9B</code>-<code>9D</code></td>
 <td><code>1B 5B</code>-<code>5D</code></td>
 <td>FLASH CURSOR, STEADY CURSOR, CURSOR OFF</td>
-<td><strong>Here:</strong> no effect; no cursor is drawn.</td>
+<td><strong>Here:</strong> no effect; no cursor is drawn. A page takes no input, so there is no insertion point to show.</td>
 </tr>
 <tr>
 <td><code>9E</code></td>
@@ -434,7 +434,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <td><code>9F</code></td>
 <td><code>1B 5F</code></td>
 <td>UNPROTECT</td>
-<td><strong>Here:</strong> no effect.</td>
+<td><strong>Here:</strong> no effect, for the same reason as PROTECT.</td>
 </tr>
 </tbody>
 </table>
@@ -478,7 +478,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 <tr>
 <td>b6 b5 b4</td>
-<td>Screen. <code>001</code> or <code>111</code>: clear to nominal black. <code>010</code>, <code>101</code> or <code>110</code>: clear to the current drawing colour. <code>011</code> and <code>100</code> concern the border only. <strong>Here:</strong> there is no border.</td>
+<td>Screen. <code>001</code> or <code>111</code>: clear to nominal black. <code>010</code>, <code>101</code> or <code>110</code>: clear to the current drawing colour. <code>011</code> and <code>100</code> concern the border only (Table 15). <strong>Here:</strong> the library reports the border's colour-map entry (<code>Terminal::border</code>); <code>naplps-render --border N</code> draws N pixels of it round the picture.</td>
 </tr>
 </tbody>
 </table>
@@ -500,7 +500,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 <tr>
 <td>b3</td>
-<td>Unprotected fields. <strong>Here:</strong> no effect.</td>
+<td>Unprotected fields. <strong>Here:</strong> no effect, since a page takes no input.</td>
 </tr>
 <tr>
 <td>b4</td>
@@ -614,7 +614,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 </tbody>
 </table>
-<p>Hatching lines are one pel wide and one pel apart. Dotted is one pel on, one off; dashed three on, one off; dot-dash three on, one off, one on, one off. Gaps leave what was there, or in colour mode 2 take the background colour. <strong>Here:</strong> a line is textured only if the pel has a size along it; with the default pel, lines are solid.</p>
+<p>Hatching lines are one pel wide and one pel apart. Dotted is one pel on, one off; dashed three on, three off; dot-dash three on, one off, one on, one off (Table 12). Outlined arcs and circles take the texture too. Gaps leave what was there, or in colour mode 2 take the background colour. A line whose pel has no size along it is solid (section 5.3.2.4.2), so after a RESET textured lines are solid until DOMAIN sets a pel.</p>
 <h3 id="point-24-27">POINT <code>24</code>-<code>27</code></h3>
 <table>
 <thead>
@@ -671,12 +671,12 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <tr>
 <td><code>2A</code></td>
 <td>SET &amp; LINE (absolute)</td>
-<td>start point, then end points</td>
+<td>pairs of points: a line from the first of each pair to the second. A last point with no partner only moves the drawing point. Use POINT SET then LINE for a connected line.</td>
 </tr>
 <tr>
 <td><code>2B</code></td>
 <td>SET &amp; LINE (relative)</td>
-<td>start point, then steps</td>
+<td>pairs: a start point, then the step to the line's end; each further pair is a step to a new start and a step to its end. A last step with no partner only moves the drawing point.</td>
 </tr>
 </tbody>
 </table>
@@ -1054,7 +1054,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 </tbody>
 </table>
-<p><code>20</code> is empty, <code>7F</code> full. Mosaics take the text size, colour and rotation. While underline is on they are <strong>separated</strong>: each cell is drawn slightly smaller, leaving a gap. <strong>Here:</strong> the gap is a tenth of the field rather than one pel.</p>
+<p><code>20</code> is empty, <code>7F</code> full. Mosaics take the text size, colour and rotation. While underline is on they are <strong>separated</strong>: each cell loses one pel from its right and top edges, keeping its lower left corner (section 5.4).</p>
 <h2 id="macros">Macros</h2>
 <p><code>DEF MACRO</code>, a name byte <code>20</code>-<code>7F</code>, the body, <code>END</code>. The body is recorded, not executed; <code>DEFP MACRO</code> records and executes. The name is the character that will invoke the macro from the macro set.</p>
 <ul>
@@ -1065,12 +1065,14 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <li>CAN (<code>18</code>) ends every macro being executed.</li>
 <li>RESET byte 2 b5 deletes all macros.</li>
 </ul>
+<p>These are <strong>local</strong> macros: they replay bytes into the renderer and can do nothing a page could not do by sending those bytes itself. Their purpose is size: a symbol drawn many times costs its bytes once. <a href="#c1-controls">DEFT MACRO</a>, the transmit macro, is different and is not supported: see its entry.</p>
 <p><strong>Here:</strong> a body may be 4096 bytes and all bodies together 65,536; nesting stops at 16 levels; and processing stops, with <code>Event::LimitReached</code>, after 4,000,000 bytes have been processed in one call, expansion included.</p>
 <h2 id="drcs">DRCS</h2>
 <p><code>DEF DRCS</code>, a code byte <code>20</code>-<code>7F</code>, drawing, <code>END</code>. While the definition is open, every PDI and character draws into the character's bitmap instead of the display.</p>
 <ul>
 <li>The bitmap has the shape of the character field at the time DEF DRCS is received. Coordinates inside it run from (0, 0) at its lower left, with the field's <strong>longer side as 1</strong>: a 1/16 by 1/16 field is the square (0, 0) to (1, 1); a default field, taller than wide, is 0.64 wide and 1 high.</li>
 <li>Only which pels are drawn is kept, not their colour. When used, the character is drawn in the current colour.</li>
+<li>Drawing in <strong>nominal black</strong> (entry 0) clears the pels it covers instead of setting them (section 6.2.3). Select a non-zero entry before drawing a definition; the same applies to DEF TEXTURE. CS inside a definition clears its bitmap.</li>
 <li>The drawing point is at (0, 0) when the definition begins and afterwards.</li>
 <li>A DEF DRCS received while a DRCS definition is open ends it and begins the <strong>next code</strong> (after <code>7F</code>, <code>20</code>), with no code byte: consecutive characters need only one DEF DRCS each between their drawings.</li>
 <li>An undefined DRCS character is a space.</li>
@@ -1215,36 +1217,28 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 </thead>
 <tbody>
 <tr>
-<td>Word wrap (<code>1B 55</code>)</td>
-<td>Recorded; lines break at the edge, not between words.</td>
+<td>Word wrap after a hyphen or other special character</td>
+<td>Words break at spaces only. Section 6.2.7.11 also allows a break after embedded special characters; not done yet.</td>
 </tr>
 <tr>
 <td>Cursor display and styles</td>
-<td>No cursor is drawn.</td>
+<td>No cursor is drawn. Pages take no input, so there is nothing for a cursor to mark.</td>
 </tr>
 <tr>
 <td>Unprotected fields, PROTECT, UNPROTECT, DEFT transmit macros</td>
-<td>Not recorded or transmitted: pages cannot take input.</td>
+<td>Not recorded, not executed, never transmitted. Pages come from many sources: a page that could make a key send bytes upstream could disguise what the key sends, redefine a key another page tells the viewer to press, or inject commands upstream. Input belongs to NeoTeletext's own keys and channel input, as for teletext pages.</td>
 </tr>
 <tr>
 <td>Three-dimensional coordinates</td>
-<td>z is read and discarded.</td>
+<td>z is read and discarded. The screen is flat and the standard defines no projection for z.</td>
 </tr>
 <tr>
 <td>Arcs of more than three points</td>
-<td>Drawn as straight segments, not a spline.</td>
+<td>Drawn as straight segments, not a spline. The standard does not define the spline's shape, and straight segments are allowed.</td>
 </tr>
 <tr>
 <td>Proportional spacing on vertical paths</td>
-<td>Fixed spacing is used.</td>
-</tr>
-<tr>
-<td>Line textures with the default pel</td>
-<td>Drawn solid; set a pel with DOMAIN.</td>
-</tr>
-<tr>
-<td>Separated mosaics</td>
-<td>The gap is a tenth of the field, not one pel.</td>
+<td>Fixed spacing is used. The standard leaves the proportional spacing method to the implementation, and its glyph widths only make sense across a line.</td>
 </tr>
 <tr>
 <td>Text at sizes far from the default, and rotated</td>
@@ -1252,15 +1246,11 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 </tr>
 <tr>
 <td>WAIT</td>
-<td>Reported to the caller; <code>naplps-render</code> does not pause or stop at it.</td>
-</tr>
-<tr>
-<td>Border colour</td>
-<td>There is no border.</td>
+<td>Reported to the caller, which owns the clock; the library never sleeps. <code>naplps-render</code> draws the whole page, or stops at the Nth WAIT with <code>--stage N</code>.</td>
 </tr>
 <tr>
 <td>The transparent colour</td>
-<td>Black.</td>
+<td>Black, which the standard allows. A transparent colour would need a picture behind the page, and NeoTeletext has none.</td>
 </tr>
 </tbody>
 </table>
