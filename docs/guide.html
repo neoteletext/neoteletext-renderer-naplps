@@ -23,7 +23,12 @@ pre code { background: none; padding: 0; }
 table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
 th, td { border: 1px solid var(--rule); padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
 th { background: var(--code-bg); }
-img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--rule); }</style>
+img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--rule); }
+.text-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 1.25rem; margin: 1rem 0; }
+.text-pages figure { margin: 0; min-width: 0; }
+.text-pages img { image-rendering: auto; }
+.text-pages figcaption { font-size: .88rem; color: var(--muted); margin-top: .4rem; }
+</style>
 </head>
 <body>
 <main>
@@ -243,6 +248,51 @@ page += text_at(0.04, 0.05, &quot; black on yellow, colour mode 2 &quot;)
 <p><strong>Proportional spacing</strong> closes up the gaps a fixed pitch leaves around narrow letters. Use it for anything that should read as typeset rather than as a terminal.</p>
 <p>Line breaks are yours to send: CR (<code>0D</code>) returns to the left edge and LF (<code>0A</code>) moves down a row, so <code>b"first\r\nsecond"</code> is two lines. A line that reaches the right edge continues on the next row, but breaks wherever it happens to be: <strong>this renderer does not word-wrap</strong>.</p>
 <p>Accented letters and symbols come from the supplementary set, one character at a time through SS2 (<code>19</code>). An accent is sent before its letter: <code>SS2 + b"\x42" + b"e"</code> is é. The whole set is pictured in the <a href="reference.html#the-supplementary-set">reference</a>.</p>
+<h3 id="8-text-pages">Ten pages of text</h3>
+<p>These ten pages from the <a href="../samples/README.md">sample collection</a> (set 5) use every text facility between them, each in a page with a real purpose. They are drawn here by this renderer at 640 by 480; their generators are in <code>samples/set-5/pages/</code>, and <code>samples/set-5/DESIGN.md</code> has a table of which page uses which facility.</p>
+<div class="text-pages">
+<figure>
+<img alt="Mere Type Bureau: a printer's type specimen" src="images/text/111-mere-type.png">
+<figcaption><strong>111 · Mere Type Bureau</strong>, a printer's type specimen. The five preset sizes (SMALL, MEDIUM, NORMAL, DOUBLE HEIGHT, DOUBLE SIZE), TEXT field sizes up to display type, and character spacing of 1, 5/4, 3/2 and proportional. <a href="../samples/set-5/out/111-mere-type.nap">111-mere-type.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="The Little Journey: a traveller's phrase card" src="images/text/112-pocket-phrases.png">
+<figcaption><strong>112 · The Little Journey</strong>, a traveller's phrase card. Accented letters in several languages from the supplementary set (accent first, then the letter), currency signs and symbols, and text placed with POINT SET. <a href="../samples/set-5/out/112-pocket-phrases.nap">112-pocket-phrases.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="The Copper Spoon: a supper menu" src="images/text/113-copper-spoon.png">
+<figcaption><strong>113 · The Copper Spoon</strong>, a supper menu. Dot leaders and rules drawn with REPEAT and REPEAT TO EOL, reversed text, text on a background colour (colour mode 2), and text inside an active FIELD. <a href="../samples/set-5/out/113-copper-spoon.nap">113-copper-spoon.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="North Quay Radio: a harbour radio log" src="images/text/114-quay-radio.png">
+<figcaption><strong>114 · North Quay Radio</strong>, a harbour radio log. Text wrapping inside a FIELD smaller than the screen, scroll mode moving earlier lines up, and row spacing. <a href="../samples/set-5/out/114-quay-radio.nap">114-quay-radio.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="Turning Leaves: a library display" src="images/text/115-turning-leaves.png">
+<figcaption><strong>115 · Turning Leaves</strong>, a library display. All four paths (right, left, up, down) and all four rotations, and the two together: spines that read upward and downward, and a title upside down. <a href="../samples/set-5/out/115-turning-leaves.nap">115-turning-leaves.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="The Quiet Between: a broadside poem" src="images/text/116-quiet-between.png">
+<figcaption><strong>116 · The Quiet Between</strong>, a broadside poem. Row spacing of 1, 5/4, 3/2 and 2, character spacing, and stanzas set in a FIELD. <a href="../samples/set-5/out/116-quiet-between.nap">116-quiet-between.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="Pen &amp; Point: a workshop card" src="images/text/117-pen-and-point.png">
+<figcaption><strong>117 · Pen &amp; Point</strong>, a workshop card. The four ways the text cursor and the drawing point move together: together, cursor leads, point leads and independent, each shown with the line drawn next. <a href="../samples/set-5/out/117-pen-and-point.nap">117-pen-and-point.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="Isle Air: a boarding card" src="images/text/118-isle-air.png">
+<figcaption><strong>118 · Isle Air</strong>, a boarding card. Every positioning control: APS (row and column), APH (home), NSR with a position, BS, HT, LF, VT and CR. <a href="../samples/set-5/out/118-isle-air.nap">118-isle-air.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="The Glass Horizon: a cinema programme" src="images/text/119-glass-horizon.png">
+<figcaption><strong>119 · The Glass Horizon</strong>, a cinema programme. Custom characters (DRCS) set in a line of ordinary text, a mosaic border, REPEAT, BLINK START and a blinking colour-map entry. <a href="../samples/set-5/out/119-glass-horizon.nap">119-glass-horizon.nap</a></figcaption>
+</figure>
+<figure>
+<img alt="The Ribbon Check: a typewriter service slip" src="images/text/120-ribbon-check.png">
+<figcaption><strong>120 · The Ribbon Check</strong>, a typewriter service slip. Overstriking with BS, custom field sizes, and every one of the 95 printable ASCII characters. <a href="../samples/set-5/out/120-ribbon-check.nap">120-ribbon-check.nap</a></figcaption>
+</figure>
+</div>
+<p>Two things these pages found that the renderer gets wrong, both when text is drawn on a background colour (colour mode 2): an accent disappears when its letter arrives, and proportional text erases the narrow letters before it. The pages avoid both; until they are fixed, set accented and proportional text in colour mode 1.</p>
 <h2 id="9-mosaics">9. Mosaics</h2>
 <p>Mosaic characters are the block graphics of teletext: each character field is divided into two columns and three rows of cells, and the character's code says which cells are filled.</p>
 <p><img alt="A space invader in green mosaic blocks" src="images/07-mosaics.png"></p>
