@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'out'
-RENDER='/Users/andrewstuart/devel/neoteletext-naplps/target/release/naplps-render'
+RENDER='/Users/andrewstuart/devel/neoteletext-renderer-naplps/target/release/naplps-render'
 FONT='/Users/andrewstuart/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes'
 sys.path.insert(0,str(ROOT/'pages'))
 SIZES=[(640,480,''),(256,200,'-256'),(320,200,'-320'),(512,400,'-512')]

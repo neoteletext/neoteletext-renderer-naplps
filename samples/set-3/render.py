@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import subprocess, sys
 from PIL import Image, ImageOps, ImageDraw
 ROOT=Path(__file__).resolve().parent
-RENDER='/Users/andrewstuart/devel/neoteletext-naplps/target/release/naplps-render'
+RENDER='/Users/andrewstuart/devel/neoteletext-renderer-naplps/target/release/naplps-render'
 FONT='/Users/andrewstuart/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes'
 def render(job):
     src,w,h=job

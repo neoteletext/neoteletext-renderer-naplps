@@ -12,7 +12,7 @@ import sys
 from PIL import Image, ImageChops, ImageDraw
 
 ROOT=Path(__file__).resolve().parent
-RENDER=Path.home()/'devel/neoteletext-naplps/target/release/naplps-render'
+RENDER=Path.home()/'devel/neoteletext-renderer-naplps/target/release/naplps-render'
 FONT=Path.home()/'devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes'
 sys.path.insert(0,str(ROOT/'pages'))
 

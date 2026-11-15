@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess,sys,concurrent.futures
 from PIL import Image,ImageOps,ImageDraw
 ROOT=Path(__file__).resolve().parent
-RENDER=Path('/Users/andrewstuart/devel/neoteletext-naplps/target/release/naplps-render')
+RENDER=Path('/Users/andrewstuart/devel/neoteletext-renderer-naplps/target/release/naplps-render')
 FONT=Path('/Users/andrewstuart/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes')
 SIZES=[(640,480),(256,200),(320,200),(512,400)]
 

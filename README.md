@@ -1,4 +1,4 @@
-# neoteletext-naplps
+# neoteletext-renderer-naplps
 
 NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol Syntax: ANSI X3.110-1983, CSA T500-1983, CCITT T.101 Annex D.
 

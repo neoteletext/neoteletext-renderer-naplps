@@ -41,7 +41,7 @@ const DEFAULT_HEIGHT: u32 = 480;
 const DEFAULT_PALETTE_BITS: u32 = 4;
 /// The widest border drawn: as wide as the largest canvas.
 const MAX_BORDER: u32 = 4096;
-/// The oracle's page preamble (neoteletext-naplps `naplps-oracle`, `PAGE_PREAMBLE`): ESC % A,
+/// The oracle's page preamble (neoteletext-renderer-naplps `naplps-oracle`, `PAGE_PREAMBLE`): ESC % A,
 /// CAN, ESC 2/2 4/6, ESC 4/5 (END), NSR to row 0 column 0, SO, RESET 7F 7F.
 const ORACLE_PREAMBLE: [u8; 16] =
     [0x1B, 0x25, 0x41, 0x18, 0x1B, 0x22, 0x46, 0x1B, 0x45, 0x1F, 0x40, 0x40, 0x0E, 0x20, 0x7F, 0x7F];

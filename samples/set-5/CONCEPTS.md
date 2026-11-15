@@ -4,8 +4,8 @@ You are the designer. Earlier runs made 110 NAPLPS sample pages that the owner l
 
 ## Sources
 
-- **Read `~/devel/neoteletext-naplps/docs/guide.html` (section 8 especially) and `~/devel/neoteletext-naplps/docs/reference.html` (C0 controls, C1 controls, TEXT, FIELD, Text, the supplementary set, Mosaics, DRCS) first.** They list every text facility, its bytes, and what this renderer does not do.
-- The renderer's source is the ground truth: `~/devel/neoteletext-naplps/crates/naplps/src/terminal.rs` (text_command, character, advance_step, row_step, carriage_return, line_feed, scroll, active_position_set, nsr, the C0 and C1 dispatch) and `text.rs`.
+- **Read `~/devel/neoteletext-renderer-naplps/docs/guide.html` (section 8 especially) and `~/devel/neoteletext-renderer-naplps/docs/reference.html` (C0 controls, C1 controls, TEXT, FIELD, Text, the supplementary set, Mosaics, DRCS) first.** They list every text facility, its bytes, and what this renderer does not do.
+- The renderer's source is the ground truth: `~/devel/neoteletext-renderer-naplps/crates/naplps/src/terminal.rs` (text_command, character, advance_step, row_step, carriage_return, line_feed, scroll, active_position_set, nsr, the C0 and C1 dispatch) and `text.rs`.
 - `encoder/` is a working encoder (Python 3, standard library only) from an earlier set; the earlier generators in `reference/*/pages/` show its use. Extend it freely.
 
 ## What the ten pages must cover between them
@@ -43,7 +43,7 @@ This directory is yours; write only here.
 ## Rendering
 
 ```
-~/devel/neoteletext-naplps/target/release/naplps-render --width 640 --height 480 --font ~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes out/111-x.nap out/111-x.ppm
+~/devel/neoteletext-renderer-naplps/target/release/naplps-render --width 640 --height 480 --font ~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes out/111-x.nap out/111-x.ppm
 ffmpeg -loglevel error -y -i out/111-x.ppm out/111-x.png
 ```
 

@@ -73,7 +73,7 @@ h3 { font: 500 .72rem var(--mono); letter-spacing: .08em; text-transform: upperc
 </style>
 <div class="wrap">
   <h1>NAPLPS Sample Pages</h1>
-  <p class="lede">Each page is a NAPLPS byte stream of a few hundred bytes to a few kilobytes, drawn by the neoteletext-naplps renderer at three period resolutions and at NeoTeletext's 480×500, and checked against the 1980s terminal program PP3.</p>
+  <p class="lede">Each page is a NAPLPS byte stream of a few hundred bytes to a few kilobytes, drawn by the neoteletext-renderer-naplps renderer at three period resolutions and at NeoTeletext's 480×500, and checked against the 1980s terminal program PP3.</p>
   <div class="stats" id="stats"></div>
   <div class="legend">
     <span><i class="s-pass"></i>Matches PP3 within one pixel and one colour step</span>
@@ -137,7 +137,7 @@ function bench(i) {
     <h3>Verification against PP3 at 640×480</h3>
     <div class="verdict"><span class="pill p-${s}">${WORD[s]}</span>${p.captured ? `<span>${p.share}% of pixels unexplained within one pixel and one colour step.${p.exact ? " Also matches with exact colours." : ""}${!p.close && p.close2 ? " Matches within two pixels." : ""}</span>` : "<span>PP3 produced no frame for this page.</span>"}</div>
     <div class="pair">${p.pp3 ? `<figure><img src="${p.pp3}" alt="PP3 capture"><figcaption>PP3 2.18A in DOSBox</figcaption></figure>` : ""}
-      <figure><img src="${p.ours}" alt="Renderer output"><figcaption>neoteletext-naplps renderer</figcaption></figure></div>`;
+      <figure><img src="${p.ours}" alt="Renderer output"><figcaption>neoteletext-renderer-naplps renderer</figcaption></figure></div>`;
   document.getElementById("close").onclick = () => dlg.close();
   document.getElementById("prev").onclick = () => bench((i + shown.length - 1) % shown.length);
   document.getElementById("next").onclick = () => bench((i + 1) % shown.length);

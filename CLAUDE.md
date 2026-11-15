@@ -1,4 +1,4 @@
-# neoteletext-naplps
+# neoteletext-renderer-naplps
 
 NAPLPS (ANSI X3.110-1983, CSA T500-1983, CCITT T.101 Annex D) for NeoTeletext: the renderer (`naplps`, a `no_std` library, and `naplps-render`) and the verification it is judged by: `naplps-oracle`, which captures reference frames from PP3 (Personality+III, 1991) running in DOSBox, and the comparison that judges a frame against them.
 

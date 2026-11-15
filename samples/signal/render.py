@@ -7,7 +7,7 @@ phases additionally use the renderer's --tenths option. No renderer edits.
 from pathlib import Path
 import json, subprocess, sys
 ROOT=Path(__file__).resolve().parent
-RENDER=Path.home()/'devel/neoteletext-naplps/target/release/naplps-render'
+RENDER=Path.home()/'devel/neoteletext-renderer-naplps/target/release/naplps-render'
 FONT=Path.home()/'devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes'
 
 def render(src,dest,t=0,width=640,height=480):
