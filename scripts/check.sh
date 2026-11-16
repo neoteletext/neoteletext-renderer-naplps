@@ -23,7 +23,7 @@ readonly CHECKED_PATHS=(crates scripts .githooks Cargo.toml Cargo.lock rust-tool
 # The crates that read input from outside their process, each with the
 # same no-panic lint list at its root (DEVELOPMENT.md section 6). Every
 # crate root must be listed.
-readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs crates/naplps/src/lib.rs crates/naplps-render/src/main.rs)
+readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs crates/naplps/src/lib.rs crates/naplps-render/src/main.rs crates/naplps-fonts/src/lib.rs)
 
 check_no_panic_lists() {
     step "the no-panic lint list is the same in every crate root"

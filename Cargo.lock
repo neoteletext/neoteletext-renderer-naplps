@@ -7,6 +7,10 @@ name = "naplps"
 version = "0.1.0"
 
 [[package]]
+name = "naplps-fonts"
+version = "0.1.0"
+
+[[package]]
 name = "naplps-oracle"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,11 @@
+[package]
+name = "naplps-fonts"
+description = "The fonts this repository makes, as text for naplps::StrokeFont::parse: for programs that build the renderer in and cannot read a font file"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
