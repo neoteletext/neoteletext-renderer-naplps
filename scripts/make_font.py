@@ -64,19 +64,19 @@ GLYPHS = {
     "J": [[(5, 8), (5, 3), (4, 2), (1, 2), (0, 3)]],
     "K": [[(0, 2), (0, 8)], [(5, 8), (0, 5), (5, 2)]],
     "L": [[(0, 8), (0, 2), (5, 2)]],
-    "M": [[(0, 2), (0, 8), (3, 5), (6, 8), (6, 2)]],
+    "M": [[(1, 2), (1, 8), (3, 5), (5, 8), (5, 2)]],
     "N": [[(0, 2), (0, 8), (5, 2), (5, 8)]],
     "O": [O],
     "P": [P],
     "Q": [O, [(3, 4), (5, 2)]],
     "R": [P, [(2, 5), (5, 2)]],
     "S": [[(5, 7), (4, 8), (1, 8), (0, 7), (0, 6), (1, 5), (4, 5), (5, 4), (5, 3), (4, 2), (1, 2), (0, 3)]],
-    "T": [[(0, 8), (6, 8)], [(3, 8), (3, 2)]],
+    "T": [[(1, 8), (5, 8)], [(3, 8), (3, 2)]],
     "U": [[(0, 8), (0, 3), (1, 2), (4, 2), (5, 3), (5, 8)]],
-    "V": [[(0, 8), (3, 2), (6, 8)]],
-    "W": [[(0, 8), (1, 2), (3, 6), (5, 2), (6, 8)]],
+    "V": [[(1, 8), (3, 2), (5, 8)]],
+    "W": [[(1, 8), (2, 2), (3, 6), (4, 2), (5, 8)]],
     "X": [[(0, 2), (5, 8)], [(0, 8), (5, 2)]],
-    "Y": [[(0, 8), (3, 5), (6, 8)], [(3, 5), (3, 2)]],
+    "Y": [[(1, 8), (3, 5), (5, 8)], [(3, 5), (3, 2)]],
     "Z": [[(0, 8), (5, 8), (0, 2), (5, 2)]],
     "[": [[(4, 8), (2, 8), (2, 2), (4, 2)]],
     "\\": [[(0, 8), (6, 2)]],
@@ -96,7 +96,7 @@ GLYPHS = {
     "j": [[(4, 8)], [(3, 6), (4, 6), (4, 1), (3, 0), (1, 0)]],
     "k": [[(0, 8), (0, 2)], [(4, 6), (0, 3)], [(2, 4), (5, 2)]],
     "l": [[(2, 8), (3, 8), (3, 2)], [(2, 2), (4, 2)]],
-    "m": [[(0, 2), (0, 6), (2, 6), (3, 5), (3, 2)], [(3, 5), (4, 6), (5, 6), (6, 5), (6, 2)]],
+    "m": [[(1, 2), (1, 6), (2, 6), (3, 5), (3, 2)], [(3, 5), (4, 6), (5, 5), (5, 2)]],
     "n": [[(0, 2), (0, 6)], [(0, 5), (1, 6), (4, 6), (5, 5), (5, 2)]],
     "o": [SMALL_O],
     "p": [[(0, 0), (0, 6), (4, 6), (5, 5), (5, 3), (4, 2), (0, 2)]],
@@ -105,16 +105,35 @@ GLYPHS = {
     "s": [[(5, 5), (4, 6), (1, 6), (0, 5), (1, 4), (4, 4), (5, 3), (4, 2), (1, 2), (0, 3)]],
     "t": [[(2, 8), (2, 3), (3, 2), (4, 2), (5, 3)], [(0, 6), (4, 6)]],
     "u": [[(0, 6), (0, 3), (1, 2), (4, 2), (5, 3)], [(5, 6), (5, 2)]],
-    "v": [[(0, 6), (3, 2), (6, 6)]],
-    "w": [[(0, 6), (1, 2), (3, 5), (5, 2), (6, 6)]],
+    "v": [[(1, 6), (3, 2), (5, 6)]],
+    "w": [[(1, 6), (2, 2), (3, 5), (4, 2), (5, 6)]],
     "x": [[(0, 2), (5, 6)], [(0, 6), (5, 2)]],
-    "y": [[(0, 6), (3, 2)], [(6, 6), (2, 0), (1, 0)]],
+    "y": [[(1, 6), (3, 2)], [(5, 6), (2, 0), (1, 0)]],
     "z": [[(0, 6), (5, 6), (0, 2), (5, 2)]],
     "{": [[(4, 8), (3, 8), (3, 6), (2, 5), (3, 4), (3, 2), (4, 2)]],
     "|": [[(3, 8), (3, 2)]],
     "}": [[(2, 8), (3, 8), (3, 6), (4, 5), (3, 4), (3, 2), (2, 2)]],
     "~": [[(0, 5), (1, 6), (2, 6), (4, 4), (5, 4), (6, 5)]],
 }
+
+
+# A glyph's stems stand on columns 1 to 5. Column 0 lies on the character
+# field's left edge, which the renderer cuts at small sizes, and column 6
+# is the space before the next character. The glyphs above are drawn six
+# columns wide from column 0 for ease of drawing, so each that uses column
+# 0 is brought in here: columns 0 to 5 become 1, 2, 3, 3, 4, 5, which keeps
+# a symmetric glyph symmetric about column 3. Glyphs drawn across the
+# whole field on purpose, whose ends may be cut without harm, are left.
+ACROSS_THE_FIELD = set("#%&/\\_~")
+BROUGHT_IN = {0: 1, 1: 2, 2: 3, 3: 3, 4: 4, 5: 5}
+
+
+def placed(character: str, strokes: list) -> list:
+    columns = [x for stroke in strokes for x, _ in stroke]
+    if character in ACROSS_THE_FIELD or min(columns) > 0:
+        return strokes
+    assert max(columns) <= 5, character
+    return [[(BROUGHT_IN[x], y) for x, y in stroke] for stroke in strokes]
 
 
 def main() -> None:
@@ -124,11 +143,13 @@ def main() -> None:
         "[primary]",
     ]
     for code in range(0x21, 0x7F):
-        strokes = GLYPHS[chr(code)]
+        strokes = placed(chr(code), GLYPHS[chr(code)])
         segments = []
         for stroke in strokes:
             points = stroke if len(stroke) > 1 else [stroke[0], stroke[0]]
             for (x1, y1), (x2, y2) in zip(points, points[1:]):
+                if (x1, y1) == (x2, y2) and len(stroke) > 1:
+                    continue  # two points brought onto one column: no segment between them
                 assert 0 <= min(x1, x2) and max(x1, x2) < GRID_WIDTH and 0 <= min(y1, y2) and max(y1, y2) < GRID_HEIGHT, chr(code)
                 segments.append(f"{x1},{y1},{x2},{y2}")
         assert 0 < len(segments) <= MAX_SEGMENTS, chr(code)
