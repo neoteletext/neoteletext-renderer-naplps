@@ -696,10 +696,10 @@ fn an_object_on_the_teletext_raster_is_clipped_to_its_rectangle_scaled() {
     // columns 12 to 15, as the component library writes them (design y 126 to 146 for raster
     // lines 140 to 159, which are canvas rows 121 to 140; 16 design pixels a column, 12 canvas
     // pixels): before this was fixed the design rectangle was used as canvas pixels, cutting
-    // its top five lines and a quarter of its width. Canvas column 192 is shared with the next
-    // cell: its centre is design x 256, its left edge in design pixel 255.
+    // its top five lines and a quarter of its width. Canvas column 192, the first dot of
+    // column 16, is not the object's: its centre is design x 256, the next cell's (TODO-6826).
     let design = Rect { x: 192, y: 126, width: 64, height: 20 };
-    let expected = [design, Rect { x: 144, y: 121, width: 49, height: 20 }];
+    let expected = [design, Rect { x: 144, y: 121, width: 48, height: 20 }];
     for ((width, height), expected) in CANVASES.into_iter().zip(expected) {
         assert_eq!(design.on_canvas(width, height), Some(expected), "{width} by {height}");
         let mut page = Page::sized(&define(0x20, &rectangle(3, 0, 0, 255, 199)), width, height);
@@ -712,9 +712,12 @@ fn an_object_on_the_teletext_raster_is_clipped_to_its_rectangle_scaled() {
 
 #[test]
 fn an_object_draws_on_every_canvas_whatever_its_macro_draws_inside_its_rectangle() {
-    // ANIM-11: a macro that fills its object's rectangle in the design picture is drawn whole
-    // on the canvas, nothing cut, and only inside the rectangle on the canvas, wherever the
-    // object is moved.
+    // ANIM-11: a macro that fills its object's rectangle in the design picture is drawn on the
+    // canvas at every pixel whose centre lies in the rectangle, nothing of those cut, and at no
+    // other, wherever the object is moved. On a canvas coarser than the design picture the
+    // fill lights pixels straddling its edge whose centre is outside (a drawing lights every
+    // pixel its locus lies under, ANSI X3.110-1983 section 5.3.2.2.6); those are the
+    // neighbouring rectangle's and are cut, and are never more than one pixel out (TODO-6826).
     let body = rectangle(3, 64, 40, 31, 23);
     let fill = define(0x20, &body);
     // What the macro draws on the design picture is the object's rectangle, at its origin.
@@ -733,16 +736,33 @@ fn an_object_draws_on_every_canvas_whatever_its_macro_draws_inside_its_rectangle
                 pixels_of(&page.presented, 3)
             };
             let object = object_pixels(rect);
+            let on_canvas = rect.on_canvas(width, height).unwrap();
+            let inside = |pixels: &[(u32, u32)]| -> Vec<(u32, u32)> {
+                pixels.iter().copied().filter(|&(x, y)| on_canvas.contains(x, y)).collect()
+            };
             // The same move with a rectangle reaching to the picture's right and bottom edges.
             let unclipped = object_pixels(Rect { x, y, width: WIDTH - x, height: HEIGHT - y });
-            assert_eq!(object, unclipped, "{width} by {height} at ({x}, {y}): nothing cut");
-            let on_canvas = rect.on_canvas(width, height).unwrap();
-            assert!(object.iter().all(|&(x, y)| on_canvas.contains(x, y)), "{width} by {height} at ({x}, {y})");
+            assert_eq!(object, inside(&unclipped), "{width} by {height} at ({x}, {y}): nothing inside cut");
+            assert_eq!(object, pixels_in(on_canvas), "{width} by {height} at ({x}, {y}): the whole rectangle");
+            let ring = Rect::cut(
+                i64::from(on_canvas.x) - 1,
+                i64::from(on_canvas.y) - 1,
+                i64::from(on_canvas.right()) + 1,
+                i64::from(on_canvas.bottom()) + 1,
+                width,
+                height,
+            )
+            .unwrap();
+            assert!(
+                unclipped.iter().all(|&(x, y)| ring.contains(x, y)),
+                "{width} by {height} at ({x}, {y}): what is cut is one pixel out at most"
+            );
             if (x, y) == (drawn.x, drawn.y) {
-                assert_eq!(object, as_stream, "{width} by {height}: unmoved, as the stream draws it");
+                assert_eq!(object, inside(&as_stream), "{width} by {height}: unmoved, as the stream draws it");
             }
             if (width, height) == (WIDTH, HEIGHT) {
                 assert_eq!(object, pixels_in(rect), "the design picture: exactly its rectangle");
+                assert_eq!(object, unclipped, "the design picture: nothing cut");
             }
         }
     }
@@ -763,9 +783,11 @@ fn a_pointer_picks_an_object_exactly_where_it_is_drawn() {
                 let picked = page.terminal.objects_on_canvas(x, y, width, height) == [1];
                 assert_eq!(picked, drawn, "{width} by {height}: ({x}, {y})");
                 let (across, down) = design_pixel(x, y, width, height);
-                if page.terminal.objects_at(across, down) == [1] {
-                    assert!(drawn, "{width} by {height}: ({x}, {y}) is in the object's design pixels");
-                }
+                assert_eq!(
+                    page.terminal.objects_at(across, down) == [1],
+                    drawn,
+                    "{width} by {height}: ({x}, {y}) is drawn exactly when its centre is in the object's design pixels"
+                );
                 if (width, height) == (WIDTH, HEIGHT) {
                     assert_eq!(page.terminal.objects_at(x, y), page.terminal.objects_on_canvas(x, y, width, height));
                 }
@@ -775,9 +797,12 @@ fn a_pointer_picks_an_object_exactly_where_it_is_drawn() {
 }
 
 #[test]
-fn design_rectangles_cover_every_canvas_and_are_the_identity_on_the_design_picture() {
-    // Adjacent design rectangles leave no canvas pixel out and share at most one, and the design
-    // picture's own canvas maps every pixel and rectangle to itself.
+fn design_rectangles_share_out_every_canvas_and_are_the_identity_on_the_design_picture() {
+    // Adjacent design rectangles share no canvas pixel and leave none out: every canvas column
+    // and row whose centre is on the design picture belongs to exactly one of them
+    // (TODO-6826), one whose centre lies past its right or bottom edge to none, and the design
+    // picture's own canvas maps every pixel and rectangle to itself. A rectangle narrower than a canvas pixel may
+    // hold no canvas pixel's centre and so have none.
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             assert_eq!(design_pixel(x, y, WIDTH, HEIGHT), (x, y));
@@ -787,28 +812,166 @@ fn design_rectangles_cover_every_canvas_and_are_the_identity_on_the_design_pictu
         for side in [1, 5, 12, 16] {
             let columns: Vec<Rect> = (0..WIDTH.div_ceil(side))
                 .filter_map(|column| {
-                    Rect::cut(i64::from(column * side), 0, i64::from(column * side + side), 1, WIDTH, HEIGHT)
+                    Rect::cut(
+                        i64::from(column * side),
+                        0,
+                        i64::from(column * side + side),
+                        i64::from(HEIGHT),
+                        WIDTH,
+                        HEIGHT,
+                    )
                 })
-                .map(|rect| rect.on_canvas(width, height).unwrap())
+                .filter_map(|rect| rect.on_canvas(width, height))
                 .collect();
-            assert_eq!(columns.first().map(|rect| rect.x), Some(0));
-            assert!(columns.last().unwrap().right() + 1 >= width, "{width} by {height}");
-            let rows: Vec<Rect> = (0..HEIGHT.div_ceil(side))
-                .filter_map(|row| Rect::cut(0, i64::from(row * side), 1, i64::from(row * side + side), WIDTH, HEIGHT))
-                .map(|rect| rect.on_canvas(width, height).unwrap())
-                .collect();
-            assert!(rows.first().unwrap().y <= 1, "{width} by {height}");
-            assert!(rows.last().unwrap().bottom() + 1 >= height, "{width} by {height}");
-            for pair in columns.windows(2) {
-                assert!((0..=1).contains(&(pair[0].right() - pair[1].x)), "{width} by {height}: {pair:?}");
+            let mut owners = vec![0u32; width as usize];
+            for rect in &columns {
+                for x in rect.x..rect.right() {
+                    owners[x as usize] += 1;
+                }
             }
-            for pair in rows.windows(2) {
-                assert!((0..=1).contains(&(pair[0].bottom() - pair[1].y)), "{width} by {height}: {pair:?}");
+            for (x, &owners) in owners.iter().enumerate() {
+                let on_picture = design_pixel(x as u32, 0, width, height).0 < WIDTH;
+                assert_eq!(owners, u32::from(on_picture), "{width} by {height}, side {side}: column {x}");
+            }
+            let rows: Vec<Rect> = (0..HEIGHT.div_ceil(side))
+                .filter_map(|row| {
+                    Rect::cut(0, i64::from(row * side), i64::from(WIDTH), i64::from(row * side + side), WIDTH, HEIGHT)
+                })
+                .filter_map(|rect| rect.on_canvas(width, height))
+                .collect();
+            let mut owners = vec![0u32; height as usize];
+            for rect in &rows {
+                for y in rect.y..rect.bottom() {
+                    owners[y as usize] += 1;
+                }
+            }
+            for (y, &owners) in owners.iter().enumerate() {
+                let on_picture = design_pixel(0, y as u32, width, height).1 < HEIGHT;
+                assert_eq!(owners, u32::from(on_picture), "{width} by {height}, side {side}: row {y}");
             }
             if (width, height) == (WIDTH, HEIGHT) {
                 assert!(columns.iter().all(|rect| rect.width == side.min(WIDTH - rect.x)));
                 assert!(rows.iter().all(|rect| rect.height == side.min(HEIGHT - rect.y)));
             }
         }
+    }
+}
+
+#[test]
+fn a_canvas_pixel_is_in_a_rectangle_exactly_when_its_centre_is() {
+    // Rect::on_canvas is exactly the canvas pixels whose centre design_pixel places inside the
+    // design rectangle, on canvases smaller and larger than the design picture.
+    let rects = [
+        Rect { x: 0, y: 0, width: 1, height: 1 },
+        Rect { x: 0, y: 0, width: WIDTH, height: HEIGHT },
+        Rect { x: 192, y: 126, width: 64, height: 20 },
+        Rect { x: 1, y: 84, width: 15, height: 21 },
+        Rect { x: 37, y: 101, width: 3, height: 7 },
+        Rect { x: 600, y: 470, width: 40, height: 10 },
+        Rect { x: 255, y: 105, width: 2, height: 2 },
+    ];
+    for (width, height) in [(RASTER_WIDTH, RASTER_HEIGHT), (320, 240), (800, 600), (1280, 960), (WIDTH, HEIGHT), (7, 5)]
+    {
+        for design in rects {
+            let on_canvas = design.on_canvas(width, height);
+            for y in 0..height {
+                for x in 0..width {
+                    let (across, down) = design_pixel(x, y, width, height);
+                    assert_eq!(
+                        on_canvas.is_some_and(|rect| rect.contains(x, y)),
+                        design.contains(across, down),
+                        "{width} by {height}, {design:?}: ({x}, {y}) has its centre in ({across}, {down})"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The teletext raster's cells as the component library writes them in the design picture:
+/// column c from design x 16 c, row r from the design line nearest raster line 20 r, counted
+/// from the display area's first line, 19, times 480/462 (REQ-5819, DEC-6667).
+const RASTER_CELL_DOTS: u32 = 12;
+const RASTER_ROW_LINES: u32 = 20;
+const RASTER_FIRST_LINE: u32 = 19;
+const DESIGN_COLUMN: u32 = WIDTH / 40;
+fn design_line(line: u32) -> u32 {
+    let from_top = line.saturating_sub(RASTER_FIRST_LINE).min(RASTER_HEIGHT);
+    (2 * from_top * HEIGHT + RASTER_HEIGHT) / (2 * RASTER_HEIGHT)
+}
+fn design_cells(row: u32, column: u32, columns: u32) -> Rect {
+    let top = design_line(RASTER_ROW_LINES * row);
+    Rect {
+        x: DESIGN_COLUMN * column,
+        y: top,
+        width: DESIGN_COLUMN * columns,
+        height: design_line(RASTER_ROW_LINES * (row + 1)) - top,
+    }
+}
+/// The same cells on the 480 by 462 canvas: the display area's lines from line 19.
+fn raster_cells(row: u32, column: u32, columns: u32) -> Rect {
+    let top = (RASTER_ROW_LINES * row).max(RASTER_FIRST_LINE) - RASTER_FIRST_LINE;
+    let bottom = RASTER_ROW_LINES * (row + 1) - RASTER_FIRST_LINE;
+    Rect { x: RASTER_CELL_DOTS * column, y: top, width: RASTER_CELL_DOTS * columns, height: bottom - top }
+}
+
+#[test]
+fn every_cell_of_the_teletext_raster_is_exactly_its_canvas_dots_and_lines() {
+    // DEC-6667: each cell's design rectangle, as the component library writes it, is on the
+    // 480 by 462 canvas exactly the cell's 12 dots and its 20 lines (row 0's one line), no line
+    // or dot of a neighbour (TODO-6826).
+    for row in 0..24 {
+        for column in 0..40 {
+            assert_eq!(
+                design_cells(row, column, 1).on_canvas(RASTER_WIDTH, RASTER_HEIGHT),
+                Some(raster_cells(row, column, 1)),
+                "row {row}, column {column}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_row_of_objects_never_paints_the_first_line_of_the_row_below() {
+    // TODO-6826, from the component library's audio player: the buttons on row 5 are objects
+    // whose macro fills past their cells, as the library's cell fills reach the next row's
+    // first design line (a filled RECTANGLE covers the pixel its far edge lies in, ANSI
+    // X3.110-1983 section 5.3.3.4.1). Row 6 is the stream's, its text in entry 2. Before this
+    // was fixed the clip kept every canvas pixel straddling the object's edge, so the buttons
+    // painted canvas row 101 (raster line 120, row 6's top line, cutting "ff" of "Repeat off"
+    // to "tt") and the first dot of the cell after each button.
+    let buttons = [(0, 4), (7, 4), (13, 5), (20, 4)];
+    for (width, height) in CANVASES {
+        let mut page = Page::sized(
+            &[define(0x20, &rectangle(3, 0, 0, 255, 199)), rectangle(2, 0, 0, 255, 199)].concat(),
+            width,
+            height,
+        );
+        let objects: Vec<Object> = buttons
+            .iter()
+            .zip(1..)
+            .map(|(&(column, columns), number)| {
+                let design = design_cells(5, column, columns);
+                object_at(number, 0x20, design, (design.x as i16, design.y as i16))
+            })
+            .collect();
+        page.terminal.set_objects(&objects).unwrap();
+        page.compose();
+        let cells = |(column, columns): (u32, u32)| {
+            if (width, height) == (WIDTH, HEIGHT) {
+                design_cells(5, column, columns)
+            } else {
+                raster_cells(5, column, columns)
+            }
+        };
+        let mut expected: Vec<(u32, u32)> = buttons.iter().flat_map(|&button| pixels_in(cells(button))).collect();
+        expected.sort_by_key(|&(x, y)| (y, x));
+        assert_eq!(pixels_of(&page.presented, 3), expected, "{width} by {height}: exactly the buttons' cells");
+        let below = if (width, height) == (WIDTH, HEIGHT) { design_cells(6, 0, 40) } else { raster_cells(6, 0, 40) };
+        assert!(
+            pixels_in(below).into_iter().all(|(x, y)| page.presented.pixel(x, y) == page.background.pixel(x, y)),
+            "{width} by {height}: row 6 from its first line is the stream's"
+        );
+        assert_eq!(count(&page.background, 3), 0, "the stream draws no entry 3");
     }
 }

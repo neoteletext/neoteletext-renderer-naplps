@@ -374,8 +374,9 @@ impl Terminal {
     /// The numbers of the objects a pointer at pixel (`x`, `y`) of a canvas of `width` by
     /// `height` is inside, in the order they are drawn: as [`Terminal::objects_at`], each
     /// object's rectangle taken as [`Terminal::compose`] clips it on that canvas
-    /// ([`Rect::on_canvas`]), so a pointer picks an object exactly where it can be drawn. On a
-    /// 640 by 480 canvas it is [`Terminal::objects_at`].
+    /// ([`Rect::on_canvas`]), so a pointer picks an object exactly where it can be drawn. It is
+    /// [`Terminal::objects_at`] of the design pixel the canvas pixel's centre lies in
+    /// ([`crate::design_pixel`]), and on a 640 by 480 canvas of the pixel itself.
     #[must_use]
     pub fn objects_on_canvas(&self, x: u32, y: u32, width: u32, height: u32) -> Vec<u16> {
         self.drawing_order()

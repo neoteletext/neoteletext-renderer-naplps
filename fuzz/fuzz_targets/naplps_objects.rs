@@ -1,6 +1,7 @@
 //! The fuzz target `naplps_objects` (neoteletext-common `docs/animation.md`, ANIM-23; REQ-6531):
 //! any stream, objects, single objects redefined, and animation states. It must never panic, every object's drawing must
-//! stay inside its rectangle, and the picture composed by damage must equal the picture
+//! stay inside its rectangle, picking at a canvas pixel must equal picking at the design pixel
+//! its centre lies in (TODO-6826), and the picture composed by damage must equal the picture
 //! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11). Each
 //! input runs on the design picture's own canvas and on the teletext raster's 480 by 462 one
 //! (DEC-6667, REQ-5819), where objects are placed by the design picture's pixels.
@@ -181,8 +182,17 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
                 let _ = terminal.feed(&mut background, &stream);
             }
         }
-        let _ = terminal.objects_at(u32::from(command), u32::from(command));
-        let _ = terminal.objects_on_canvas(u32::from(command), u32::from(command), width, height);
+        // TODO-6826: an object owns exactly the canvas pixels whose centre lies in its design
+        // rectangle, so picking at a canvas pixel is picking at its centre's design pixel.
+        // The probe comes from the command byte, not a byte of its own, so that the kept inputs
+        // read as they always have; doubled, it reaches across the raster's canvas.
+        let probe = (u32::from(command) * 2, u32::from(command.reverse_bits()) * 2);
+        let (across, down) = naplps::design_pixel(probe.0, probe.1, width, height);
+        assert_eq!(
+            terminal.objects_on_canvas(probe.0, probe.1, width, height),
+            terminal.objects_at(across, down),
+            "picking at canvas pixel {probe:?} and at its centre's design pixel ({across}, {down})"
+        );
         let composed = terminal.compose(&background, &mut presented);
         assert!(composed.is_ok(), "two canvases of one size compose");
         let damage = terminal.take_damage();

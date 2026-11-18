@@ -129,50 +129,38 @@ impl Rect {
 
 impl Rect {
     /// This rectangle of the design picture (ANIM-11: 640 by 480, the origin at the top left, y
-    /// down) on a canvas of `width` by `height`: every canvas pixel whose area meets the area of
-    /// one of its pixels. The unit screen spans both pictures, a pixel's centre at the point
-    /// [`pixel_of`] rounds to it, so a point of the unit screen inside a design pixel of the
-    /// rectangle rounds on the canvas to a pixel of this one: whatever a macro draws inside the
-    /// rectangle in the design picture it draws inside this on any canvas, and nothing is cut.
-    /// Where a canvas pixel straddles the edge of two design pixels it belongs to the
-    /// rectangles on both sides. On a 640 by 480 canvas it is the rectangle itself; `None` when
-    /// nothing of it is on the canvas.
+    /// down) on a canvas of `width` by `height`: every canvas pixel whose centre lies in one of
+    /// its design pixels, as [`design_pixel`] places a centre. The unit screen spans both
+    /// pictures, so the canvas pixels of adjacent design rectangles neither overlap nor leave a
+    /// gap: an object's clip never reaches a canvas pixel that belongs to the next row's or
+    /// column's cells (TODO-6826), and every canvas pixel whose centre lies inside the
+    /// rectangle is kept, so nothing the object draws there is cut. A filled RECTANGLE covers
+    /// the pixel its far edge lies in (ANSI X3.110-1983 sections 5.3.3.4.1 and 5.3.2.2.6: the
+    /// outline's region traced by the logical pel is filled, and a drawing lights every pixel
+    /// its locus lies under), so a fill reaching the next cell's first design line lights a
+    /// canvas pixel whose centre is in that cell; the clip cuts it. On a 640 by 480 canvas it
+    /// is the rectangle itself; `None` when no canvas pixel's centre lies in it.
     #[must_use]
     pub fn on_canvas(&self, width: u32, height: u32) -> Option<Self> {
         let (design_width, design_height) = (i64::from(OBJECT_PICTURE_WIDTH), i64::from(OBJECT_PICTURE_HEIGHT));
         let (canvas_width, canvas_height) = (i64::from(width), i64::from(height));
         let (left, top) = (i64::from(self.x), i64::from(self.y));
         let (right, bottom) = (i64::from(self.right()), i64::from(self.bottom()));
-        // Across, in design pixels: canvas column c spans (c ± 1/2) Wd / W and the rectangle
-        // [left - 1/2, right - 1/2); they meet for c > ((2 left - 1) W - Wd) / 2 Wd and
-        // c < ((2 right - 1) W + Wd) / 2 Wd.
+        // Across: design_pixel puts column c in design column floor((2 c Wd + W) / 2 W), which
+        // is at least `edge` exactly when c >= (2 edge - 1) W / 2 Wd; the first column is that
+        // rounded up, for the left edge and for the right one after the last.
         let twice_design_width = design_width.saturating_mul(2);
-        let first_column = scale(
-            left.saturating_mul(2).saturating_sub(1).saturating_mul(canvas_width).saturating_sub(design_width),
-            1,
-            twice_design_width,
-        )
-        .saturating_add(1);
-        let after_column = ceiling(
-            right.saturating_mul(2).saturating_sub(1).saturating_mul(canvas_width).saturating_add(design_width),
-            twice_design_width,
-        );
-        // Down: the unit screen is measured up from the bottom pixel's centre (subpixel_of), so
-        // the same holds counting rows up from the bottom, s = H - 1 - r for canvas row r and
-        // Hd - 1 - d for design row d: they meet for s < ((2 Hd - 1 - 2 top) H + Hd) / 2 Hd and
-        // s > ((2 Hd - 1 - 2 bottom) H - Hd) / 2 Hd.
+        let column_from = |edge: i64| {
+            ceiling(edge.saturating_mul(2).saturating_sub(1).saturating_mul(canvas_width), twice_design_width)
+        };
+        // Down: design_pixel puts row r in design row floor((2 Hd (r + 1) - H) / 2 H), which is
+        // at least `edge` exactly when r + 1 >= (2 edge + 1) H / 2 Hd.
         let twice_design_height = design_height.saturating_mul(2);
-        let above = |edge: i64| twice_design_height.saturating_sub(1).saturating_sub(edge.saturating_mul(2));
-        let first_row = canvas_height.saturating_sub(ceiling(
-            above(top).saturating_mul(canvas_height).saturating_add(design_height),
-            twice_design_height,
-        ));
-        let after_row = canvas_height.saturating_sub(1).saturating_sub(scale(
-            above(bottom).saturating_mul(canvas_height).saturating_sub(design_height),
-            1,
-            twice_design_height,
-        ));
-        Self::cut(first_column, first_row, after_column, after_row, width, height)
+        let row_from = |edge: i64| {
+            ceiling(edge.saturating_mul(2).saturating_add(1).saturating_mul(canvas_height), twice_design_height)
+                .saturating_sub(1)
+        };
+        Self::cut(column_from(left), row_from(top), column_from(right), row_from(bottom), width, height)
     }
 }
 
@@ -184,10 +172,10 @@ fn ceiling(value: i64, divisor: i64) -> i64 {
 /// The pixel of the design picture (ANIM-11) the centre of pixel (`x`, `y`) of a canvas of
 /// `width` by `height` lies in, rounded as [`pixel_of`] rounds a point: where a point given on
 /// the canvas lies in the design picture. On a 640 by 480 canvas it is (`x`, `y`). It may lie
-/// past the design picture's right or bottom edge, where no object is. A canvas pixel of
-/// [`Rect::on_canvas`] whose centre lies in a neighbouring design pixel is drawn by the object
-/// but not inside its design rectangle; [`crate::Terminal::objects_on_canvas`] picks by the
-/// rectangle on the canvas instead, exactly where objects are drawn.
+/// past the design picture's right or bottom edge, where no object is. [`Rect::on_canvas`] is
+/// exactly the canvas pixels whose design pixel this gives lies in the rectangle, so picking
+/// at this design pixel ([`crate::Terminal::objects_at`]) and at the canvas pixel
+/// ([`crate::Terminal::objects_on_canvas`]) agree.
 #[must_use]
 pub fn design_pixel(x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
     let (design_width, design_height) = (i64::from(OBJECT_PICTURE_WIDTH), i64::from(OBJECT_PICTURE_HEIGHT));
