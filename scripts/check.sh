@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 # Unused: the full gate has no linux_steps. gate.sh reads it only there.
 linux_host="${TELETEXT_LINUX_HOST:-chunko}"
 # What the gates read.
-readonly CHECKED_PATHS=(crates scripts .githooks Cargo.toml Cargo.lock rust-toolchain.toml clippy.toml rustfmt.toml)
+readonly CHECKED_PATHS=(crates fuzz scripts .githooks Cargo.toml Cargo.lock rust-toolchain.toml clippy.toml rustfmt.toml)
 
 . scripts/gate.sh
 
