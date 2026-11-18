@@ -29,6 +29,12 @@ pub const MAX_BITMAP_HEIGHT: u8 = 32;
 /// the letter after it, and the transparent codes (combining marks) after it. A letter carries
 /// a few marks at most; past this many the run ends and the letter is drawn as the last of it.
 pub const MAX_JOINING_HELD: usize = 16;
+/// Bytes of a stroke font's text form that `StrokeFont::parse` reads; longer text is refused
+/// (renderer parity PAR-35: the browser's user-loadable fonts are bounded by this name). The
+/// bound the crate already had, 256 KiB, is kept: the repository's one font,
+/// `fonts/neoteletext.strokes`, is 8,971 bytes, and the specification gives 1,048,576 only for
+/// a crate that had no bound.
+pub const MAX_STROKE_FONT_BYTES: usize = 262_144;
 /// Blink processes at once (Dillon, BLINK: at least 16).
 pub const MAX_BLINKS: usize = 32;
 /// Width or height of a canvas.

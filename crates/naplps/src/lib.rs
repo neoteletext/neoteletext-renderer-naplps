@@ -101,7 +101,7 @@ impl core::fmt::Display for Error {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::CanvasSize => write!(formatter, "a canvas side must be 1 to {} pixels", limits::MAX_CANVAS_SIDE),
-            Self::Font(0) => write!(formatter, "the font is longer than {} bytes", font::MAX_TEXT_BYTES),
+            Self::Font(0) => write!(formatter, "the font is longer than {} bytes", limits::MAX_STROKE_FONT_BYTES),
             Self::Font(line) => write!(formatter, "the font is malformed at line {line}"),
             Self::TooManyObjects => write!(formatter, "a sub-page has at most {} objects", limits::MAX_OBJECTS),
             Self::Object(index) => write!(formatter, "object {index} of the set is not a valid object"),

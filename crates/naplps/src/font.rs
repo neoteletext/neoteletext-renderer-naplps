@@ -18,6 +18,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::Error;
+use crate::limits::MAX_STROKE_FONT_BYTES;
 
 /// Grid columns: x runs 0 to 6.
 pub const GRID_WIDTH: u8 = 7;
@@ -25,8 +26,6 @@ pub const GRID_WIDTH: u8 = 7;
 pub const GRID_HEIGHT: u8 = 10;
 /// Segments one glyph may have.
 pub const MAX_SEGMENTS: usize = 64;
-/// Bytes of font text accepted.
-pub const MAX_TEXT_BYTES: usize = 256 * 1024;
 /// Positions in a 94-character set: 2/1 to 7/14.
 const POSITIONS: usize = 94;
 /// The first position's code.
@@ -81,9 +80,10 @@ impl StrokeFont {
     ///
     /// # Errors
     ///
-    /// [`Error::Font`] naming the line of the first fault.
+    /// [`Error::Font`] naming the line of the first fault, or line 0 when the text is longer than
+    /// [`MAX_STROKE_FONT_BYTES`].
     pub fn parse(text: &str) -> Result<Self, Error> {
-        if text.len() > MAX_TEXT_BYTES {
+        if text.len() > MAX_STROKE_FONT_BYTES {
             return Err(Error::Font(0));
         }
         let mut font = Self::default();
@@ -151,5 +151,13 @@ mod tests {
         assert_eq!(StrokeFont::parse("[primary]\n21 1 3 7,2,3,2"), Err(Error::Font(2)));
         assert_eq!(StrokeFont::parse("[primary]\n80 1 3"), Err(Error::Font(2)));
         assert_eq!(StrokeFont::parse("[primary]\n21 1 3 1,2,3"), Err(Error::Font(2)));
+    }
+
+    #[test]
+    fn a_font_longer_than_the_bound_is_refused() {
+        let at_bound = "#".repeat(MAX_STROKE_FONT_BYTES);
+        assert!(StrokeFont::parse(&at_bound).is_ok(), "a comment as long as the bound is read");
+        let past = "#".repeat(MAX_STROKE_FONT_BYTES + 1);
+        assert_eq!(StrokeFont::parse(&past), Err(Error::Font(0)));
     }
 }
