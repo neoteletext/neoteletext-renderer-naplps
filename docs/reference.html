@@ -31,7 +31,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 <p>Every byte a NAPLPS page can contain, what it does, and what this repository's renderer does with it. For a tutorial, read <a href="guide.html"><code>guide.html</code></a> first.</p>
 <p>The standard is ANSI X3.110-1983, identical in substance to CSA T500-1983; section numbers below are the standard's. Where the standard leaves a choice open, or this renderer does less than the standard asks, the entry says <strong>Here:</strong>. <a href="#what-this-renderer-does-not-do">The last section</a> collects those.</p>
 <p>Bytes are written in hexadecimal. The standard's own notation is column/row: <code>3/14</code> is <code>3E</code>. Operand bits are numbered as the standard numbers them, <strong>b7 to b1</strong>, where b7 is always 1 in the 7-bit form and b6 to b1 are the six data bits.</p>
-<p>Contents: <a href="#the-code-table">The code table</a> · <a href="#sets-and-shifts">Sets and shifts</a> · <a href="#c0-controls">C0 controls</a> · <a href="#c1-controls">C1 controls</a> · <a href="#operands">Operands</a> · <a href="#pdis">PDIs</a> · <a href="#colour">Colour</a> · <a href="#text">Text</a> · <a href="#mosaics">Mosaics</a> · <a href="#macros">Macros</a> · <a href="#drcs">DRCS</a> · <a href="#fill-patterns">Fill patterns</a> · <a href="#the-display">The display</a> · <a href="#limits">Limits</a> · <a href="#tools">Tools</a> · <a href="#what-this-renderer-does-not-do">What this renderer does not do</a></p>
+<p>Contents: <a href="#the-code-table">The code table</a> · <a href="#sets-and-shifts">Sets and shifts</a> · <a href="#c0-controls">C0 controls</a> · <a href="#c1-controls">C1 controls</a> · <a href="#operands">Operands</a> · <a href="#pdis">PDIs</a> · <a href="#colour">Colour</a> · <a href="#text">Text</a> · <a href="#mosaics">Mosaics</a> · <a href="#macros">Macros</a> · <a href="#drcs">DRCS</a> · <a href="#fill-patterns">Fill patterns</a> · <a href="#the-display">The display</a> · <a href="#limits">Limits</a> · <a href="#tools">Tools</a> · <a href="#objects-and-animation">Objects and animation</a> · <a href="#what-this-renderer-does-not-do">What this renderer does not do</a></p>
 <h2 id="the-code-table">The code table</h2>
 <table>
 <thead>
@@ -868,7 +868,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </table>
 <p>"Next entry" is the standard's reversed counting: for a 16-entry map starting from 0, the order is 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15. To load consecutive entries, select each one.</p>
 <h3 id="wait-3d">WAIT <code>3D</code></h3>
-<p>A fixed byte <code>5C</code>, then interval bytes, each 0 to 63 tenths of a second, added together. Without the <code>5C</code> the command is ignored. <strong>Here:</strong> the library reports <code>Event::Wait(tenths)</code> and continues; pausing is the caller's business.</p>
+<p>A fixed byte <code>5C</code>, then interval bytes, each 0 to 63 tenths of a second, added together. Without the <code>5C</code> the command is ignored. <strong>Here:</strong> the library has no clock. <code>Terminal::feed</code> reports <code>Event::Wait(tenths)</code> and continues; <code>Terminal::feed_until_wait</code> stops at the WAIT, and <code>Player</code> plays it when told how many ticks of one sixtieth of a second have passed: a tenth is six ticks. See <a href="#objects-and-animation">Objects and animation</a>.</p>
 <h3 id="select-color-3e">SELECT COLOR <code>3E</code></h3>
 <table>
 <thead>
@@ -895,7 +895,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <p>An entry is the operand's <strong>most significant bits</strong>: with one byte and a 16-entry map, entry e is <code>40 + 4e</code>. Entry 7 is <code>5C</code>; entry 12 is <code>70</code>.</p>
 <h3 id="blink-3f">BLINK <code>3F</code></h3>
 <p>Groups of four operands, repeating: a single value naming the <strong>blink-to</strong> entry, then three fixed bytes: the ON interval, the OFF interval and a start delay, in tenths of a second.</p>
-<p>The selected entry shows the blink-to entry's colour for the ON interval, then its own for the OFF interval, repeatedly. A second group applies to the next entry (in the reversed counting above), and so on. The delay is measured from the start of the most recently defined blink. Intervals of zero, or a BLINK with no operands, end blinking of the selected entry. Blinks are applied in the order defined, so one blink can take the colour another has just produced. <strong>Here:</strong> up to 32 blinks at once.</p>
+<p>The selected entry shows the blink-to entry's colour for the ON interval, then its own for the OFF interval, repeatedly. A second group applies to the next entry (in the reversed counting above), and so on. The delay is measured from the start of the most recently defined blink. Intervals of zero, or a BLINK with no operands, end blinking of the selected entry. Blinks are applied in the order defined, so one blink can take the colour another has just produced. <strong>Here:</strong> up to 32 blinks at once. A blink changes the colour map only, never a pixel: <code>Palette::at</code> gives the map at a time, and <code>Player::colours</code> the map at the tick reached.</p>
 <h2 id="colour">Colour</h2>
 <p>The picture is stored as <strong>colour-map entry numbers</strong>. The map has 2^n entries; 16 is the classic size and this renderer's default (<code>--palette-bits 4</code>), up to 256.</p>
 <h3 id="the-default-colour-map">The default colour map</h3>
@@ -1144,13 +1144,47 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <td>A page file read by <code>naplps-render</code></td>
 <td>1 megabyte</td>
 </tr>
+<tr>
+<td>Layers of a page</td>
+<td>4: the stream's picture, then three of objects</td>
+</tr>
+<tr>
+<td>Objects of a sub-page, and objects holding animation state</td>
+<td>64</td>
+</tr>
+<tr>
+<td>Frames of one object</td>
+<td>16</td>
+</tr>
+<tr>
+<td>Objects cycling at once</td>
+<td>16, held by the caller that plays cycles</td>
+</tr>
+<tr>
+<td>Bytes processed in drawing one object, with expansion</td>
+<td>16,384; the object's drawing stops there</td>
+</tr>
+<tr>
+<td>Pixels repainted for animation in one tick</td>
+<td>153,600, half the picture, held by the caller with the clock</td>
+</tr>
+<tr>
+<td>WAITs played in one generation of a stream</td>
+<td>3,600 ticks, one minute; later WAITs pass at once</td>
+</tr>
+<tr>
+<td>Bytes held while a WAIT is played</td>
+<td>262,144; when more arrive the wait ends at once</td>
+</tr>
 </tbody>
 </table>
 <p>Period terminals had less: 16 colours, 256 vertices, and a few kilobytes for macros and DRCS together. A page meant to run on them should stay well inside those.</p>
 <h2 id="tools">Tools</h2>
 <h3 id="naplps-render"><code>naplps-render</code></h3>
 <pre><code>naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE]
-              [--tenths N] [--dac-bits N] [--preamble] PAGE OUT.ppm
+              [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble]
+              [--objects FILE]
+              [--frames TICKS [--frame-step K] [--script FILE]] PAGE OUT.ppm
 </code></pre>
 <table>
 <thead>
@@ -1174,7 +1208,31 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 <tr>
 <td><code>--tenths</code></td>
-<td>Show the colour map as BLINK leaves it N tenths of a second after the first blink began. WAITs are not honoured: the whole page is always drawn.</td>
+<td>Show the colour map as BLINK leaves it N tenths of a second after the first blink began.</td>
+</tr>
+<tr>
+<td><code>--stage</code></td>
+<td>Stop at the page's Nth WAIT and show the page as it stands during that pause. Default 0: the whole page, WAITs passed over.</td>
+</tr>
+<tr>
+<td><code>--border</code></td>
+<td>Surround the picture with N pixels of the page's border colour.</td>
+</tr>
+<tr>
+<td><code>--objects</code></td>
+<td>Give the page numbered objects from a text file, drawn over the stream's picture. See <a href="#objects-and-animation">Objects and animation</a>.</td>
+</tr>
+<tr>
+<td><code>--frames</code></td>
+<td>Play the page for N ticks of one sixtieth of a second, 1 to 36,000, from tick 0, and write a sequence of pictures. A WAIT holds the stream back for six ticks a tenth, and BLINK changes the colour map on its ticks. Not with <code>--tenths</code> or <code>--stage</code>.</td>
+</tr>
+<tr>
+<td><code>--frame-step</code></td>
+<td>With <code>--frames</code>: write a picture every K ticks, and always the last tick's. Default 1.</td>
+</tr>
+<tr>
+<td><code>--script</code></td>
+<td>With <code>--frames</code>: a text file of timed operations on the objects, one a line, in ascending tick; <code>-</code> reads standard input.</td>
 </tr>
 <tr>
 <td><code>--dac-bits</code></td>
@@ -1187,6 +1245,51 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tbody>
 </table>
 <p>It prints a warning if processing stopped at the processing limit, and exits with status 2 on an error.</p>
+<p>With <code>--frames</code>, each picture's name has <code>-NNNNN</code>, its tick in five digits, before the extension: <code>out.ppm</code> becomes <code>out-00000.ppm</code>, <code>out-00001.ppm</code> and so on. The pictures of a run are the same on every machine and every run.</p>
+<p>A script line is <code>&lt;tick&gt; &lt;operation&gt;</code>; blank lines and lines beginning <code>#</code> are skipped:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>show &lt;n&gt;</code>, <code>hide &lt;n&gt;</code></td>
+<td>Show or hide object n.</td>
+</tr>
+<tr>
+<td><code>move &lt;n&gt; &lt;x&gt; &lt;y&gt; [relative]</code></td>
+<td>Put the object's rectangle at (x, y), or move it by (x, y) from where it is.</td>
+</tr>
+<tr>
+<td><code>order &lt;n&gt; &lt;layer|keep&gt; &lt;order&gt;</code></td>
+<td>Set its layer, 0 to 3, or keep it, and its order within the layer, -128 to 127.</td>
+</tr>
+<tr>
+<td><code>frame &lt;n&gt; &lt;f&gt;</code></td>
+<td>Show frame f, 0 to 15, and stop a cycle.</td>
+</tr>
+<tr>
+<td><code>cycle &lt;n&gt; &lt;first&gt; &lt;last&gt; &lt;period&gt; [once]</code></td>
+<td>From the next tick, step through frames first to last, one every period ticks (1 to 3,600), round and round, or once to the last.</td>
+</tr>
+<tr>
+<td><code>stop_cycle &lt;n&gt;</code></td>
+<td>Stop its cycle on the frame shown.</td>
+</tr>
+<tr>
+<td><code>look &lt;n&gt; &lt;0-3&gt;</code></td>
+<td>Force its look: 0 none, 1 hover, 2 pressed, 3 alternative.</td>
+</tr>
+<tr>
+<td><code>reset &lt;n&gt;</code></td>
+<td>Forget everything the script did to it.</td>
+</tr>
+</tbody>
+</table>
+<p>An operation on an object that does not exist does nothing, and the program says how many did.</p>
 <h3 id="the-library">The library</h3>
 <pre><code class="language-rust">use naplps::{Canvas, Event, StrokeFont, Terminal};
 
@@ -1199,6 +1302,156 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 // canvas.pixels() are colour-map entries, row by row from the top; colours[entry] is its RGB.
 </code></pre>
 <p><code>feed</code> returns <code>Event::Wait(tenths)</code>, <code>Event::Bell</code> and <code>Event::LimitReached</code> in the order they occurred. The library does no input or output, has no clock and uses no floating point; it is <code>no_std</code>.</p>
+<p><code>terminal.take_damage()</code> gives the rectangle of pixels changed since it was last called, or nothing: a caller repaints only that.</p>
+<h2 id="objects-and-animation">Objects and animation</h2>
+<p>NAPLPS keeps no scene: a page's bytes draw on the picture and are forgotten. The one thing a page names and keeps is a macro. NeoTeletext adds numbered <strong>objects</strong> over the picture, each drawn by a macro of the page, which the receiver can move, show, hide, reorder and step through frames without any byte of the page being sent or drawn again. Objects are not NAPLPS: no byte of a page defines one. A channel sends them beside the page, and every page stays a conforming NAPLPS page.</p>
+<h3 id="an-object">An object</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>number</td>
+<td>1 to 65,535, each object's own</td>
+</tr>
+<tr>
+<td>kind</td>
+<td>a <strong>macro object</strong>, drawn by a macro; or a <strong>region</strong>, a rectangle of the page's own picture</td>
+</tr>
+<tr>
+<td>shown, detectable</td>
+<td>whether it is drawn, and whether a pointer can pick it</td>
+</tr>
+<tr>
+<td>layer, order</td>
+<td>layer 1 to 3; order -128 to 127 within the layer</td>
+</tr>
+<tr>
+<td>x, y, width, height</td>
+<td>its rectangle in pixels of the 640 by 480 picture, from the top left, y downward; width 1 to 640, height 1 to 480</td>
+</tr>
+<tr>
+<td>origin x, origin y</td>
+<td>a macro object: where the rectangle's top left corner lies in the macro's own drawing, in the same pixels</td>
+</tr>
+<tr>
+<td>frames</td>
+<td>a macro object: 1 to 16 macro codes, <code>20</code> to <code>7F</code>; frame 0 is shown at first</td>
+</tr>
+<tr>
+<td>cover</td>
+<td>a region: the colour-map entry that fills it while it is hidden</td>
+</tr>
+<tr>
+<td>hover, pressed, alternative</td>
+<td>a macro code for each look, or none</td>
+</tr>
+</tbody>
+</table>
+<p><strong>A macro object</strong> is drawn by running its frame's macro as the page last defined it, in a fresh state: the power-up state, with the primary set in GL, so a macro that draws begins with SO. Everything it draws is moved by (x - origin x, y - origin y) and cut to the object's rectangle. So a macro that draws a figure in the bottom left 64 by 64 pixels of the screen, with origin (0, 416), appears with that corner of the screen at the object's (x, y).</p>
+<p>Inside an object's macro these do nothing: SET COLOR's change of a colour-map entry (in colour mode 0 the nearest existing entry is used), BLINK, BLINK START and STOP, WAIT, RESET, and DEF MACRO, DEFP MACRO, DEFT MACRO, DEF DRCS and DEF TEXTURE (a definition's bytes are read and dropped). Calling other macros, text, DRCS characters and fill patterns work as on the page. A scroll brings in blanks, because an object cannot read the picture. A macro that is not defined draws nothing. Drawing stops after 16,384 bytes processed.</p>
+<p><strong>A region</strong> shown changes nothing; hidden, its rectangle is filled with its cover. It makes part of an ordinary page something a pointer can pick and a channel can cover. A region with a look draws that look's macro while the look is in force, moved to the region's corner.</p>
+<h3 id="layers-and-order">Layers and order</h3>
+<p>A page has four layers. Layer 0 is the page's own picture. Objects are drawn over it in order of layer, then order, then number, each over the last. The page's picture is kept apart from the picture shown, so moving an object repaints only the rectangle it left and the rectangle it reaches, by copying the page's pixels and drawing again the objects that reach into them.</p>
+<h3 id="animation-state">Animation state</h3>
+<p>The receiver keeps, for each object, values that stand in for the object's own while they are set: shown or hidden, position, layer, order, frame and a forced look. Giving a page new objects forgets them all. A frame number beyond an object's frames shows its last. The look drawn is the forced look if there is one, else the pointer's (hover or pressed), else the frame; a look the object does not have leaves the frame.</p>
+<p>The library has no clock, so a <strong>cycle</strong> is the caller's: at each tick it sets the frame that is due. From the tick <code>s</code> after a cycle is asked for, with period <code>p</code> and <code>c</code> frames from <code>first</code> to <code>last</code>, the frame at tick <code>t</code> is <code>first + ((t - s) / p) mod c</code>; a cycle run once shows <code>min(first + (t - s) / p, last)</code> and ends there.</p>
+<h3 id="the-library-s-calls">The library's calls</h3>
+<pre><code class="language-rust">use naplps::{Animation, Canvas, Object, ObjectKind, Player, Terminal};
+
+let mut page = Canvas::new(640, 480)?;       // the stream draws here: layer 0
+let mut shown = Canvas::new(640, 480)?;      // the picture presented
+let mut terminal = Terminal::new(4);
+let mut player = Player::new();
+player.push(&amp;mut terminal, &amp;mut page, &amp;bytes);      // draws up to the first WAIT
+terminal.set_objects(&amp;objects)?;                     // refused whole if any is not valid
+terminal.set_animation(1, Animation { position: Some((120, 80)), ..Animation::default() });
+// Each tick:
+player.advance(&amp;mut terminal, &amp;mut page, 1);         // a WAIT runs down; what it held is drawn
+terminal.compose(&amp;page, &amp;mut shown)?;                // repaints only what changed
+let changed = terminal.take_damage();                // the rectangle to present, or None
+let colours = player.colours(&amp;terminal);             // the colour map, blinks at this tick
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_objects(&amp;[Object])</code></td>
+<td>Gives the page all its objects, replacing any it had and forgetting every animation state.</td>
+</tr>
+<tr>
+<td><code>set_animation(number, Animation)</code>, <code>clear_animation(number)</code></td>
+<td>Set and forget an object's animation state. False when there is no such object.</td>
+</tr>
+<tr>
+<td><code>set_pointer_look(number, Look)</code></td>
+<td>The look the pointer gives an object, which a forced look overrides.</td>
+</tr>
+<tr>
+<td><code>bounds(number)</code></td>
+<td>The object's rectangle as its state stands, cut to the picture; nothing while it is hidden, absent or wholly outside.</td>
+</tr>
+<tr>
+<td><code>objects_at(x, y)</code></td>
+<td>The shown, detectable objects whose rectangle holds the pixel, in drawing order.</td>
+</tr>
+<tr>
+<td><code>pending(&amp;shown)</code></td>
+<td>The rectangle <code>compose</code> would repaint now: a caller with a budget of pixels a tick reads its area first.</td>
+</tr>
+<tr>
+<td><code>compose(&amp;page, &amp;mut shown)</code></td>
+<td>Brings the picture shown up to date and returns the rectangle that changed.</td>
+</tr>
+<tr>
+<td><code>invalidate()</code></td>
+<td>Makes the next <code>compose</code> repaint everything: for a new canvas.</td>
+</tr>
+<tr>
+<td><code>take_damage()</code></td>
+<td>The rectangle of pixels changed since it was last called, by the stream on its canvas and by <code>compose</code> on the picture shown.</td>
+</tr>
+<tr>
+<td><code>feed_until_wait(&amp;mut page, bytes)</code></td>
+<td>As <code>feed</code>, but stops at a WAIT and says how many bytes it took.</td>
+</tr>
+<tr>
+<td><code>Player::push</code>, <code>end</code>, <code>advance(ticks)</code></td>
+<td>Take more of the stream, say it is complete, and let ticks pass. A WAIT of w tenths holds what follows for 6 x w ticks.</td>
+</tr>
+<tr>
+<td><code>Player::colours</code>, <code>ticks_to_next</code></td>
+<td>The colour map at the tick reached, and how many ticks until a WAIT ends or a blink changes.</td>
+</tr>
+<tr>
+<td><code>Player::set_delays(false)</code></td>
+<td>Every WAIT passes at once.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-objects-file">The objects file</h3>
+<p><code>naplps-render --objects</code> reads one object a line; blank lines and lines beginning <code>#</code> are skipped:</p>
+<pre><code>macro  &lt;number&gt; &lt;layer&gt; &lt;order&gt; &lt;x&gt; &lt;y&gt; &lt;width&gt; &lt;height&gt; &lt;origin x&gt; &lt;origin y&gt; &lt;frames&gt; [options]
+region &lt;number&gt; &lt;layer&gt; &lt;order&gt; &lt;x&gt; &lt;y&gt; &lt;width&gt; &lt;height&gt; &lt;cover&gt; [options]
+</code></pre>
+<p><code>&lt;frames&gt;</code> is the frames' macro codes in hexadecimal with commas between, such as <code>20,21,22,23</code>. The options are <code>hidden</code>, <code>detectable</code>, <code>hover=&lt;code&gt;</code>, <code>pressed=&lt;code&gt;</code> and <code>alternative=&lt;code&gt;</code>. A four-frame sprite cycling every 6 ticks while it moves right:</p>
+<pre><code>$ cat objects.txt
+macro 1 2 0 300 200 64 64 0 416 20,21,22,23
+$ cat script.txt
+0 cycle 1 0 3 6
+30 move 1 8 0 relative
+60 move 1 8 0 relative
+$ naplps-render --objects objects.txt --script script.txt --frames 90 --frame-step 6 page.nap out.ppm
+</code></pre>
 <h3 id="the-stroke-font-file">The stroke font file</h3>
 <p>Text, one glyph per line under <code>[primary]</code> and <code>[supplementary]</code> headings; <code>#</code> begins a comment line:</p>
 <pre><code>[primary]

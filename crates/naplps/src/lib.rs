@@ -7,6 +7,12 @@
 //! time for BLINK), contains no font ([`Terminal::set_font`] takes a [`StrokeFont`] the caller
 //! supplies), and bounds everything a page can make it hold or do ([`limits`]).
 //!
+//! For animation (neoteletext-common `docs/animation.md`): [`Terminal::take_damage`] gives the
+//! rectangle of pixels that changed; [`Terminal::set_objects`], [`Terminal::set_animation`] and
+//! [`Terminal::compose`] draw numbered objects over the stream's picture into a second canvas,
+//! repainting only what changed; and [`Player`] plays WAIT and BLINK on ticks of one sixtieth of
+//! a second that its caller says have passed.
+//!
 //! ```
 //! use naplps::{Canvas, Terminal};
 //! let mut canvas = Canvas::new(640, 480).unwrap();

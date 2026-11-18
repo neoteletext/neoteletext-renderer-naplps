@@ -11,11 +11,15 @@ NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol
 
 **`naplps`** is the renderer: a `no_std` library with no input or output that turns a page's bytes into colour-map addresses on a canvas the caller owns (ANSI X3.110-1983 throughout: code extension, every PDI, colour modes 0 to 2 and the default colour map, text, mosaics, macros, DRCS, fill masks, WAIT and BLINK as events and colour maps over time). It contains no font: a stroke font is passed in as data. Everything a page can make it hold or do is bounded (`naplps::limits`).
 
-**`naplps-render`** renders one page to a PPM picture:
+For animation (neoteletext-common `docs/animation.md`) it reports the rectangle of pixels that changed (`Terminal::take_damage`), draws numbered objects over the page's picture (macros placed, moved, hidden, layered and stepped through frames by the receiver, composed into a second canvas by `Terminal::compose`), and plays WAIT and BLINK on ticks of one sixtieth of a second it is told have passed (`Player`). It still keeps no clock.
+
+**`naplps-render`** renders one page to a PPM picture, or plays it into a sequence of them:
 
 ```
-naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--dac-bits N] [--preamble] PAGE OUT.ppm
+naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] PAGE OUT.ppm
 ```
+
+`--frames` plays the page for that many ticks, WAIT and BLINK on their ticks, and writes `OUT-NNNNN.ppm` every `--frame-step` ticks; `--objects` gives the page numbered objects and `--script` moves, hides and cycles them at stated ticks (docs/reference.html, "Objects and animation").
 
 `--font` takes a stroke font in the library's text form, such as the Microstar font recovered from PP3 (`~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes`). `--preamble` and `--dac-bits 6` render a page as the oracle shows it to PP3, for comparison.
 
