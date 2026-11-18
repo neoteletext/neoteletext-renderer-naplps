@@ -4,8 +4,8 @@
 //! ```text
 //! naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N]
 //!               [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE]
-//!               [--frames TICKS [--frame-step K] [--script FILE]] [--neoteletext [--double]]
-//!               PAGE OUT.ppm
+//!               [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE]
+//!               [--neoteletext [--double]] PAGE OUT.ppm
 //! ```
 //!
 //! `--font` loads a stroke font in the library's text form (without one, text moves the cursor
@@ -17,7 +17,10 @@
 //! shows them). `--preamble` first sends the oracle's page preamble, so a frame compares with the
 //! PP3 reference of the same page.
 //!
-//! `--neoteletext` draws the page as NeoTeletext shows it (REQ-5819,
+//! `--teletext ENGINE` loads NeoTeletext's 55 character sets from the engine's checkout
+//! (REQ-6668): the code tables from its `required.txt` and the glyphs from its Noto Teletext BDF
+//! files ([`teletext_sets`]), so that a page designating them by their private designations
+//! draws their characters. `--neoteletext` draws the page as NeoTeletext shows it (REQ-5819,
 //! DEC-6667): on 480 by 462 pixels centred in the 480 by 500 teletext raster, the 19 lines above
 //! and below in the page's background colour; `--double` draws both at twice the size.
 //!
@@ -53,6 +56,7 @@ use naplps::{Canvas, Event, Player, Rgb, StrokeFont, Terminal};
 
 mod check;
 mod play;
+mod teletext_sets;
 
 /// The largest page file read: a megabyte, far beyond the largest page known (40,876 bytes).
 const MAX_PAGE_BYTES: u64 = 1024 * 1024;
@@ -114,7 +118,7 @@ fn main() -> ExitCode {
 }
 
 /// The usage line.
-const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] [--neoteletext [--double]] PAGE OUT.ppm";
+const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE] [--neoteletext [--double]] PAGE OUT.ppm";
 
 /// How a picture is written: the border's width, the display's colour registers, and the
 /// lines above and below the display area in the page's background colour (REQ-5819).
@@ -135,6 +139,7 @@ fn run() -> Result<(), String> {
     let mut preamble = false;
     let mut display = Display { border: 0, dac_bits: 8, raster_lines: 0 };
     let mut size_given = false;
+    let mut teletext_path = None;
     let mut neoteletext = false;
     let mut double = false;
     let mut stage = None;
@@ -149,6 +154,7 @@ fn run() -> Result<(), String> {
         match argument.as_str() {
             "--width" => (width, size_given) = (number(&value("--width")?)?, true),
             "--height" => (height, size_given) = (number(&value("--height")?)?, true),
+            "--teletext" => teletext_path = Some(value("--teletext")?),
             "--neoteletext" => neoteletext = true,
             "--double" => double = true,
             "--palette-bits" => palette_bits = number(&value("--palette-bits")?)?,
@@ -188,6 +194,12 @@ fn run() -> Result<(), String> {
     if let Some(path) = font_path {
         let text = fs::read_to_string(&path).map_err(|error| format!("{path}: {error}"))?;
         terminal.set_font(StrokeFont::parse(&text).map_err(|error| format!("{path}: {error}"))?);
+    }
+    if let Some(path) = &teletext_path {
+        for (number, set) in teletext_sets::load(std::path::Path::new(path))?.into_iter().enumerate() {
+            let number = u8::try_from(number).map_err(|error| error.to_string())?;
+            terminal.set_teletext_set(number, set).map_err(|error| error.to_string())?;
+        }
     }
     if let Some(path) = &objects_path {
         let objects = play::objects(&play::read_text(path)?).map_err(|error| format!("{path}: {error}"))?;
