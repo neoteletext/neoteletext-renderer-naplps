@@ -166,6 +166,10 @@ pub struct Terminal {
     font: Option<StrokeFont>,
     /// The glyphs of NeoTeletext's character sets the caller gave, by number (REQ-6668).
     teletext_sets: Vec<Option<BitmapSet>>,
+    /// The colour-map entry the display was last cleared to (CS, or RESET's clearing, Table
+    /// 15): the page's background, which a caller paints around the display area (DEC-6667
+    /// item 4). Nominal black at power-up, as the canvas starts.
+    screen: u8,
     g_sets: [CharSet; 4],
     gl: usize,
     gr: usize,
@@ -247,6 +251,7 @@ impl Terminal {
             palette,
             font: None,
             teletext_sets: vec![None; TELETEXT_SET_COUNT],
+            screen: 0,
             g_sets: [CharSet::Primary, CharSet::Pdi, CharSet::Supplementary, CharSet::Mosaic],
             gl: 0,
             gr: 1,
@@ -311,6 +316,15 @@ impl Terminal {
         *slot = Some(set);
         self.scene.definitions_changed = true;
         Ok(())
+    }
+
+    /// The colour-map entry the display was last cleared to, by clear screen (0/12) or RESET
+    /// (section 5.3.2.9, Table 15): the page's background colour, nominal black until the page
+    /// clears it. A caller that shows the display area inside a larger picture paints the rest
+    /// in it, so that the page appears to fill the picture (DEC-6667 item 4).
+    #[must_use]
+    pub fn screen_colour(&self) -> u8 {
+        self.screen
     }
 
     /// Gives the picture its title, the name a page list shows for it when the program's index
@@ -668,6 +682,7 @@ impl Terminal {
                     mask.clear();
                 } else {
                     canvas.fill_all(entry);
+                    self.screen = entry;
                 }
             }
             0x0D => {
@@ -1197,6 +1212,7 @@ impl Terminal {
         };
         if let Some(entry) = clear {
             surface.fill_all(entry);
+            self.screen = entry;
         }
         if second & 0b1 != 0 {
             self.text = TextState::default();

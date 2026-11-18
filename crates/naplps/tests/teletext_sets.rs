@@ -262,3 +262,15 @@ fn a_set_number_past_the_last_is_refused() {
     let mut terminal = Terminal::new(4);
     assert_eq!(terminal.set_teletext_set(TELETEXT_SET_COUNT as u8, set(0)), Err(naplps::Error::Bitmap));
 }
+
+#[test]
+fn the_screen_colour_follows_clear_screen() {
+    let mut canvas = Canvas::new(WIDTH, HEIGHT).unwrap();
+    let mut terminal = Terminal::new(4);
+    assert_eq!(terminal.screen_colour(), 0, "nominal black at power-up");
+    // RESET with 010 in bits 4 to 6 (Table 15): the display is cleared to the drawing colour.
+    terminal.feed(&mut canvas, &[SO, 0x20, 0x50, 0x40]);
+    terminal.finish(&mut canvas);
+    assert_eq!(terminal.screen_colour(), canvas.pixel(0, 0).unwrap());
+    assert_ne!(terminal.screen_colour(), 0);
+}
