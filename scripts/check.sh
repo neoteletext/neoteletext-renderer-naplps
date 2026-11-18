@@ -63,8 +63,8 @@ push_steps() {
 full_steps() {
     step "documentation builds, warnings as errors"
     RUSTDOCFLAGS="-D warnings" cargo doc --quiet --workspace --no-deps
-    step "the documentations example pages are what their code generates
-    need_tool python3 docs/examples/examples.py builds the guides pages (sudo apt-get install python3)"
+    step "the documentation's example pages are what their code generates"
+    need_tool python3 "docs/examples/examples.py builds the guide's pages (sudo apt-get install python3)"
     local generated
     generated=tmp/examples-check
     rm -rf "$generated"
