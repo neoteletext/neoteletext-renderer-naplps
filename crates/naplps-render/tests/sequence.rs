@@ -8,38 +8,17 @@
     reason = "a test: fixed inputs within range, and failure is a panic"
 )]
 
+mod common;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use common::{DEF_MACRO, END, HEADER, HEIGHT, WIDTH, colour, rectangle};
+
 /// The sequence's format: raised, with the reason, when a change alters any picture
 /// (DEVELOPMENT.md section 8). 1: the first sequence, 18 November 2026.
 const SEQUENCE_FORMAT: u32 = 1;
-const WIDTH: usize = 640;
-const HEIGHT: usize = 480;
-/// The bytes before a 640 by 480 picture's pixels: `P6\n640 480\n255\n`.
-const HEADER: usize = 15;
-
-const SO: u8 = 0x0E;
-const DEF_MACRO: u8 = 0x80;
-const END: u8 = 0x85;
-
-/// A three-byte coordinate pair, (`x`/256, `y`/256) of the unit screen (ANSI X3.110-1983
-/// section 5.3.2.2.3).
-fn pair(x: u16, y: u16) -> [u8; 3] {
-    let byte = |shift: u16| 0x40 | u8::try_from(((x >> shift) & 7) << 3 | ((y >> shift) & 7)).unwrap();
-    [byte(6), byte(3), byte(0)]
-}
-
-/// SELECT COLOR `entry`, POINT SET to (`x`, `y`), RECT FILLED of (`width`, `height`).
-fn rectangle(entry: u8, x: u16, y: u16, width: u16, height: u16) -> Vec<u8> {
-    let mut bytes = vec![SO, 0x3E, 0x40 | (entry << 2), 0x24];
-    bytes.extend(pair(x, y));
-    bytes.push(0x31);
-    bytes.extend(pair(width, height));
-    bytes
-}
-
 /// The page: macros 2/0 to 2/3, a rectangle of entries 3 to 6 each; a rectangle of entry 1
 /// that blinks to entry 7, 5 tenths on and 5 off; a WAIT of 2 tenths; a rectangle of entry 2.
 fn page() -> Vec<u8> {
@@ -97,12 +76,6 @@ fn play(directory: &Path) -> Vec<(u32, Vec<u8>)> {
         }
     }
     pictures
-}
-
-/// The colour at (`x`, `y`) of a picture.
-fn colour(picture: &[u8], x: usize, y: usize) -> [u8; 3] {
-    let at = HEADER + (y * WIDTH + x) * 3;
-    [picture[at], picture[at + 1], picture[at + 2]]
 }
 
 #[test]
