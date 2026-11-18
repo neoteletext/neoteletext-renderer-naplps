@@ -27,13 +27,39 @@ const fn most_calls(stream: &[u8]) -> usize {
 }
 
 /// A terminal as each way of feeding starts with: the repository's own font, so that text is
-/// drawn.
+/// drawn, and a joined teletext set (renderer parity PAR-14), so that held letters are drawn
+/// the same however the stream is divided.
 fn terminal() -> Terminal {
     let mut terminal = Terminal::new(PALETTE_BITS);
     if let Ok(font) = StrokeFont::parse(naplps_fonts::NEOTELETEXT) {
         terminal.set_font(font);
     }
+    if let Some(set) = joined_set() {
+        let _ = terminal.set_teletext_set(JOINED_SET, set);
+    }
     terminal
+}
+
+/// The set given joining data: `G0-Arabic-Persian`, the first of the plain Arabic-script sets.
+const JOINED_SET: u8 = 44;
+
+/// A set of 12 by 20 glyphs, every code dual-joining but every fourth right-joining, with a
+/// glyph for each form that lights a row of its own, so that joining changes what is drawn.
+fn joined_set() -> Option<naplps::BitmapSet> {
+    use naplps::{JoinForm, JoiningType};
+    let mut set = naplps::BitmapSet::new(12, 20).ok()?;
+    for code in 0x20u8..=0x7F {
+        let joining = if code % 4 == 0 { JoiningType::Right } else { JoiningType::Dual };
+        set.set_joining(code, joining).ok()?;
+        for (row, form) in
+            [JoinForm::Isolated, JoinForm::Final, JoinForm::Initial, JoinForm::Medial].into_iter().enumerate()
+        {
+            let mut rows = [0u16; 20];
+            *rows.get_mut(row)? = 0x0FFF;
+            set.set_form_glyph(code, form, &rows).ok()?;
+        }
+    }
+    Some(set)
 }
 
 /// What a way of feeding left: the pixels, the colour map at rest and the border.
