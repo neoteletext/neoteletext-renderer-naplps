@@ -1,7 +1,9 @@
 //! The fuzz target `naplps_objects` (neoteletext-common `docs/animation.md`, ANIM-23; REQ-6531):
 //! any stream, objects, single objects redefined, and animation states. It must never panic, every object's drawing must
 //! stay inside its rectangle, and the picture composed by damage must equal the picture
-//! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11).
+//! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11). Each
+//! input runs on the design picture's own canvas and on the teletext raster's 480 by 462 one
+//! (DEC-6667, REQ-5819), where objects are placed by the design picture's pixels.
 //!
 //! This file holds the target's body, `naplps_objects`, which takes the fuzzer's bytes.
 //! `crates/naplps-fuzz` runs it on its kept inputs and on inputs made by property testing
@@ -13,6 +15,11 @@ use naplps::{Animation, Canvas, Look, Object, ObjectKind, Terminal};
 const WIDTH: u32 = naplps::limits::OBJECT_PICTURE_WIDTH;
 /// See [`WIDTH`].
 const HEIGHT: u32 = naplps::limits::OBJECT_PICTURE_HEIGHT;
+/// The teletext raster's display area a NAPLPS page is drawn on (REQ-5819, DEC-6667): 40 cells
+/// of 12 dots across, lines 19 to 480 of the 500-line page down.
+const RASTER_WIDTH: u32 = 480;
+/// See [`RASTER_WIDTH`].
+const RASTER_HEIGHT: u32 = 462;
 /// Bytes of one object's description in the input.
 const OBJECT_BYTES: usize = 12;
 /// The first macro code, 2/0; the input's macro codes are folded onto a few names from here so
@@ -114,8 +121,8 @@ fn animation(input: &mut Input<'_>) -> Animation {
 /// The pixels of `canvas` as a vector, for comparing two pictures.
 fn differing(before: &Canvas, after: &Canvas) -> Vec<(u32, u32)> {
     let mut differing = Vec::new();
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
+    for y in 0..after.height() {
+        for x in 0..after.width() {
             if before.pixel(x, y) != after.pixel(x, y) {
                 differing.push((x, y));
             }
@@ -131,8 +138,14 @@ fn differing(before: &Canvas, after: &Canvas) -> Vec<(u32, u32)> {
 /// When the composed picture differs from a whole composition, or a pixel changed outside the
 /// damage reported.
 pub fn naplps_objects(data: &[u8]) {
+    on_canvas(data, WIDTH, HEIGHT);
+    on_canvas(data, RASTER_WIDTH, RASTER_HEIGHT);
+}
+
+/// Runs one input on a canvas of `width` by `height`.
+fn on_canvas(data: &[u8], width: u32, height: u32) {
     let mut input = Input { bytes: data };
-    let (Ok(mut background), Ok(mut presented)) = (Canvas::new(WIDTH, HEIGHT), Canvas::new(WIDTH, HEIGHT)) else {
+    let (Ok(mut background), Ok(mut presented)) = (Canvas::new(width, height), Canvas::new(width, height)) else {
         return;
     };
     let mut terminal = Terminal::new(4);
@@ -169,6 +182,7 @@ pub fn naplps_objects(data: &[u8]) {
             }
         }
         let _ = terminal.objects_at(u32::from(command), u32::from(command));
+        let _ = terminal.objects_on_canvas(u32::from(command), u32::from(command), width, height);
         let composed = terminal.compose(&background, &mut presented);
         assert!(composed.is_ok(), "two canvases of one size compose");
         let damage = terminal.take_damage();
@@ -186,7 +200,7 @@ pub fn naplps_objects(data: &[u8]) {
         }
     }
     // ANIM-4: the picture composed by damage is the picture composed whole.
-    let Ok(mut whole) = Canvas::new(WIDTH, HEIGHT) else { return };
+    let Ok(mut whole) = Canvas::new(width, height) else { return };
     terminal.invalidate();
     assert!(terminal.compose(&background, &mut whole).is_ok());
     let same = whole == presented;
