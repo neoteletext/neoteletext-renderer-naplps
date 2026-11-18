@@ -1437,7 +1437,7 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 </tr>
 <tr>
 <td><code>diagnostics()</code></td>
-<td>The bytes passed over and the work refused at a limit, by kind, with the offset of the first of each: what <code>naplps-render check</code> reports.</td>
+<td>The bytes passed over and the work refused at a limit, by kind, with the offset of the first of each: what <code>naplps-render check</code> reports. Also the characters written back over the one before them by APB while colour mode 2 is in force, which erase it since that mode fills the field with the background (<code>overwritten_in_mode_two</code>, with the first one's offset): how a text part's mark over its letter looks in that mode, which the server logs (renderer parity PAR-23).</td>
 </tr>
 <tr>
 <td><code>Validator::new()</code>, <code>feed(bytes)</code>, <code>finish()</code>, <code>diagnostics()</code>, <code>defined_macros()</code></td>

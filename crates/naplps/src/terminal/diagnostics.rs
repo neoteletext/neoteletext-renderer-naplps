@@ -82,6 +82,16 @@ pub struct Diagnostics {
     /// [`Diagnostics::first_passed_over`]; a PDI's refusal is found when it runs, at the byte
     /// after its operands.
     pub first_refused: Option<usize>,
+    /// Characters written back over the character before them, after ACTIVE POSITION BACKWARD
+    /// (0/8, section 6.1.2.1) with nothing drawn between, while colour mode 2 is in force: in
+    /// that mode a character's field is filled with the background colour (section 5.3.2.6.3), so
+    /// such a character erases the one beneath it. This is how a text part writes a diacritical
+    /// mark over its letter (renderer parity PAR-5), and the server logs it (PAR-23). Neither a
+    /// refusal nor a byte passed over: the character is drawn as the standard says.
+    pub overwritten_in_mode_two: u32,
+    /// The stream offset of the first such character, counted as for
+    /// [`Diagnostics::first_passed_over`].
+    pub first_overwritten_in_mode_two: Option<usize>,
 }
 
 impl Diagnostics {
@@ -100,6 +110,11 @@ impl Diagnostics {
     pub(super) fn pass_over(&mut self, offset: usize) {
         self.passed_over = self.passed_over.saturating_add(1);
         self.first_passed_over.get_or_insert(offset);
+    }
+
+    pub(super) fn overwrite_in_mode_two(&mut self, offset: usize) {
+        self.overwritten_in_mode_two = self.overwritten_in_mode_two.saturating_add(1);
+        self.first_overwritten_in_mode_two.get_or_insert(offset);
     }
 
     pub(super) fn refuse(&mut self, kind: Refusal, count: usize, offset: usize) {

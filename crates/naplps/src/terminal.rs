@@ -231,6 +231,9 @@ pub struct Terminal {
     word: Vec<(CharSet, u8, JoinForm)>,
     /// The joined letters being held back (PAR-14).
     joining: JoiningRun,
+    /// An APB moved the cursor back and no character, other control or PDI has come since: the
+    /// next character is written over the one before it (PAR-23's mark in colour mode 2).
+    backed_over: bool,
     /// Whether the byte before this one was a spacing character, which REPEAT and REPEAT TO EOL
     /// need (section 6.2.7.2).
     last_was_spacing: bool,
@@ -311,6 +314,7 @@ impl Terminal {
             pending_accent: None,
             word: Vec::new(),
             joining: JoiningRun::default(),
+            backed_over: false,
             last_was_spacing: false,
             repeat_allowed: false,
             drcs_cleared: false,
@@ -648,6 +652,7 @@ impl Terminal {
             }
             CharSet::Pdi => {
                 if code < 0x40 {
+                    self.backed_over = false;
                     self.settle(canvas);
                     self.flush(canvas);
                     self.pdi = Some((code, Vec::new()));
@@ -678,6 +683,11 @@ impl Terminal {
             self.pass_over();
             return;
         }
+        // An APB is followed by the character written over the one before it; the designation
+        // and single shift a text part writes between them (PAR-5) do not end that.
+        if !matches!(byte, ESC | SO | SI | SS2 | SS3) {
+            self.backed_over = byte == APB;
+        }
         // A C0 control after SS2 or SS3 cancels the single shift (section 6.1.3.3).
         if !matches!(byte, SS2 | SS3) {
             self.single_shift = None;
@@ -693,7 +703,7 @@ impl Terminal {
         self.auto_wrapped = 0;
         match byte {
             0x07 => self.event(Event::Bell),
-            0x08 => self.backspace(canvas),
+            APB => self.backspace(canvas),
             0x09 => self.forward(canvas),
             0x0A => {
                 if wrapped == 2 || wrapped == 1 {
@@ -826,6 +836,7 @@ impl Terminal {
     }
 
     fn control1(&mut self, canvas: &mut dyn Surface, code: u8) {
+        self.backed_over = false;
         self.settle(canvas);
         match code {
             0x80..=0x84 => {
@@ -1836,6 +1847,10 @@ impl Terminal {
             CharSet::Teletext { full: false, .. } if code == DELETE => return,
             _ => (set, code),
         };
+        if core::mem::take(&mut self.backed_over) && self.mode == Mode::MapWithBackground && !self.in_object {
+            let offset = self.offset();
+            self.diagnostics.overwrite_in_mode_two(offset);
+        }
         if let CharSet::Teletext { number, full } = set
             && self.is_joined(number)
         {
@@ -2173,6 +2188,8 @@ impl Terminal {
 
 /// ESC, SO, SI, SS2, SS3.
 const ESC: u8 = 0x1B;
+/// ACTIVE POSITION BACKWARD (0/8, section 6.1.2.1).
+const APB: u8 = 0x08;
 /// See [`ESC`].
 const SO: u8 = 0x0E;
 /// See [`ESC`].

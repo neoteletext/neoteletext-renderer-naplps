@@ -123,3 +123,38 @@ fn finish_runs_a_pdi_still_collecting() {
     assert_eq!(validator.diagnostics().count(Refusal::TooManyVertices), 1);
     assert_eq!(validator.diagnostics().count(Refusal::PdiTooLong), 0);
 }
+
+/// PAR-23 (with PAR-5): a character written back over the one before it by APB while colour
+/// mode 2 is in force is counted, as a text part's mark over its letter is written: APB, the
+/// supplementary set designated into G2 (ESC 2/10 7/12, Table 1), SS2 and the mark. Not in
+/// colour mode 0, and not when something is drawn between.
+#[test]
+fn a_mark_written_over_its_letter_in_colour_mode_two_is_counted() {
+    // SELECT COLOR (3/14) with two operands: colour mode 2 (section 5.3.2.6.3).
+    let mode_two = [SO, 0x3E, 0x70, 0x4C, 0x0F];
+    let mark = [b'a', 0x08, ESC, 0x2A, 0x7C, SS2, 0x41];
+    let mut bytes = mode_two.to_vec();
+    bytes.extend_from_slice(&mark);
+    let (terminal, _) = terminal_reading(&bytes);
+    let mut validator = Validator::new();
+    validator.feed(&bytes);
+    assert_eq!(validator.diagnostics().overwritten_in_mode_two, 1);
+    assert_eq!(validator.diagnostics().first_overwritten_in_mode_two, Some(bytes.len() - 1));
+    assert_eq!(*validator.diagnostics(), terminal.diagnostics());
+    assert_eq!(validator.diagnostics().refused(), 0, "not a refusal");
+
+    let mut colour_mode_zero = Validator::new();
+    colour_mode_zero.feed(&mark);
+    assert_eq!(colour_mode_zero.diagnostics().overwritten_in_mode_two, 0, "colour mode 0 keeps the letter");
+
+    let mut moved_on = Validator::new();
+    let mut bytes = mode_two.to_vec();
+    bytes.extend_from_slice(&[b'a', 0x08, b'b', b'c']);
+    moved_on.feed(&bytes);
+    assert_eq!(moved_on.diagnostics().overwritten_in_mode_two, 1, "only the character right after APB");
+    let mut cut = Validator::new();
+    let mut bytes = mode_two.to_vec();
+    bytes.extend_from_slice(&[b'a', 0x08, 0x0D, b'b']);
+    cut.feed(&bytes);
+    assert_eq!(cut.diagnostics().overwritten_in_mode_two, 0, "another control between ends it");
+}
