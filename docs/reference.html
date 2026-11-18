@@ -1440,6 +1440,10 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 <td>The bytes passed over and the work refused at a limit, by kind, with the offset of the first of each: what <code>naplps-render check</code> reports.</td>
 </tr>
 <tr>
+<td><code>Validator::new()</code>, <code>feed(bytes)</code>, <code>finish()</code>, <code>diagnostics()</code>, <code>defined_macros()</code></td>
+<td>Reads a stream exactly as a terminal's <code>feed</code> and <code>finish</code> read it, with no canvas, font or character set, and draws nothing (renderer parity PAR-15): the same events and the same diagnostics for any bytes, and which of the 96 macro names the stream has defined. For a server that checks every stream it sends with the receiver's reading; its memory is a fixed state and what the stream defines, within the limits of macros, DRCS characters, textures and PDIs, whatever the picture's size.</td>
+</tr>
+<tr>
 <td><code>set_animation(number, Animation)</code>, <code>clear_animation(number)</code></td>
 <td>Set and forget an object's animation state. False when there is no such object.</td>
 </tr>

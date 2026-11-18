@@ -25,9 +25,11 @@ use crate::text::{self, Field, Ink, Shape};
 
 mod diagnostics;
 mod objects;
+mod validator;
 
 pub use diagnostics::{Diagnostics, REFUSAL_KINDS, Refusal};
 pub use objects::{Animation, Look, Object, ObjectKind};
+pub use validator::Validator;
 
 /// The code sets a G-set may hold (section 4.3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

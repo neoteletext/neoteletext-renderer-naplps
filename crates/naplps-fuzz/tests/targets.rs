@@ -19,6 +19,8 @@
 mod objects;
 #[path = "../../../fuzz/fuzz_targets/naplps_stream.rs"]
 mod stream;
+#[path = "../../../fuzz/fuzz_targets/naplps_validator.rs"]
+mod validator;
 
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -179,4 +181,33 @@ fn naplps_stream_holds_on_generated_inputs() {
 #[ignore = "the long run of the full gate: scripts/check.sh full"]
 fn naplps_stream_holds_on_generated_inputs_at_length() {
     search_stream(STREAM_LONG);
+}
+
+// ----- naplps_validator ----------------------------------------------------------------------
+
+/// The inputs of a run of the push gate, and the longest of their streams.
+const VALIDATOR_QUICK: (u32, usize) = (64, 600);
+/// The inputs of a run of the full gate, and the longest of their streams.
+const VALIDATOR_LONG: (u32, usize) = (4000, 1500);
+
+fn search_validator((cases, length): (u32, usize)) {
+    let strategy = (any::<u8>(), vec((any::<u8>(), any::<u8>()), 0..=length));
+    search("naplps_validator", validator::naplps_validator, &strategy, stream_input, cases);
+}
+
+#[test]
+fn naplps_validator_holds_on_every_kept_input_and_on_the_empty_one() {
+    replay("naplps_validator", validator::naplps_validator);
+    validator::naplps_validator(&[]);
+}
+
+#[test]
+fn naplps_validator_holds_on_generated_inputs() {
+    search_validator(VALIDATOR_QUICK);
+}
+
+#[test]
+#[ignore = "the long run of the full gate: scripts/check.sh full"]
+fn naplps_validator_holds_on_generated_inputs_at_length() {
+    search_validator(VALIDATOR_LONG);
 }

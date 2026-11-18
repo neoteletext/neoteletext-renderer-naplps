@@ -9,7 +9,7 @@ NAPLPS for NeoTeletext. NAPLPS is the North American Presentation Level Protocol
 
 ## What is here
 
-**`naplps`** is the renderer: a `no_std` library with no input or output that turns a page's bytes into colour-map addresses on a canvas the caller owns (ANSI X3.110-1983 throughout: code extension, every PDI, colour modes 0 to 2 and the default colour map, text, mosaics, macros, DRCS, fill masks, WAIT and BLINK as events and colour maps over time). It contains no font: a stroke font is passed in as data. Everything a page can make it hold or do is bounded (`naplps::limits`).
+**`naplps`** is the renderer: a `no_std` library with no input or output that turns a page's bytes into colour-map addresses on a canvas the caller owns (ANSI X3.110-1983 throughout: code extension, every PDI, colour modes 0 to 2 and the default colour map, text, mosaics, macros, DRCS, fill masks, WAIT and BLINK as events and colour maps over time). It contains no font: a stroke font is passed in as data. Everything a page can make it hold or do is bounded (`naplps::limits`). `naplps::Validator` reads a stream as the renderer does without a canvas and draws nothing, so that a server can check what it sends with the receiver's own reading (renderer parity PAR-15).
 
 For animation (neoteletext-common `docs/animation.md`) it reports the rectangle of pixels that changed (`Terminal::take_damage`), draws numbered objects over the page's picture (macros placed, moved, hidden, layered and stepped through frames by the receiver, composed into a second canvas by `Terminal::compose`), and plays WAIT and BLINK on ticks of one sixtieth of a second it is told have passed (`Player`). It still keeps no clock.
 

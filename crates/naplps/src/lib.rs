@@ -13,7 +13,8 @@
 //! for a screen reader ([`Object::label`]); neither is ever drawn (DEC-6638 items 3 and 6).
 //! [`Terminal::replace_object`] redefines one object without a new stream (item 3, row 3.2), and
 //! [`Terminal::diagnostics`] says which bytes the renderer passed over or refused (item 7, row
-//! 9.3).
+//! 9.3). [`Validator`] reads a stream as a terminal does without a canvas and draws nothing, for
+//! a server that checks every stream it sends (renderer parity PAR-15).
 //!
 //! For animation (neoteletext-common `docs/animation.md`): [`Terminal::take_damage`] gives the
 //! rectangle of pixels that changed; [`Terminal::set_objects`], [`Terminal::set_animation`] and
@@ -66,7 +67,7 @@ pub use raster::{FillPattern, LineTexture};
 pub use surface::{Canvas, Rect};
 pub use teletext::{TELETEXT_SET_COUNT, TELETEXT_SETS};
 pub use terminal::{
-    Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal,
+    Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal, Validator,
 };
 
 /// What can go wrong outside drawing itself.
