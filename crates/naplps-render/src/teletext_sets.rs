@@ -3,15 +3,29 @@
 //! `crates/neoteletext-core/src/glyphs/required.txt` (written by `cargo xtask glyphs` from its
 //! code tables), and each character's 12 by 20 glyph from the Noto Teletext BDF files in
 //! `third_party/noto/`. The glyphs are the project's own font and nothing else (DEC-6669).
+//!
+//! The plain Arabic-script sets 44 to 51 (group 1001) are given their joining data as well
+//! (renderer parity PAR-14, REQ-6765): each letter's joining type from the engine's
+//! `JOINING_TYPES` table (`crates/neoteletext-core/src/charset/arabic_script.rs`), and the glyph
+//! of each of its joined forms from the code point the engine's generated list
+//! `crates/neoteletext-core/src/glyphs/forms.txt` gives it, so that the renderer joins them as
+//! the teletext renderer does. Nothing of either table is copied here.
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use naplps::{BitmapSet, TELETEXT_SET_COUNT, TELETEXT_SETS};
+use naplps::{BitmapSet, JoinForm, JoiningType, TELETEXT_SET_COUNT, TELETEXT_SETS};
 
 /// The engine's list of every character a set must draw, under its checkout.
 pub(crate) const REQUIRED_LIST: &str = "crates/neoteletext-core/src/glyphs/required.txt";
+/// The engine's list of every joined form a font draws: `U+FORM U+LETTER form`.
+pub(crate) const FORMS_LIST: &str = "crates/neoteletext-core/src/glyphs/forms.txt";
+/// The engine's source holding each group 1001 letter's joining type, in its `JOINING_TYPES`.
+pub(crate) const JOINING_SOURCE: &str = "crates/neoteletext-core/src/charset/arabic_script.rs";
+/// The plain Arabic-script sets, group 1001: `G0-Arabic-Persian` to `G0-Arabic-Plain`, set
+/// numbers 44 to 51 (the engine's `FONT_SETS`; PAR-14).
+pub(crate) const JOINED_SETS: core::ops::RangeInclusive<usize> = 44..=51;
 /// The Noto Teletext font, four files of one font (the engine's `third_party/noto/PROVENANCE.md`).
 pub(crate) const NOTO_FILES: [&str; 4] = [
     "third_party/noto/noto-teletext.bdf",
@@ -91,6 +105,81 @@ const LIST_NAMES: [&str; TELETEXT_SET_COUNT] = [
 ];
 
 const _: () = assert!(TELETEXT_SETS.len() == LIST_NAMES.len());
+const _: () = assert!(*JOINED_SETS.end() < TELETEXT_SET_COUNT);
+
+/// Each letter's joining type and the code points of its joined forms.
+#[derive(Default)]
+pub(crate) struct Joining {
+    /// Unicode scalar of a letter to its joining type.
+    pub(crate) types: HashMap<u32, JoiningType>,
+    /// Unicode scalar of a letter to the code point drawn for each of its joined forms.
+    pub(crate) forms: HashMap<u32, Vec<(JoinForm, u32)>>,
+}
+
+/// The joining types of the engine's `JOINING_TYPES` table: lines
+/// `('\u{XXXX}', JoiningType::Kind), // NAME` between its opening and the `];` that closes it.
+/// The engine's join-causing type (the tatweel) is given as dual-joining, which it joins as
+/// under REQ-CHR-015's rule (`naplps::JoiningType`).
+pub(crate) fn joining_types(source: &str) -> Result<HashMap<u32, JoiningType>, String> {
+    let table = source
+        .split("const JOINING_TYPES")
+        .nth(1)
+        .and_then(|rest| rest.split("];").next())
+        .ok_or("no JOINING_TYPES table")?;
+    let mut types = HashMap::new();
+    for line in table.lines().map(str::trim).filter(|line| line.starts_with("('")) {
+        let scalar = line
+            .split("\\u{")
+            .nth(1)
+            .and_then(|rest| rest.split('}').next())
+            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+            .ok_or_else(|| format!("a JOINING_TYPES line without a letter: {line}"))?;
+        let kind = line
+            .split("JoiningType::")
+            .nth(1)
+            .and_then(|rest| rest.split(')').next())
+            .ok_or_else(|| format!("a JOINING_TYPES line without a type: {line}"))?;
+        let kind = match kind {
+            "None" => JoiningType::None,
+            "Right" => JoiningType::Right,
+            "Dual" | "Causing" => JoiningType::Dual,
+            other => return Err(format!("an unknown joining type {other} in JOINING_TYPES")),
+        };
+        types.insert(scalar, kind);
+    }
+    if types.is_empty() {
+        return Err("JOINING_TYPES is empty".to_owned());
+    }
+    Ok(types)
+}
+
+/// The joined forms of the engine's list: lines `U+FORM U+LETTER final|initial|medial`.
+pub(crate) fn joined_forms(list: &str) -> Result<HashMap<u32, Vec<(JoinForm, u32)>>, String> {
+    let scalar = |field: Option<&str>, line_number: usize| {
+        field
+            .and_then(|field| field.strip_prefix("U+"))
+            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+            .ok_or_else(|| format!("line {line_number}: no code point"))
+    };
+    let mut forms: HashMap<u32, Vec<(JoinForm, u32)>> = HashMap::new();
+    for (index, line) in list.lines().enumerate() {
+        let line_number = index.saturating_add(1);
+        if line.starts_with(';') || line.trim().is_empty() {
+            continue;
+        }
+        let mut fields = line.split_whitespace();
+        let point = scalar(fields.next(), line_number)?;
+        let letter = scalar(fields.next(), line_number)?;
+        let form = match fields.next() {
+            Some("final") => JoinForm::Final,
+            Some("initial") => JoinForm::Initial,
+            Some("medial") => JoinForm::Medial,
+            other => return Err(format!("line {line_number}: the form {other:?}")),
+        };
+        forms.entry(letter).or_default().push((form, point));
+    }
+    Ok(forms)
+}
 
 /// Every set's code table: for each set, (code, Unicode scalar) of each position listed.
 pub(crate) type CodeTables = Vec<Vec<(u8, u32)>>;
@@ -190,10 +279,17 @@ pub(crate) fn bdf_glyphs(text: &str, glyphs: &mut HashMap<u32, Vec<u16>>) -> Res
     Ok(())
 }
 
-/// Every set, from the engine's checkout at `engine`.
+/// Every set, from the engine's checkout at `engine`, the plain Arabic-script sets with their
+/// joining data.
 pub(crate) fn load(engine: &Path) -> Result<Vec<BitmapSet>, String> {
     let list_path = engine.join(REQUIRED_LIST);
     let tables = code_tables(&read(&list_path)?).map_err(|error| format!("{}: {error}", list_path.display()))?;
+    let source_path = engine.join(JOINING_SOURCE);
+    let forms_path = engine.join(FORMS_LIST);
+    let joining = Joining {
+        types: joining_types(&read(&source_path)?).map_err(|error| format!("{}: {error}", source_path.display()))?,
+        forms: joined_forms(&read(&forms_path)?).map_err(|error| format!("{}: {error}", forms_path.display()))?,
+    };
     let mut glyphs = HashMap::new();
     for file in NOTO_FILES {
         let path = engine.join(file);
@@ -202,15 +298,37 @@ pub(crate) fn load(engine: &Path) -> Result<Vec<BitmapSet>, String> {
     tables
         .iter()
         .zip(TELETEXT_SETS)
-        .map(|(table, name)| {
+        .enumerate()
+        .map(|(number, (table, name))| {
             let mut set = BitmapSet::new(CELL_WIDTH, CELL_HEIGHT).map_err(|error| error.to_string())?;
             for &(code, scalar) in table {
                 let rows = glyphs.get(&scalar).ok_or_else(|| format!("{name}: no glyph for U+{scalar:04X}"))?;
                 set.set_glyph(code, rows).map_err(|error| format!("{name} {code:#04x}: {error}"))?;
+                if JOINED_SETS.contains(&number) {
+                    give_joining(&mut set, code, scalar, &joining, &glyphs)
+                        .map_err(|error| format!("{name} {code:#04x}: {error}"))?;
+                }
             }
             Ok(set)
         })
         .collect()
+}
+
+/// Gives the letter `scalar` at `code` its joining type and its joined forms' glyphs.
+fn give_joining(
+    set: &mut BitmapSet,
+    code: u8,
+    scalar: u32,
+    joining: &Joining,
+    glyphs: &HashMap<u32, Vec<u16>>,
+) -> Result<(), String> {
+    let Some(&kind) = joining.types.get(&scalar) else { return Ok(()) };
+    set.set_joining(code, kind).map_err(|error| error.to_string())?;
+    for &(form, point) in joining.forms.get(&scalar).map_or(&[][..], Vec::as_slice) {
+        let rows = glyphs.get(&point).ok_or_else(|| format!("no glyph for the form U+{point:04X}"))?;
+        set.set_form_glyph(code, form, rows).map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -230,6 +348,25 @@ mod tests {
 
     fn character(bbx: &str, rows: usize) -> String {
         format!("STARTCHAR x\nENCODING 65\nBBX {bbx}\nBITMAP\n{}ENDCHAR\n", "FFF0\n".repeat(rows))
+    }
+
+    #[test]
+    fn the_engines_joining_tables_are_read() {
+        let source = "const JOINING_TYPES: [(char, JoiningType); 3] = [\n    ('\\u{0621}', JoiningType::None), // HAMZA\n    ('\\u{0627}', JoiningType::Right), // ALEF\n    ('\\u{0640}', JoiningType::Causing), // TATWEEL\n];\nconst OTHER: [(char, JoiningType); 1] = [\n    ('\\u{0628}', JoiningType::Dual),\n];";
+        let types = joining_types(source).unwrap();
+        assert_eq!(types.len(), 3, "only the JOINING_TYPES table is read");
+        assert_eq!(types[&0x627], JoiningType::Right);
+        assert_eq!(types[&0x640], JoiningType::Dual, "join-causing joins as dual-joining");
+        assert!(
+            joining_types(
+                "const JOINING_TYPES: [(char, JoiningType); 1] = [\n    ('\\u{0621}', JoiningType::Sideways),\n];"
+            )
+            .is_err()
+        );
+        let forms = joined_forms("; a comment\nU+FE90 U+0628 final\nU+FE91 U+0628 initial\n").unwrap();
+        assert_eq!(forms[&0x628], [(JoinForm::Final, 0xFE90), (JoinForm::Initial, 0xFE91)]);
+        assert!(joined_forms("U+FE90 U+0628 sideways").is_err());
+        assert!(joined_forms("FE90 U+0628 final").is_err());
     }
 
     #[test]

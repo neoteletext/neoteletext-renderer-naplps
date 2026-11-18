@@ -20,7 +20,8 @@
 //! `--teletext ENGINE` loads NeoTeletext's 55 character sets from the engine's checkout
 //! (REQ-6668): the code tables from its `required.txt` and the glyphs from its Noto Teletext BDF
 //! files ([`teletext_sets`]), so that a page designating them by their private designations
-//! draws their characters. `--neoteletext` draws the page as NeoTeletext shows it (REQ-5819,
+//! draws their characters; the plain Arabic-script sets 44 to 51 with their joining data from
+//! the engine's joining table and `forms.txt`, so that their letters join (PAR-14). `--neoteletext` draws the page as NeoTeletext shows it (REQ-5819,
 //! DEC-6667): on 480 by 462 pixels centred in the 480 by 500 teletext raster, the 19 lines above
 //! and below in the page's background colour; `--double` draws both at twice the size.
 //!

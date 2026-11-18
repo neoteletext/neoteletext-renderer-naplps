@@ -19,7 +19,7 @@ For animation (neoteletext-common `docs/animation.md`) it reports the rectangle 
 naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE] [--neoteletext [--double]] PAGE OUT.ppm
 ```
 
-`--teletext ENGINE` loads NeoTeletext's 55 character sets from the teletext engine's checkout (its `required.txt` and Noto Teletext BDF files), which a page designates by their ISO 2022 private designations (docs/reference.html, "Sets and shifts"; REQ-6668). `--neoteletext` draws the page as NeoTeletext shows it, on 480 by 462 pixels centred in the 480 by 500 teletext raster with the lines above and below in the page's background colour (REQ-5819, DEC-6667); `--double` at twice the size.
+`--teletext ENGINE` loads NeoTeletext's 55 character sets from the teletext engine's checkout (its `required.txt` and Noto Teletext BDF files, and for the plain Arabic-script sets 44 to 51 its joining table and `forms.txt`, so that their letters join as on teletext pages), which a page designates by their ISO 2022 private designations (docs/reference.html, "Sets and shifts"; REQ-6668). `--neoteletext` draws the page as NeoTeletext shows it, on 480 by 462 pixels centred in the 480 by 500 teletext raster with the lines above and below in the page's background colour (REQ-5819, DEC-6667); `--double` at twice the size.
 
 `--frames` plays the page for that many ticks, WAIT and BLINK on their ticks, and writes `OUT-NNNNN.ppm` every `--frame-step` ticks; `--objects` gives the page numbered objects and `--script` moves, hides and cycles them at stated ticks (docs/reference.html, "Objects and animation").
 
