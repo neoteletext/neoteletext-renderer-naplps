@@ -11,9 +11,12 @@ rust-version = "1.97"
 license = "MIT"
 publish = false
 
-# No library is used: every library needs the owner's approval by name,
-# recorded in a decision (DEVELOPMENT.md section 7). The oracle drives
-# external programs instead (Xvfb, DOSBox, socat, xdotool, ffmpeg).
+# The renderer, its tools and the oracle use no library: every library
+# needs the owner's approval by name, recorded in a decision (DEVELOPMENT.md
+# section 7), and the oracle drives external programs instead (Xvfb,
+# DOSBox, socat, xdotool, ffmpeg). The one exception is crates/naplps-fuzz,
+# whose tests are driven by proptest (DEC-6607, under the owner's DEC-6579);
+# nothing that builds the renderer in builds it.
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

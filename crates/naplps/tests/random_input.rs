@@ -1,6 +1,8 @@
-//! Random input never panics and always finishes (REQ-5788, until the fuzz target of TODO-5760
-//! exists). Run in a debug build, so any arithmetic overflow panics, this checks the bounds the
-//! geometry's `arithmetic_side_effects` allowances rely on.
+//! Random input never panics and always finishes (REQ-5788): the same pages on every run, in a
+//! debug build, so any arithmetic overflow panics; this checks the bounds the geometry's
+//! `arithmetic_side_effects` allowances rely on. The fuzz target `naplps_stream`
+//! (`crates/naplps-fuzz`) searches new streams on each run and holds more properties; this
+//! stays as the fixed run.
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::unwrap_used,

@@ -5,9 +5,10 @@
 # fails the run: nothing is skipped, and a missing tool is a failure.
 #   scripts/check.sh commit   formatting and Clippy, on what is staged
 #   scripts/check.sh push     the tests: a push of livedevelopment
-#   scripts/check.sh full     release tests, documentation, and the oracle
-#                             reproducing the rosetta_stone screenshots
-#                             with PP3: a push to main
+#   scripts/check.sh full     release tests, documentation, the fuzz targets
+#                             at length, and the oracle reproducing the
+#                             rosetta_stone screenshots with PP3: a push
+#                             to main
 # This repository is developed on chunko, a Linux machine, so the full gate
 # has no separate Linux stage.
 set -euo pipefail
@@ -23,7 +24,7 @@ readonly CHECKED_PATHS=(crates fuzz scripts .githooks Cargo.toml Cargo.lock rust
 # The crates that read input from outside their process, each with the
 # same no-panic lint list at its root (DEVELOPMENT.md section 6). Every
 # crate root must be listed.
-readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs crates/naplps/src/lib.rs crates/naplps-render/src/main.rs crates/naplps-fonts/src/lib.rs)
+readonly NO_PANIC_ROOTS=(crates/naplps-oracle/src/lib.rs crates/naplps-oracle/src/main.rs crates/naplps/src/lib.rs crates/naplps-render/src/main.rs crates/naplps-fonts/src/lib.rs crates/naplps-fuzz/src/lib.rs)
 
 check_no_panic_lists() {
     step "the no-panic lint list is the same in every crate root"
@@ -74,7 +75,7 @@ full_steps() {
     cargo test --quiet --workspace --release
     step "3,000 random pages in a debug build, where arithmetic overflow panics (about seven minutes)"
     cargo test --quiet -p naplps --test random_input -- --ignored
-    step "the oracle and the renderer against PP3, and the whole collection (about three minutes)"
+    step "every ignored test: the oracle and the renderer against PP3, the whole collection, the historical page's golden sequence, and the fuzz targets on inputs made by property testing, at length (about four minutes)"
     local tool
     for tool in dosbox Xvfb socat xdotool ffmpeg ffprobe sha256sum; do
         need_tool "$tool" "the oracle runs PP3 in DOSBox on Xvfb (sudo apt-get install dosbox xvfb socat xdotool ffmpeg)"

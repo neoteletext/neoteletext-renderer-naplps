@@ -3,10 +3,9 @@
 //! stay inside its rectangle, and the picture composed by damage must equal the picture
 //! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11).
 //!
-//! This file holds the target's body, `naplps_objects`, which takes the fuzzer's bytes. The
-//! workspace has no fuzzing library (none is approved, DEVELOPMENT.md section 7), so the body
-//! is built and run on fixed and generated inputs by `crates/naplps/tests/fuzz_naplps_objects.rs`
-//! on every push; a fuzzing engine's entry point calls it unchanged once one is approved.
+//! This file holds the target's body, `naplps_objects`, which takes the fuzzer's bytes.
+//! `crates/naplps-fuzz` runs it on its kept inputs and on inputs made by property testing
+//! (DEC-6607); an engine guided by coverage would call it unchanged.
 
 use naplps::{Animation, Canvas, Look, Object, ObjectKind, Terminal};
 
