@@ -176,6 +176,14 @@ impl Palette {
             self.set(entry, colour);
             return entry;
         }
+        self.nearest(colour)
+    }
+
+    /// The lowest entry holding the colour nearest `colour`, changing nothing: what colour mode
+    /// 0 draws with when no entry is left, and what an object's macro always draws with
+    /// (animation.md ANIM-11: it redefines no entry).
+    #[must_use]
+    pub fn nearest(&self, colour: Rgb) -> u8 {
         let nearest = self
             .entries
             .iter()
@@ -183,6 +191,27 @@ impl Palette {
             .min_by_key(|(_, entry)| distance(**entry, colour))
             .map_or(0, |(index, _)| index);
         u8::try_from(nearest).unwrap_or(0)
+    }
+
+    /// The first time after `tenths` (tenths of a second after the first blink process started)
+    /// at which some process changes phase, so the colour map [`Palette::at`] gives changes;
+    /// `None` when nothing blinks. A caller with a clock sleeps until then (animation.md ANIM-1,
+    /// ANIM-20).
+    #[must_use]
+    pub fn next_change(&self, tenths: u32) -> Option<u32> {
+        self.blinks
+            .iter()
+            .map(|blink| {
+                if tenths < blink.start {
+                    return blink.start;
+                }
+                let period = blink.on.saturating_add(blink.off).max(1);
+                let phase = tenths.saturating_sub(blink.start).checked_rem(period).unwrap_or(0);
+                let remaining =
+                    if phase < blink.on { blink.on.saturating_sub(phase) } else { period.saturating_sub(phase) };
+                tenths.saturating_add(remaining)
+            })
+            .min()
     }
 
     /// A colour-map entry not used since the last reset (never nominal black or white), given

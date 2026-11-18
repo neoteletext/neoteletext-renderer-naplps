@@ -23,3 +23,43 @@ pub const MASK_SIDE: u32 = 128;
 pub const MAX_BLINKS: usize = 32;
 /// Width or height of a canvas.
 pub const MAX_CANVAS_SIDE: u32 = 4096;
+
+// ----- Animation (neoteletext-common docs/animation.md, ANIM-16 and ANIM-20) ---------------------
+
+/// Layers of a page, drawn in this order: 0 the background (the stream's picture), 1 the scene,
+/// 2 the sprites, 3 the overlay (ANIM-12).
+pub const LAYERS: u8 = 4;
+/// Objects a sub-page may have (ANIM-11, ANIM-16).
+pub const MAX_OBJECTS: usize = 64;
+/// Objects holding animation state at once (ANIM-6, ANIM-16).
+pub const MAX_ANIMATED_OBJECTS: usize = 64;
+/// Objects of a page cycling through their frames at once (ANIM-14). The renderer keeps no
+/// clock and so no cycle: the caller that plays cycles holds a page to this.
+pub const MAX_CYCLING_OBJECTS: usize = 16;
+/// Frames of one object (ANIM-14).
+pub const MAX_OBJECT_FRAMES: usize = 16;
+/// Pixels repainted for animation in one tick: half of 640 by 480 (ANIM-16). The caller with
+/// the clock holds a page to it, by composing only when `Terminal::pending` is within it or a
+/// tick has passed with nothing painted.
+pub const MAX_ANIMATION_PIXELS_PER_TICK: u64 = 153_600;
+/// Bytes processed in drawing one object, macro expansion counted; past it the object's drawing
+/// stops (ANIM-11, ANIM-16).
+pub const MAX_OBJECT_BYTES: usize = 16_384;
+/// The width of the picture an object's position, size and rectangle are in (ANIM-11).
+pub const OBJECT_PICTURE_WIDTH: u32 = 640;
+/// The height of the picture an object's position, size and rectangle are in (ANIM-11).
+pub const OBJECT_PICTURE_HEIGHT: u32 = 480;
+/// The highest frame number the animation state holds (ANIM-6: 0 to 15).
+pub const MAX_FRAME_NUMBER: u8 = 15;
+/// Ticks of the presentation clock in a tenth of a second, the unit of WAIT and BLINK intervals
+/// (ANSI X3.110-1983 sections 5.3.2.8 and 5.3.2.7; ANIM-1: 60 ticks a second).
+pub const TENTH_TICKS: u32 = 6;
+/// Ticks for which a stream's WAITs together are played in one generation, one minute; after
+/// that each WAIT passes without delay (ANIM-20).
+pub const WAIT_BUDGET_TICKS: u32 = 3_600;
+/// Bytes held while a WAIT is played; when more arrive the wait ends at once (ANIM-20).
+pub const MAX_WAIT_HELD_BYTES: usize = 262_144;
+
+const _: () = assert!(MAX_FRAME_NUMBER as usize + 1 == MAX_OBJECT_FRAMES);
+const _: () = assert!(MAX_ANIMATED_OBJECTS >= MAX_OBJECTS);
+const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK * 2 == OBJECT_PICTURE_WIDTH as u64 * OBJECT_PICTURE_HEIGHT as u64);

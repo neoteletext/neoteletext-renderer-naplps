@@ -18,6 +18,10 @@ use crate::raster::{self, FillPattern, LineTexture, Masks, Style};
 use crate::surface::{Canvas, Mask, MaskSurface, Surface, pixel_of};
 use crate::text::{self, Field, Ink, Shape};
 
+mod objects;
+
+pub use objects::{Animation, Look, Object, ObjectKind};
+
 /// The code sets a G-set may hold (section 4.3).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CharSet {
@@ -189,6 +193,16 @@ pub struct Terminal {
     repeat_allowed: bool,
     /// RESET cleared the DRCS while a DRCS definition was open.
     drcs_cleared: bool,
+    /// The macros being expanded, innermost last, each with the position reached in it. Kept
+    /// between calls so that [`Terminal::feed_until_wait`] can stop inside a macro and go on.
+    frames: Vec<(Vec<u8>, usize)>,
+    /// A WAIT ran in the byte just processed.
+    waited: bool,
+    /// This terminal is executing an object's macro (animation.md ANIM-11): the commands that
+    /// would change the stream's state or the colour map have no effect.
+    in_object: bool,
+    /// The objects over the stream's picture, their animation state and the damage.
+    scene: objects::Scene,
 }
 
 /// Most events kept from one call.
@@ -246,12 +260,17 @@ impl Terminal {
             last_was_spacing: false,
             repeat_allowed: false,
             drcs_cleared: false,
+            frames: Vec::new(),
+            waited: false,
+            in_object: false,
+            scene: objects::Scene::default(),
         }
     }
 
     /// Uses `font` for the primary and supplementary sets (decision D5).
     pub fn set_font(&mut self, font: StrokeFont) {
         self.font = Some(font);
+        self.scene.definitions_changed = true;
     }
 
     /// The colour map.
@@ -262,6 +281,28 @@ impl Terminal {
 
     /// Processes bytes onto `canvas`, returning what the caller may act on.
     pub fn feed(&mut self, canvas: &mut Canvas, bytes: &[u8]) -> Vec<Event> {
+        self.run(canvas, bytes, MAX_PROCESSED_BYTES, false);
+        self.scene.wrote(canvas.take_written());
+        core::mem::take(&mut self.events)
+    }
+
+    /// Processes bytes onto `canvas` up to and including the byte at which a WAIT ran (section
+    /// 5.3.2.8), and says how many of `bytes` it took: all of them when no WAIT ran. A WAIT runs
+    /// when the byte after its operands arrives, so that byte is taken, and nothing after the
+    /// WAIT has been drawn. The caller holds the rest for the interval the [`Event::Wait`] gives
+    /// and then calls again (animation.md ANIM-20). A WAIT
+    /// inside a macro stops there too: the rest of the macro runs at the next call of this or of
+    /// [`Terminal::feed`].
+    pub fn feed_until_wait(&mut self, canvas: &mut Canvas, bytes: &[u8]) -> (usize, Vec<Event>) {
+        let taken = self.run(canvas, bytes, MAX_PROCESSED_BYTES, true);
+        self.scene.wrote(canvas.take_written());
+        (taken, core::mem::take(&mut self.events))
+    }
+
+    /// Processes `bytes`, after any macro still expanding, until they end, `limit` bytes have
+    /// been processed (macro expansion counted), or, with `stop_at_wait`, a WAIT ran. Returns
+    /// how many of `bytes` were taken.
+    fn run(&mut self, surface: &mut dyn Surface, bytes: &[u8], limit: usize, stop_at_wait: bool) -> usize {
         self.display_top =
             fraction(crate::surface::DISPLAY_HEIGHT_NUMERATOR, crate::surface::DISPLAY_HEIGHT_DENOMINATOR);
         if !self.started {
@@ -270,20 +311,23 @@ impl Terminal {
             self.cursor = self.home_position();
         }
         self.processed = 0;
-        let mut frames: Vec<(Vec<u8>, usize)> = Vec::new();
+        self.waited = false;
         let mut position = 0;
         loop {
-            if self.processed >= MAX_PROCESSED_BYTES {
+            if self.processed >= limit {
                 self.event(Event::LimitReached);
+                // What was expanding is abandoned, as it was before the expansion was kept
+                // between calls: the limit ends the work, it does not defer it.
+                self.frames.clear();
                 break;
             }
-            let (byte, depth) = if let Some((bytes, at)) = frames.last_mut() {
-                let Some(byte) = bytes.get(*at).copied() else {
-                    frames.pop();
+            let (byte, depth) = if let Some((body, at)) = self.frames.last_mut() {
+                let Some(byte) = body.get(*at).copied() else {
+                    self.frames.pop();
                     continue;
                 };
                 *at = at.saturating_add(1);
-                (byte, frames.len())
+                (byte, self.frames.len())
             } else {
                 match bytes.get(position).copied() {
                     Some(byte) => {
@@ -294,18 +338,21 @@ impl Terminal {
                 }
             };
             self.processed = self.processed.saturating_add(1);
-            if let Some(number) = self.byte(canvas, byte, depth)
-                && frames.len() < MAX_MACRO_DEPTH
+            if let Some(number) = self.byte(surface, byte, depth)
+                && self.frames.len() < MAX_MACRO_DEPTH
                 && let Some(Some(body)) = self.macros.get(usize::from(number.wrapping_sub(FIRST_CODE)))
             {
-                frames.push((body.clone(), 0));
+                self.frames.push((body.clone(), 0));
             }
             if self.cancel {
                 self.cancel = false;
-                frames.clear();
+                self.frames.clear();
+            }
+            if core::mem::take(&mut self.waited) && stop_at_wait {
+                break;
             }
         }
-        core::mem::take(&mut self.events)
+        position
     }
 
     /// The border's colour-map entry: the area of the screen outside the display area, which the
@@ -319,17 +366,19 @@ impl Terminal {
     pub fn finish(&mut self, canvas: &mut Canvas) -> Vec<Event> {
         self.settle(canvas);
         self.flush(canvas);
+        self.scene.wrote(canvas.take_written());
         core::mem::take(&mut self.events)
     }
 
     fn event(&mut self, event: Event) {
-        if self.events.len() < MAX_EVENTS {
+        // An object's macro reports nothing: its bell and its limit are not the stream's.
+        if self.events.len() < MAX_EVENTS && !self.in_object {
             self.events.push(event);
         }
     }
 
     /// One byte. Returns a macro number to expand.
-    fn byte(&mut self, canvas: &mut Canvas, byte: u8, depth: usize) -> Option<u8> {
+    fn byte(&mut self, canvas: &mut dyn Surface, byte: u8, depth: usize) -> Option<u8> {
         // Definitions that record without executing.
         if let Some(Recording::Macro { execute: false, bytes, .. }) = &mut self.recording {
             let escaped = bytes.last() == Some(&ESC);
@@ -358,7 +407,7 @@ impl Terminal {
         self.dispatch(canvas, byte)
     }
 
-    fn dispatch(&mut self, canvas: &mut Canvas, byte: u8) -> Option<u8> {
+    fn dispatch(&mut self, canvas: &mut dyn Surface, byte: u8) -> Option<u8> {
         // REPEAT is ESC 4/6 in the 7-bit form, so the ESC does not come between REPEAT and the
         // character before it; nor do the shifts, which pages send between a character in GL and
         // a REPEAT (PP3 repeats across them: sample page 113's dot leaders, SI . SO ESC 4/6).
@@ -433,7 +482,7 @@ impl Terminal {
         }
     }
 
-    fn graphic(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) -> Option<u8> {
+    fn graphic(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) -> Option<u8> {
         match set {
             CharSet::Null => None,
             CharSet::Macro => {
@@ -469,7 +518,7 @@ impl Terminal {
 
     // ----- C0 and C1 ------------------------------------------------------------------------
 
-    fn control0(&mut self, canvas: &mut Canvas, byte: u8) {
+    fn control0(&mut self, canvas: &mut dyn Surface, byte: u8) {
         // Section 6.1: these belong to other layers and neither act nor end a PDI.
         if matches!(byte, 0x00..=0x06 | 0x10..=0x17) {
             return;
@@ -506,7 +555,7 @@ impl Terminal {
                 // sends CS inside DEF TEXTURE; clearing the display there blanked the page.)
                 match &mut self.recording {
                     Some(Recording::Drcs { mask, .. } | Recording::Texture { mask, .. }) => mask.clear(),
-                    _ => canvas.clear(entry),
+                    _ => canvas.fill_all(entry),
                 }
             }
             0x0D => {
@@ -535,7 +584,7 @@ impl Terminal {
         }
     }
 
-    fn escape(&mut self, canvas: &mut Canvas, collected: &mut Vec<u8>, byte: u8) -> Option<u8> {
+    fn escape(&mut self, canvas: &mut dyn Surface, collected: &mut Vec<u8>, byte: u8) -> Option<u8> {
         if !(0x20..0x80).contains(&byte) {
             // A control interrupts the sequence; the sequence is dropped.
             return self.dispatch(canvas, byte);
@@ -592,7 +641,7 @@ impl Terminal {
         None
     }
 
-    fn control1(&mut self, canvas: &mut Canvas, code: u8) {
+    fn control1(&mut self, canvas: &mut dyn Surface, code: u8) {
         self.settle(canvas);
         match code {
             0x80..=0x84 => {
@@ -628,6 +677,8 @@ impl Terminal {
             0x8B => self.text.size = Point::new(fraction(1, 32), fraction(3, 64)),
             0x8C => self.text.size = Point::new(fraction(1, 40), fraction(5, 128)),
             0x8D => self.text.size = Point::new(fraction(1, 40), fraction(5, 64)),
+            // BLINK START and BLINK STOP have no effect inside an object's macro (ANIM-11).
+            0x8E | 0x9E if self.in_object => {}
             0x8E => {
                 let to = if self.mode == Mode::MapWithBackground { self.background } else { self.palette.black() };
                 if self.mode == Mode::Direct {
@@ -690,7 +741,20 @@ impl Terminal {
 
     /// Ends the definition in progress and stores it; returns the DRCS code it defined, if any.
     fn end_recording(&mut self) -> Option<u8> {
-        match self.recording.take()? {
+        if self.in_object {
+            // ANIM-11: DEF MACRO, DEFP MACRO, DEFT MACRO, DEF DRCS and DEF TEXTURE have no effect
+            // inside an object's macro. The definition's bytes are still read as a definition's
+            // (so they are not drawn as if they were the macro's own), and it is dropped here.
+            let dropped = self.recording.take()?;
+            if !matches!(dropped, Recording::Macro { .. }) {
+                self.point = Point::default();
+            }
+            return None;
+        }
+        let recording = self.recording.take()?;
+        // An object's macro may call or draw with what was defined (ANIM-11).
+        self.scene.definitions_changed = true;
+        match recording {
             Recording::Macro { number, bytes, transmit, .. } => {
                 let index = usize::from(number.wrapping_sub(FIRST_CODE));
                 let others: usize = self
@@ -736,7 +800,7 @@ impl Terminal {
     // ----- PDIs -----------------------------------------------------------------------------
 
     /// Runs the PDI collecting data, if any.
-    fn flush(&mut self, canvas: &mut Canvas) {
+    fn flush(&mut self, canvas: &mut dyn Surface) {
         let Some((opcode, data)) = self.pdi.take() else { return };
         let mut recording = self.recording.take();
         match &mut recording {
@@ -782,6 +846,8 @@ impl Terminal {
         let mut reader = Reader::new(data);
         let domain = self.domain;
         match opcode {
+            // RESET and BLINK have no effect inside an object's macro (ANIM-11).
+            0x20 | 0x3F if self.in_object => {}
             0x20 => self.reset(surface, &mut reader),
             0x21 => {
                 let Some(byte) = reader.byte() else { return };
@@ -937,7 +1003,11 @@ impl Terminal {
                 while let Some(interval) = reader.byte() {
                     tenths = tenths.saturating_add(u32::from(interval));
                 }
-                self.event(Event::Wait(tenths));
+                // WAIT has no effect inside an object's macro (ANIM-11).
+                if !self.in_object {
+                    self.event(Event::Wait(tenths));
+                    self.waited = true;
+                }
             }
             0x3E => self.select_colour(&mut reader),
             0x3F => self.blink(&mut reader),
@@ -986,11 +1056,7 @@ impl Terminal {
             _ => None, // border only, or nothing: this display has no border
         };
         if let Some(entry) = clear {
-            for y in 0..surface.height() {
-                for x in 0..surface.width() {
-                    surface.put(x, y, entry);
-                }
-            }
+            surface.fill_all(entry);
         }
         if second & 0b1 != 0 {
             self.text = TextState::default();
@@ -1005,6 +1071,9 @@ impl Terminal {
             self.fill = FillPattern::Solid;
             self.highlight = false;
             self.mask_size = Point::new(fraction(1, 40), fraction(5, 128));
+        }
+        if second & 0b11_0000 != 0 {
+            self.scene.definitions_changed = true;
         }
         if second & 0b1_0000 != 0 {
             self.macros.fill(None);
@@ -1057,9 +1126,13 @@ impl Terminal {
         match self.mode {
             Mode::Direct => {
                 if let Some(colour) = reader.colour(domain) {
-                    self.colour = self.palette.allocate(colour);
+                    // An object's macro redefines no entry of the colour map (ANIM-11): it draws
+                    // with the entry whose colour is nearest.
+                    self.colour =
+                        if self.in_object { self.palette.nearest(colour) } else { self.palette.allocate(colour) };
                 }
             }
+            Mode::Map | Mode::MapWithBackground if self.in_object => {}
             Mode::Map | Mode::MapWithBackground => {
                 let mut entry = Some(self.colour);
                 while let Some(colour) = reader.colour(domain) {
@@ -1081,7 +1154,7 @@ impl Terminal {
             (Some((value, width)), None) => {
                 self.mode = Mode::Map;
                 self.colour = self.palette.entry_from_operand(value, width);
-                self.palette.mark_used(self.colour);
+                self.mark_used(self.colour);
             }
             (Some((value, width)), Some((back, back_width))) => {
                 self.mode = Mode::MapWithBackground;
@@ -1091,9 +1164,17 @@ impl Terminal {
                     self.colour = drawing;
                 }
                 self.background = background;
-                self.palette.mark_used(drawing);
-                self.palette.mark_used(background);
+                self.mark_used(drawing);
+                self.mark_used(background);
             }
+        }
+    }
+
+    /// Notes that SELECT COLOR named an entry, which keeps colour mode 0 from redefining it;
+    /// an object's macro leaves the colour map's record as the stream has it (ANIM-11).
+    fn mark_used(&mut self, entry: u8) {
+        if !self.in_object {
+            self.palette.mark_used(entry);
         }
     }
 
@@ -1412,7 +1493,7 @@ impl Terminal {
 
     /// Line feed (`down`) or vertical tab: wraps to the opposite boundary, or scrolls in scroll
     /// mode (Dillon, Line Feed).
-    fn line_feed(&mut self, canvas: &mut Canvas, down: bool) {
+    fn line_feed(&mut self, canvas: &mut dyn Surface, down: bool) {
         let area = self.area();
         let step = self.row_step();
         let step = if down { step } else { Point::new(step.x.saturating_neg(), step.y.saturating_neg()) };
@@ -1441,17 +1522,16 @@ impl Terminal {
         clippy::arithmetic_side_effects,
         reason = "unit lengths below 2^31 and pixel counts below 2^12 multiplied within i64; colour bits assembled below 48 bits; mask sides at most MASK_SIDE"
     )]
-    fn scroll(&mut self, canvas: &mut Canvas, area: (Unit, Unit, Unit, Unit), step: Point) {
+    fn scroll(&mut self, canvas: &mut dyn Surface, area: (Unit, Unit, Unit, Unit), step: Point) {
         let top_left = pixel_of(canvas, Point::new(area.0, area.3));
         let bottom_right = pixel_of(canvas, Point::new(area.2, area.1));
-        let (xn, xd) = Surface::scale_x(canvas);
-        let (yn, yd) = Surface::scale_y(canvas);
+        let (xn, xd) = canvas.scale_x();
+        let (yn, yd) = canvas.scale_y();
         let shift_x = crate::fixed::to_pixels_at(step.x, xn, xd);
         let shift_y = crate::fixed::to_pixels_at(step.y, yn, yd);
         let blank = if self.mode == Mode::MapWithBackground { self.background } else { self.palette.black() };
         let (x0, y0) = (top_left.0.max(0), top_left.1.max(0));
-        let (x1, y1) =
-            (bottom_right.0.min(Surface::width(canvas) - 1), bottom_right.1.min(Surface::height(canvas) - 1));
+        let (x1, y1) = (bottom_right.0.min(canvas.width() - 1), bottom_right.1.min(canvas.height() - 1));
         // Scrolling up (a line feed downward) moves content up the screen: rows read from below.
         let rows: Vec<i32> = if shift_y < 0 { (y0..=y1).collect() } else { (y0..=y1).rev().collect() };
         let columns: Vec<i32> = if shift_x > 0 { (x0..=x1).collect() } else { (x0..=x1).rev().collect() };
@@ -1468,7 +1548,7 @@ impl Terminal {
         }
     }
 
-    fn backspace(&mut self, canvas: &mut Canvas) {
+    fn backspace(&mut self, canvas: &mut dyn Surface) {
         let step = self.advance_step();
         let next = Point::new(self.cursor.x.saturating_sub(step.x), self.cursor.y.saturating_sub(step.y));
         if self.fits(next, self.area()) {
@@ -1480,7 +1560,7 @@ impl Terminal {
         }
     }
 
-    fn forward(&mut self, canvas: &mut Canvas) {
+    fn forward(&mut self, canvas: &mut dyn Surface) {
         let next = self.cursor.plus(self.advance_step());
         if self.fits(next, self.area()) {
             self.cursor = next;
@@ -1504,7 +1584,7 @@ impl Terminal {
     }
 
     /// Moves along the path after a character; at the edge, a new line (section 5.3.2.3.6).
-    fn advance(&mut self, canvas: &mut Canvas, step: Point) {
+    fn advance(&mut self, canvas: &mut dyn Surface, step: Point) {
         let next = self.cursor.plus(step);
         if self.fits(next, self.area()) {
             self.cursor = next;
@@ -1560,7 +1640,7 @@ impl Terminal {
     /// One character from a graphic set. In word wrap mode, primary, supplementary and DRCS
     /// characters are buffered into words and a word that does not fit on the rest of the line
     /// starts the next (section 6.2.7.11); anything else ends the word first.
-    fn character(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) {
+    fn character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) {
         self.last_was_spacing = !is_accent(set, code) && set != CharSet::Null;
         let alphanumeric = matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs);
         if self.text.word_wrap && alphanumeric {
@@ -1580,7 +1660,7 @@ impl Terminal {
 
     /// Draws a buffered word, first starting a new line if it does not fit on this one, and then
     /// the SPACE that ended it, which is dropped if the word filled the line (section 6.2.7.11).
-    fn end_word(&mut self, canvas: &mut Canvas, space: bool) {
+    fn end_word(&mut self, canvas: &mut dyn Surface, space: bool) {
         let word = core::mem::take(&mut self.word);
         if !word.is_empty() && !self.word_fits(&word) && self.cursor != self.line_start() {
             self.carriage_return();
@@ -1616,7 +1696,7 @@ impl Terminal {
     }
 
     /// Draws a buffered word and a waiting accent: before anything that is not text.
-    fn settle(&mut self, canvas: &mut Canvas) {
+    fn settle(&mut self, canvas: &mut dyn Surface) {
         self.end_word(canvas, false);
         if let Some(accent) = self.pending_accent.take() {
             let field = self.field_now(self.cursor);
@@ -1651,7 +1731,7 @@ impl Terminal {
     /// Draws one character at the cursor and moves the cursor on. A non-spacing accent (the
     /// supplementary set's 4/0 to 4/15) waits for the next character and is drawn over it, so
     /// that the letter's field, painted in colour mode 2, does not cover it (section 5.3.2.3.4).
-    fn draw_character(&mut self, canvas: &mut Canvas, set: CharSet, code: u8) {
+    fn draw_character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) {
         if code == 0x7F && matches!(set, CharSet::Primary | CharSet::Supplementary) {
             return; // DEL
         }
@@ -1681,7 +1761,7 @@ impl Terminal {
     }
 
     /// Draws a waiting accent on its own, before another accent replaces it.
-    fn settle_accent(&mut self, canvas: &mut Canvas) {
+    fn settle_accent(&mut self, canvas: &mut dyn Surface) {
         if let Some(accent) = self.pending_accent.take() {
             let field = self.field_now(self.cursor);
             let ink = self.ink(0);
@@ -1690,7 +1770,7 @@ impl Terminal {
     }
 
     /// Draws one character's shape into `field`, on the definition being recorded if any.
-    fn paint(&mut self, canvas: &mut Canvas, set: CharSet, code: u8, field: Field, ink: Ink) {
+    fn paint(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8, field: Field, ink: Ink) {
         let underline = |surface: &dyn Surface, terminal: &Self| {
             terminal.text.underline.then(|| text::underline_share(surface, terminal.pel.y, terminal.text.size.y))
         };
@@ -1700,7 +1780,7 @@ impl Terminal {
                 Some(Recording::Drcs { mask, per_unit, .. } | Recording::Texture { mask, per_unit, .. }) => {
                     &mut MaskSurface { mask, per_unit: *per_unit }
                 }
-                _ => canvas,
+                _ => &mut *canvas,
             };
             let mut ink = ink;
             match set {
@@ -1758,14 +1838,14 @@ impl Terminal {
         Some((left, right))
     }
 
-    fn repeat(&mut self, canvas: &mut Canvas, count: u32) {
+    fn repeat(&mut self, canvas: &mut dyn Surface, count: u32) {
         let Some((set, code)) = self.last_spacing else { return };
         for _ in 0..count {
             self.character(canvas, set, code);
         }
     }
 
-    fn repeat_to_end(&mut self, canvas: &mut Canvas) {
+    fn repeat_to_end(&mut self, canvas: &mut dyn Surface) {
         let Some((set, code)) = self.last_spacing else { return };
         let area = self.area();
         for _ in 0..MAX_REPEAT_TO_END {

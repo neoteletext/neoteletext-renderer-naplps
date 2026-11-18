@@ -43,9 +43,10 @@ mod text;
 
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
+
 pub use raster::{FillPattern, LineTexture};
-pub use surface::Canvas;
-pub use terminal::{CharSet, Event, Terminal};
+pub use surface::{Canvas, Rect};
+pub use terminal::{Animation, CharSet, Event, Look, Object, ObjectKind, Terminal};
 
 /// What can go wrong outside drawing itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,6 +55,11 @@ pub enum Error {
     CanvasSize,
     /// A font's text is malformed at this line (0: the text is too long).
     Font(usize),
+    /// More objects than [`limits::MAX_OBJECTS`] were given.
+    TooManyObjects,
+    /// The object at this index of the set given is not one the `NAPLPS_OBJECTS` record allows,
+    /// or repeats an earlier object's number.
+    Object(usize),
 }
 
 impl core::fmt::Display for Error {
@@ -62,6 +68,8 @@ impl core::fmt::Display for Error {
             Self::CanvasSize => write!(formatter, "a canvas side must be 1 to {} pixels", limits::MAX_CANVAS_SIDE),
             Self::Font(0) => write!(formatter, "the font is longer than {} bytes", font::MAX_TEXT_BYTES),
             Self::Font(line) => write!(formatter, "the font is malformed at line {line}"),
+            Self::TooManyObjects => write!(formatter, "a sub-page has at most {} objects", limits::MAX_OBJECTS),
+            Self::Object(index) => write!(formatter, "object {index} of the set is not a valid object"),
         }
     }
 }

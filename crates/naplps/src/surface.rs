@@ -21,11 +21,118 @@ pub const DISPLAY_HEIGHT_DENOMINATOR: i64 = 32;
 /// A picture of colour-map addresses, row by row from the top left. The unit screen's width
 /// spans the canvas's width and the visible 25/32 of its height spans the canvas's height
 /// (decision D3).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Canvas {
     width: u32,
     height: u32,
     pixels: Vec<u8>,
+    /// The rectangle holding every pixel whose value changed since [`Canvas::take_written`]
+    /// (animation.md ANIM-4): what `Terminal::take_damage` reports.
+    written: Option<Rect>,
+}
+
+/// Two canvases are equal when they show the same picture; what has been reported of their
+/// changes is not part of the picture.
+impl PartialEq for Canvas {
+    fn eq(&self, other: &Self) -> bool {
+        self.width == other.width && self.height == other.height && self.pixels == other.pixels
+    }
+}
+
+impl Eq for Canvas {}
+
+/// A rectangle of a picture's pixels, counted from the top left; never empty.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Rect {
+    /// The leftmost column.
+    pub x: u32,
+    /// The topmost row.
+    pub y: u32,
+    /// Columns, at least one.
+    pub width: u32,
+    /// Rows, at least one.
+    pub height: u32,
+}
+
+impl Rect {
+    /// The rectangle from (`left`, `top`) up to but not including (`right`, `bottom`), cut to a
+    /// picture of `width` by `height` pixels; `None` when nothing of it is on the picture.
+    #[must_use]
+    pub fn cut(left: i64, top: i64, right: i64, bottom: i64, width: u32, height: u32) -> Option<Self> {
+        let left = left.max(0);
+        let top = top.max(0);
+        let right = right.min(i64::from(width));
+        let bottom = bottom.min(i64::from(height));
+        if left >= right || top >= bottom {
+            return None;
+        }
+        Some(Self {
+            x: u32::try_from(left).ok()?,
+            y: u32::try_from(top).ok()?,
+            width: u32::try_from(right.saturating_sub(left)).ok()?,
+            height: u32::try_from(bottom.saturating_sub(top)).ok()?,
+        })
+    }
+
+    /// The column after the rightmost.
+    #[must_use]
+    pub fn right(&self) -> u32 {
+        self.x.saturating_add(self.width)
+    }
+
+    /// The row after the lowest.
+    #[must_use]
+    pub fn bottom(&self) -> u32 {
+        self.y.saturating_add(self.height)
+    }
+
+    /// Pixels inside.
+    #[must_use]
+    pub fn area(&self) -> u64 {
+        u64::from(self.width).saturating_mul(u64::from(self.height))
+    }
+
+    /// Whether the pixel (`x`, `y`) is inside.
+    #[must_use]
+    pub fn contains(&self, x: u32, y: u32) -> bool {
+        x >= self.x && x < self.right() && y >= self.y && y < self.bottom()
+    }
+
+    /// The smallest rectangle holding both.
+    #[must_use]
+    pub fn union(&self, other: &Self) -> Self {
+        let x = self.x.min(other.x);
+        let y = self.y.min(other.y);
+        Self {
+            x,
+            y,
+            width: self.right().max(other.right()).saturating_sub(x),
+            height: self.bottom().max(other.bottom()).saturating_sub(y),
+        }
+    }
+
+    /// What both hold; `None` when they do not meet.
+    #[must_use]
+    pub fn intersection(&self, other: &Self) -> Option<Self> {
+        let x = self.x.max(other.x);
+        let y = self.y.max(other.y);
+        let right = self.right().min(other.right());
+        let bottom = self.bottom().min(other.bottom());
+        (x < right && y < bottom).then(|| Self {
+            x,
+            y,
+            width: right.saturating_sub(x),
+            height: bottom.saturating_sub(y),
+        })
+    }
+}
+
+/// The union of two rectangles either of which may be absent.
+pub(crate) fn join(a: Option<Rect>, b: Option<Rect>) -> Option<Rect> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.union(&b)),
+        (a, b) => a.or(b),
+    }
 }
 
 impl Canvas {
@@ -40,7 +147,7 @@ impl Canvas {
         }
         let count =
             usize::try_from(u64::from(width).saturating_mul(u64::from(height))).map_err(|_| Error::CanvasSize)?;
-        Ok(Self { width, height, pixels: vec![0; count] })
+        Ok(Self { width, height, pixels: vec![0; count], written: None })
     }
 
     /// Width in pixels.
@@ -75,6 +182,48 @@ impl Canvas {
     /// Fills the whole canvas with one address.
     pub fn clear(&mut self, entry: u8) {
         self.pixels.fill(entry);
+        self.written = Some(self.whole());
+    }
+
+    /// The whole picture as a rectangle.
+    #[must_use]
+    pub fn whole(&self) -> Rect {
+        Rect { x: 0, y: 0, width: self.width, height: self.height }
+    }
+
+    /// The rectangle holding every pixel changed since this was last called, and forgets it.
+    pub(crate) fn take_written(&mut self) -> Option<Rect> {
+        self.written.take()
+    }
+
+    /// Copies `rect` of `source`, a canvas of the same size, onto this one (animation.md
+    /// ANIM-12: the damaged rectangle is filled by copying the background's pixels).
+    pub(crate) fn copy_from(&mut self, source: &Self, rect: Rect) {
+        if self.width != source.width || self.height != source.height {
+            return;
+        }
+        for y in rect.y..rect.bottom().min(self.height) {
+            for x in rect.x..rect.right().min(self.width) {
+                if let Some(entry) = source.pixel(x, y) {
+                    self.set(x, y, entry);
+                }
+            }
+        }
+    }
+
+    /// Sets the pixel (`x`, `y`) and notes the change; outside is ignored.
+    pub(crate) fn set(&mut self, x: u32, y: u32, entry: u8) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
+        let index = u64::from(y).saturating_mul(u64::from(self.width)).saturating_add(u64::from(x));
+        if let Some(pixel) = usize::try_from(index).ok().and_then(|index| self.pixels.get_mut(index))
+            && *pixel != entry
+        {
+            *pixel = entry;
+            let one = Rect { x, y, width: 1, height: 1 };
+            self.written = Some(self.written.map_or(one, |written| written.union(&one)));
+        }
     }
 }
 
@@ -135,6 +284,62 @@ pub(crate) trait Surface {
     fn put(&mut self, x: i32, y: i32, entry: u8);
     /// A pixel's value.
     fn get(&self, x: i32, y: i32) -> Option<u8>;
+    /// Sets every pixel (clear screen, and RESET's clearing of the display).
+    fn fill_all(&mut self, entry: u8) {
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                self.put(x, y, entry);
+            }
+        }
+    }
+}
+
+/// An object's view of the picture it is composed into (animation.md ANIM-11): the whole
+/// picture's geometry, every pixel moved by a translation and written only inside a rectangle.
+/// It reads nothing back, so that what an object draws never depends on what lies outside the
+/// rectangle being repainted, and a damage repaint equals a whole one (ANIM-4).
+pub(crate) struct Window<'a> {
+    pub(crate) canvas: &'a mut Canvas,
+    pub(crate) move_x: i32,
+    pub(crate) move_y: i32,
+    pub(crate) clip: Rect,
+}
+
+impl Surface for Window<'_> {
+    fn width(&self) -> i32 {
+        Surface::width(self.canvas)
+    }
+    fn height(&self) -> i32 {
+        Surface::height(self.canvas)
+    }
+    fn scale_x(&self) -> (i64, i64) {
+        self.canvas.scale_x()
+    }
+    fn scale_y(&self) -> (i64, i64) {
+        self.canvas.scale_y()
+    }
+    fn put(&mut self, x: i32, y: i32, entry: u8) {
+        let (Ok(x), Ok(y)) =
+            (u32::try_from(x.saturating_add(self.move_x)), u32::try_from(y.saturating_add(self.move_y)))
+        else {
+            return;
+        };
+        if self.clip.contains(x, y) {
+            self.canvas.set(x, y, entry);
+        }
+    }
+    fn get(&self, _x: i32, _y: i32) -> Option<u8> {
+        None
+    }
+    fn fill_all(&mut self, entry: u8) {
+        // Only the rectangle can be written, so only it is visited: an object's clear screen
+        // costs its rectangle and not the picture.
+        for y in self.clip.y..self.clip.bottom() {
+            for x in self.clip.x..self.clip.right() {
+                self.canvas.set(x, y, entry);
+            }
+        }
+    }
 }
 
 impl Surface for Canvas {
@@ -152,13 +357,7 @@ impl Surface for Canvas {
     }
     fn put(&mut self, x: i32, y: i32, entry: u8) {
         let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else { return };
-        if x >= self.width || y >= self.height {
-            return;
-        }
-        let index = u64::from(y).saturating_mul(u64::from(self.width)).saturating_add(u64::from(x));
-        if let Some(pixel) = usize::try_from(index).ok().and_then(|index| self.pixels.get_mut(index)) {
-            *pixel = entry;
-        }
+        self.set(x, y, entry);
     }
     fn get(&self, x: i32, y: i32) -> Option<u8> {
         self.pixel(u32::try_from(x).ok()?, u32::try_from(y).ok()?)
