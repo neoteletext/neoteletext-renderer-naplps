@@ -67,6 +67,7 @@ fn sprite() -> Object {
         pressed: 0,
         alternative: 0,
         frames: vec![0x20],
+        label: String::new(),
     }
 }
 

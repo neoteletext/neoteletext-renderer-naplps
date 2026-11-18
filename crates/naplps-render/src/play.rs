@@ -180,6 +180,8 @@ fn code(text: &str) -> Result<u8, String> {
 }
 
 fn object(line: &str) -> Result<Object, String> {
+    // A label is text with spaces, so it is the last option and takes the rest of the line.
+    let (line, label) = line.split_once(" label=").map_or((line, ""), |(head, label)| (head, label));
     let fields: Vec<&str> = line.split_whitespace().collect();
     let kind = match fields.first().copied() {
         Some("macro") => ObjectKind::Macro,
@@ -204,6 +206,7 @@ fn object(line: &str) -> Result<Object, String> {
         pressed: 0,
         alternative: 0,
         frames: Vec::new(),
+        label: label.to_owned(),
     };
     let options = match kind {
         ObjectKind::Macro => {
@@ -243,8 +246,9 @@ fn object(line: &str) -> Result<Object, String> {
 /// ```
 ///
 /// `<frames>` is the frames' macro codes in hexadecimal with commas between (`20,21`); the
-/// options are `hidden`, `detectable`, `hover=<code>`, `pressed=<code>` and
-/// `alternative=<code>`.
+/// options are `hidden`, `detectable`, `hover=<code>`, `pressed=<code>`,
+/// `alternative=<code>` and, last because it takes the rest of the line, `label=<text>`
+/// (DEC-6638 item 6: what a screen reader says for the object; never drawn).
 ///
 /// # Errors
 ///

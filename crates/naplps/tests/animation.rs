@@ -85,6 +85,7 @@ fn macro_object(number: u16, code: u8, x: i16, y: i16) -> Object {
         pressed: 0,
         alternative: 0,
         frames: vec![code],
+        label: String::new(),
     }
 }
 
@@ -107,6 +108,7 @@ fn region(number: u16, x: i16, y: i16, width: u16, height: u16, cover: u8) -> Ob
         pressed: 0,
         alternative: 0,
         frames: Vec::new(),
+        label: String::new(),
     }
 }
 

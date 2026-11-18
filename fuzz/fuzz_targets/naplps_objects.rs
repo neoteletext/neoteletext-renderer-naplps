@@ -1,5 +1,5 @@
 //! The fuzz target `naplps_objects` (neoteletext-common `docs/animation.md`, ANIM-23; REQ-6531):
-//! any stream, objects and animation states. It must never panic, every object's drawing must
+//! any stream, objects, single objects redefined, and animation states. It must never panic, every object's drawing must
 //! stay inside its rectangle, and the picture composed by damage must equal the picture
 //! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11).
 //!
@@ -90,6 +90,12 @@ fn object(input: &mut Input<'_>) -> Object {
         pressed: look_code(at(2)),
         alternative: look_code(at(4)),
         frames,
+        // A label is never drawn; one with a control character is refused (DEC-6638 item 6).
+        label: match at(5) % 4 {
+            0 => String::from("Button"),
+            1 => String::from("\u{1b}[2J"),
+            _ => String::new(),
+        },
     }
 }
 
@@ -151,6 +157,10 @@ pub fn naplps_objects(data: &[u8]) {
             3 => {
                 let number = u16::from(input.byte() % 16);
                 let _ = terminal.set_pointer_look(number, Look::from_code(input.byte() % 4).unwrap_or_default());
+            }
+            4 => {
+                // One object redefined by a record (DEC-6638 item 3, row 3.2).
+                let _ = terminal.replace_object(object(&mut input));
             }
             _ => {
                 let length = usize::from(input.byte());

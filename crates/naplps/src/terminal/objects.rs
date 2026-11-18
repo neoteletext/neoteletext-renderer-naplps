@@ -8,12 +8,13 @@
 //! [`Terminal::compose`] copies the damaged part of it into a second canvas and draws the
 //! objects of layers 1 to 3 over the copy, so a moving object never redraws the stream.
 
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::{FIRST_CODE, Terminal};
 use crate::Error;
 use crate::limits::{
-    LAYERS, MAX_ANIMATED_OBJECTS, MAX_FRAME_NUMBER, MAX_OBJECT_BYTES, MAX_OBJECT_FRAMES, MAX_OBJECTS,
+    LAYERS, MAX_ANIMATED_OBJECTS, MAX_FRAME_NUMBER, MAX_LABEL_BYTES, MAX_OBJECT_BYTES, MAX_OBJECT_FRAMES, MAX_OBJECTS,
     OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH,
 };
 use crate::surface::{Canvas, Rect, Window, join};
@@ -100,6 +101,11 @@ pub struct Object {
     pub alternative: u8,
     /// A macro object: 1 to 16 macro codes, one a frame. A region: none.
     pub frames: Vec<u8>,
+    /// What a screen reader says for the object (DEC-6638 item 6, row 6.1): plain text of at
+    /// most [`MAX_LABEL_BYTES`] bytes, or empty for none. The renderer never draws it; the
+    /// caller reads it with [`Terminal::object`] and gives it to the screen-reader tree. It is
+    /// not yet in the `NAPLPS_OBJECTS` record, whose engine side carries it later.
+    pub label: String,
 }
 
 /// The animation state of one object (ANIM-6): each part that is set is used in place of the
@@ -206,7 +212,8 @@ fn is_valid(object: &Object) -> bool {
         && (1..=OBJECT_PICTURE_HEIGHT).contains(&u32::from(object.height))
         && is_look(object.hover)
         && is_look(object.pressed)
-        && is_look(object.alternative);
+        && is_look(object.alternative)
+        && crate::is_plain_text(&object.label, MAX_LABEL_BYTES);
     let kind = match object.kind {
         ObjectKind::Macro => {
             object.cover == 0
@@ -243,6 +250,37 @@ impl Terminal {
         self.scene.animations.clear();
         self.scene.pointer.clear();
         self.damage_every_object();
+        Ok(())
+    }
+
+    /// Replaces the definition of one object, the one numbered `object.number`, with `object`,
+    /// or adds it when the sub-page has no object of that number, without a new stream and
+    /// without touching any other object (DEC-6638 item 3, row 3.2: a whole object redefined by
+    /// a record). The object's animation state and pointer look are forgotten, as a set of
+    /// objects forgets those of what it replaces (ANIM-6); every other object keeps its own.
+    /// What it drew before and what it draws now are repainted by the next
+    /// [`Terminal::compose`].
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Object`] with index 0 when `object` is not one the `NAPLPS_OBJECTS` record
+    /// allows; [`Error::TooManyObjects`] when it would be a new object beyond [`MAX_OBJECTS`].
+    /// Nothing is changed then.
+    pub fn replace_object(&mut self, object: Object) -> Result<(), Error> {
+        if !is_valid(&object) {
+            return Err(Error::Object(0));
+        }
+        let number = object.number;
+        let before = self.placed_by_number(number);
+        let count = self.scene.objects.len();
+        match self.scene.objects.iter_mut().find(|existing| existing.number == number) {
+            Some(existing) => *existing = object,
+            None if count < MAX_OBJECTS => self.scene.objects.push(object),
+            None => return Err(Error::TooManyObjects),
+        }
+        self.scene.animations.retain(|(of, _)| *of != number);
+        self.scene.pointer.retain(|(of, _)| *of != number);
+        self.damage_change(before, number);
         Ok(())
     }
 

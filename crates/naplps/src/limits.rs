@@ -60,6 +60,17 @@ pub const WAIT_BUDGET_TICKS: u32 = 3_600;
 /// Bytes held while a WAIT is played; when more arrive the wait ends at once (ANIM-20).
 pub const MAX_WAIT_HELD_BYTES: usize = 262_144;
 
+// ----- Text a picture carries and never draws (DEC-6638 items 3 and 6) ---------------------------
+
+/// Bytes of an object's label, UTF-8: the text a screen reader speaks for it (DEC-6638 item 6,
+/// row 6.1). The same bound as a sound's label in the engine's OBJECT record (REQ-37), the one
+/// other label NeoTeletext carries for a reader.
+pub const MAX_LABEL_BYTES: usize = 64;
+/// Bytes of a picture's title, UTF-8: the name a page list shows for the picture when the
+/// program's index gives none (DEC-6638 item 3, row 2.8). The same bound as a label: both are
+/// one short line of plain text.
+pub const MAX_TITLE_BYTES: usize = 64;
+
 const _: () = assert!(MAX_FRAME_NUMBER as usize + 1 == MAX_OBJECT_FRAMES);
 const _: () = assert!(MAX_ANIMATED_OBJECTS >= MAX_OBJECTS);
 const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK * 2 == OBJECT_PICTURE_WIDTH as u64 * OBJECT_PICTURE_HEIGHT as u64);

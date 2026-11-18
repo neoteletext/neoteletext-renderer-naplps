@@ -7,6 +7,10 @@
 //! time for BLINK), contains no font ([`Terminal::set_font`] takes a [`StrokeFont`] the caller
 //! supplies), and bounds everything a page can make it hold or do ([`limits`]).
 //!
+//! A picture may carry a title for page lists ([`Terminal::set_title`]) and each object a label
+//! for a screen reader ([`Object::label`]); neither is ever drawn (DEC-6638 items 3 and 6).
+//! [`Terminal::replace_object`] redefines one object without a new stream (item 3, row 3.2).
+//!
 //! For animation (neoteletext-common `docs/animation.md`): [`Terminal::take_damage`] gives the
 //! rectangle of pixels that changed; [`Terminal::set_objects`], [`Terminal::set_animation`] and
 //! [`Terminal::compose`] draw numbered objects over the stream's picture into a second canvas,
@@ -67,6 +71,16 @@ pub enum Error {
     /// The object at this index of the set given is not one the `NAPLPS_OBJECTS` record allows,
     /// or repeats an earlier object's number.
     Object(usize),
+    /// A picture's title is longer than [`limits::MAX_TITLE_BYTES`] or is not plain text.
+    Title,
+}
+
+/// Whether `text` is plain text of at most `max_bytes` bytes: UTF-8 (as every `str` is) with no
+/// control character, so that it can be shown or spoken as it stands and can carry no command.
+/// A label (DEC-6638 item 6) and a title (item 3) must be; the empty text is.
+#[must_use]
+pub fn is_plain_text(text: &str, max_bytes: usize) -> bool {
+    text.len() <= max_bytes && !text.chars().any(char::is_control)
 }
 
 impl core::fmt::Display for Error {
@@ -77,6 +91,9 @@ impl core::fmt::Display for Error {
             Self::Font(line) => write!(formatter, "the font is malformed at line {line}"),
             Self::TooManyObjects => write!(formatter, "a sub-page has at most {} objects", limits::MAX_OBJECTS),
             Self::Object(index) => write!(formatter, "object {index} of the set is not a valid object"),
+            Self::Title => {
+                write!(formatter, "a title is plain text of at most {} bytes", limits::MAX_TITLE_BYTES)
+            }
         }
     }
 }

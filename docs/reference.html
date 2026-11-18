@@ -1127,6 +1127,10 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <td>16</td>
 </tr>
 <tr>
+<td>An object's label, a picture's title</td>
+<td>64 bytes of UTF-8 each, no control character</td>
+</tr>
+<tr>
 <td>Bytes processed in one call, with expansion</td>
 <td>4,000,000</td>
 </tr>
@@ -1352,6 +1356,10 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 <td>hover, pressed, alternative</td>
 <td>a macro code for each look, or none</td>
 </tr>
+<tr>
+<td>label</td>
+<td>what a screen reader says for the object: plain text (no control character) of at most 64 bytes, or none. Never drawn. The library carries it; the <code>NAPLPS_OBJECTS</code> record does not carry it yet.</td>
+</tr>
 </tbody>
 </table>
 <p><strong>A macro object</strong> is drawn by running its frame's macro as the page last defined it, in a fresh state: the power-up state, with the primary set in GL, so a macro that draws begins with SO. Everything it draws is moved by (x - origin x, y - origin y) and cut to the object's rectangle. So a macro that draws a figure in the bottom left 64 by 64 pixels of the screen, with origin (0, 416), appears with that corner of the screen at the object's (x, y).</p>
@@ -1389,6 +1397,14 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 <tr>
 <td><code>set_objects(&amp;[Object])</code></td>
 <td>Gives the page all its objects, replacing any it had and forgetting every animation state.</td>
+</tr>
+<tr>
+<td><code>replace_object(Object)</code></td>
+<td>Redefines the one object of that number, or adds it, without a new stream and without touching any other object. Its animation state and pointer look are forgotten; the others keep theirs. Refused, changing nothing, when the object is not valid or would be one more than 64.</td>
+</tr>
+<tr>
+<td><code>set_title(text)</code>, <code>title()</code></td>
+<td>The picture's title for page lists, plain text of at most 64 bytes; empty removes it. Never drawn. NAPLPS has no command that carries text without drawing it, so the title comes beside the stream, as objects do.</td>
 </tr>
 <tr>
 <td><code>set_animation(number, Animation)</code>, <code>clear_animation(number)</code></td>
@@ -1445,7 +1461,7 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 <pre><code>macro  &lt;number&gt; &lt;layer&gt; &lt;order&gt; &lt;x&gt; &lt;y&gt; &lt;width&gt; &lt;height&gt; &lt;origin x&gt; &lt;origin y&gt; &lt;frames&gt; [options]
 region &lt;number&gt; &lt;layer&gt; &lt;order&gt; &lt;x&gt; &lt;y&gt; &lt;width&gt; &lt;height&gt; &lt;cover&gt; [options]
 </code></pre>
-<p><code>&lt;frames&gt;</code> is the frames' macro codes in hexadecimal with commas between, such as <code>20,21,22,23</code>. The options are <code>hidden</code>, <code>detectable</code>, <code>hover=&lt;code&gt;</code>, <code>pressed=&lt;code&gt;</code> and <code>alternative=&lt;code&gt;</code>. A four-frame sprite cycling every 6 ticks while it moves right:</p>
+<p><code>&lt;frames&gt;</code> is the frames' macro codes in hexadecimal with commas between, such as <code>20,21,22,23</code>. The options are <code>hidden</code>, <code>detectable</code>, <code>hover=&lt;code&gt;</code>, <code>pressed=&lt;code&gt;</code>, <code>alternative=&lt;code&gt;</code> and, last because it takes the rest of the line, <code>label=&lt;text&gt;</code>: what a screen reader says for the object, plain text of at most 64 bytes, never drawn. A four-frame sprite cycling every 6 ticks while it moves right:</p>
 <pre><code>$ cat objects.txt
 macro 1 2 0 300 200 64 64 0 416 20,21,22,23
 $ cat script.txt

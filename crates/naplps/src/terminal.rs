@@ -4,9 +4,11 @@
 //! are collected until a byte that is not its data arrives, then the PDI runs; [`Terminal::finish`]
 //! runs one still collecting at the end of a page.
 
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use crate::Error;
 use crate::fixed::{ONE, Point, Unit, fraction};
 use crate::font::{FontSet, StrokeFont};
 use crate::limits::{
@@ -203,6 +205,8 @@ pub struct Terminal {
     in_object: bool,
     /// The objects over the stream's picture, their animation state and the damage.
     scene: objects::Scene,
+    /// The picture's title for page lists, never drawn (DEC-6638 item 3).
+    title: Option<String>,
 }
 
 /// Most events kept from one call.
@@ -264,6 +268,7 @@ impl Terminal {
             waited: false,
             in_object: false,
             scene: objects::Scene::default(),
+            title: None,
         }
     }
 
@@ -271,6 +276,30 @@ impl Terminal {
     pub fn set_font(&mut self, font: StrokeFont) {
         self.font = Some(font);
         self.scene.definitions_changed = true;
+    }
+
+    /// Gives the picture its title, the name a page list shows for it when the program's index
+    /// gives none (DEC-6638 item 3, row 2.8); an empty title removes it. NAPLPS has no command
+    /// that carries text without drawing it (ANSI X3.110-1983 sections 5 and 6: every character
+    /// of a G-set is drawn, and a macro's text is drawn when it is invoked), so the title comes
+    /// with the stream from outside it, as the objects do, and the renderer never draws it.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Title`] when `title` is longer than [`crate::limits::MAX_TITLE_BYTES`] or holds
+    /// a control character; the title is unchanged then.
+    pub fn set_title(&mut self, title: &str) -> Result<(), Error> {
+        if !crate::is_plain_text(title, crate::limits::MAX_TITLE_BYTES) {
+            return Err(Error::Title);
+        }
+        self.title = (!title.is_empty()).then(|| String::from(title));
+        Ok(())
+    }
+
+    /// The picture's title, if it has one.
+    #[must_use]
+    pub fn title(&self) -> Option<&str> {
+        self.title.as_deref()
     }
 
     /// The colour map.
