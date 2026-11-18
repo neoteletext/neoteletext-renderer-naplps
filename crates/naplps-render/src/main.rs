@@ -25,6 +25,9 @@
 //! objects at their ticks. A picture is written every `--frame-step` ticks (default 1) and
 //! always for the last tick, each named with `-NNNNN`, its tick, before the extension. The
 //! pictures of a run are the same on every machine and every run.
+//!
+//! `naplps-render check [--font FILE] [--objects FILE] [--title TEXT] PAGE` checks a page for
+//! its author instead of drawing it to a file ([`check`]).
 #![deny(
     clippy::indexing_slicing,
     clippy::string_slice,
@@ -43,6 +46,7 @@ use std::process::ExitCode;
 
 use naplps::{Canvas, Event, Player, Rgb, StrokeFont, Terminal};
 
+mod check;
 mod play;
 
 /// The largest page file read: a megabyte, far beyond the largest page known (40,876 bytes).
@@ -52,7 +56,7 @@ const DEFAULT_WIDTH: u32 = 640;
 /// See [`DEFAULT_WIDTH`].
 const DEFAULT_HEIGHT: u32 = 480;
 /// A 16-entry colour map, as PP3's VGA mode.
-const DEFAULT_PALETTE_BITS: u32 = 4;
+pub(crate) const DEFAULT_PALETTE_BITS: u32 = 4;
 /// The widest border drawn: as wide as the largest canvas.
 const MAX_BORDER: u32 = 4096;
 /// The oracle's page preamble (neoteletext-renderer-naplps `naplps-oracle`, `PAGE_PREAMBLE`): ESC % A,
@@ -60,12 +64,31 @@ const MAX_BORDER: u32 = 4096;
 const ORACLE_PREAMBLE: [u8; 16] =
     [0x1B, 0x25, 0x41, 0x18, 0x1B, 0x22, 0x46, 0x1B, 0x45, 0x1F, 0x40, 0x40, 0x0E, 0x20, 0x7F, 0x7F];
 
+/// The exit status of a check that found a refusal; 2 is any failure to run.
+const EXIT_REFUSED: u8 = 1;
+/// The exit status when the program could not do its work.
+const EXIT_FAILED: u8 = 2;
+
 fn main() -> ExitCode {
+    let mut arguments = std::env::args().skip(1).peekable();
+    if arguments.peek().is_some_and(|first| first == "check") {
+        let _ = arguments.next();
+        return match check::run(arguments) {
+            Ok(outcome) => {
+                print!("{}", outcome.report);
+                if outcome.refused { ExitCode::from(EXIT_REFUSED) } else { ExitCode::SUCCESS }
+            }
+            Err(message) => {
+                eprintln!("naplps-render check: {message}");
+                ExitCode::from(EXIT_FAILED)
+            }
+        };
+    }
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
             eprintln!("naplps-render: {message}");
-            ExitCode::from(2)
+            ExitCode::from(EXIT_FAILED)
         }
     }
 }
@@ -119,11 +142,7 @@ fn run() -> Result<(), String> {
     let [page_path, out_path] = operands.as_slice() else {
         return Err(USAGE.to_owned());
     };
-    let length = fs::metadata(page_path).map_err(|error| format!("{page_path}: {error}"))?.len();
-    if length > MAX_PAGE_BYTES {
-        return Err(format!("{page_path} is {length} bytes, more than {MAX_PAGE_BYTES}"));
-    }
-    let page = fs::read(page_path).map_err(|error| format!("{page_path}: {error}"))?;
+    let page = read_page(page_path)?;
     let mut canvas = Canvas::new(width, height).map_err(|error| error.to_string())?;
     let mut terminal = Terminal::new(palette_bits);
     if let Some(path) = font_path {
@@ -172,6 +191,15 @@ fn run() -> Result<(), String> {
         eprintln!("naplps-render: {page_path}: processing stopped at the limit on bytes processed");
     }
     Ok(())
+}
+
+/// Reads a page file of at most [`MAX_PAGE_BYTES`].
+pub(crate) fn read_page(page_path: &str) -> Result<Vec<u8>, String> {
+    let length = fs::metadata(page_path).map_err(|error| format!("{page_path}: {error}"))?.len();
+    if length > MAX_PAGE_BYTES {
+        return Err(format!("{page_path} is {length} bytes, more than {MAX_PAGE_BYTES}"));
+    }
+    fs::read(page_path).map_err(|error| format!("{page_path}: {error}"))
 }
 
 /// Draws the whole page, or the page as it stands at its `stage`th WAIT.

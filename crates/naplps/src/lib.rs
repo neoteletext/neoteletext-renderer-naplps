@@ -9,7 +9,9 @@
 //!
 //! A picture may carry a title for page lists ([`Terminal::set_title`]) and each object a label
 //! for a screen reader ([`Object::label`]); neither is ever drawn (DEC-6638 items 3 and 6).
-//! [`Terminal::replace_object`] redefines one object without a new stream (item 3, row 3.2).
+//! [`Terminal::replace_object`] redefines one object without a new stream (item 3, row 3.2), and
+//! [`Terminal::diagnostics`] says which bytes the renderer passed over or refused (item 7, row
+//! 9.3).
 //!
 //! For animation (neoteletext-common `docs/animation.md`): [`Terminal::take_damage`] gives the
 //! rectangle of pixels that changed; [`Terminal::set_objects`], [`Terminal::set_animation`] and
@@ -57,7 +59,9 @@ pub use palette::{Blink, Palette, Rgb};
 pub use play::Player;
 pub use raster::{FillPattern, LineTexture};
 pub use surface::{Canvas, Rect};
-pub use terminal::{Animation, CharSet, Event, Look, Object, ObjectKind, Terminal};
+pub use terminal::{
+    Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal,
+};
 
 /// What can go wrong outside drawing itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

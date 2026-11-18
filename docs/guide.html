@@ -456,6 +456,13 @@ page += select(ink) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 14, 1 / 9)) + text_at
 <p>Because every entry is named, this page is one step from an animation: a WAIT, then new colours for <code>sky</code>, <code>sun</code> and <code>sea</code>, and dusk becomes night.</p>
 <p><strong>Size is part of the craft.</strong> Period pages were a few hundred bytes to a few kilobytes; at 1200 bits a second, each kilobyte was eight seconds of waiting. Ways to stay small: omit trailing zero operand bytes; use relative forms with short operands; draw rows of rectangles with one opcode; use incremental lines for irregular outlines; put anything used three times in a macro.</p>
 <h2 id="15-checking-a-page">15. Checking a page</h2>
+<p><strong>Run the check.</strong> <code>naplps-render check page.nap</code> draws the page with the receiver's own renderer and says how much of the picture it draws on, which bytes the renderer passed over (they have no effect by the standard's rules: a control of another layer, a byte of a set the page designated wrongly, PDI operands with no command) and which it refused at one of its limits (a macro or a PDI too long, too many points, macros nested too deep, too much work in one go). It exits 1 if anything was refused, so a page can be checked before it is published. With <code>--objects FILE</code> and <code>--title TEXT</code> it checks the page's objects and title as the receiver would take them, and lists the objects.</p>
+<pre><code>$ naplps-render check --title "Harbour webcam" page.nap
+page: 25 bytes
+drawn: x 0 to 160, y 402 to 479 of 640 by 480 (4 % of the picture)
+title: "Harbour webcam"
+result: clean
+</code></pre>
 <p><strong>Render it</strong> and look at it, at 640 by 480 and at a larger size. Pages are resolution-independent, but a pel or a hatch chosen at one size can look different at another.</p>
 <p><strong>Check it in period software</strong> if exactness matters. This repository's oracle drives PP3, a 1980s NAPLPS terminal program, and captures its screen: see <a href="verification.md"><code>verification.md</code></a>. The renderer agrees with PP3 to the pixel on most of the standard's features, and <code>verification.md</code> lists where it does not yet.</p>
 <p><strong>Read it back.</strong> <code>xxd -g1 page.nap</code> shows the bytes; with the <a href="reference.html">reference</a> beside you, a page is readable in hex. SO and SI (<code>0E</code>, <code>0F</code>) and opcodes (<code>20</code>-<code>3F</code>) are the landmarks.</p>

@@ -1251,6 +1251,33 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tbody>
 </table>
 <p>It prints a warning if processing stopped at the processing limit, and exits with status 2 on an error.</p>
+<h3 id="naplps-render-check"><code>naplps-render check</code></h3>
+<pre><code>naplps-render check [--font FILE] [--objects FILE] [--title TEXT] PAGE
+</code></pre>
+<p>The authoring check: it draws the page on a 640 by 480 picture with the receiver's renderer and prints, a line each, the page's size; the rectangle of pixels it draws on and its share of the picture; its WAITs; its title; its objects, each with its kind, layer, order, rectangle, frames, detectability and label, and whether it lies wholly off the picture; the bytes passed over, with the offset of the first; and each kind of refusal with its count, then the offset of the first refusal. The last line is <code>result: clean</code> or <code>result: refused</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Nothing refused. Bytes passed over are reported but have no effect by the standard's rules.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>The renderer refused part of the page at a limit, or refused the objects or the title.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The check could not run: an unknown option, a missing page, a file that cannot be read.</td>
+</tr>
+</tbody>
+</table>
+<p>An offset counts the page's bytes before the one meant; a byte a macro runs is counted at the byte that called the macro, and a PDI's refusal is found when it runs, at the byte after its operands.</p>
 <p>With <code>--frames</code>, each picture's name has <code>-NNNNN</code>, its tick in five digits, before the extension: <code>out.ppm</code> becomes <code>out-00000.ppm</code>, <code>out-00001.ppm</code> and so on. The pictures of a run are the same on every machine and every run.</p>
 <p>A script line is <code>&lt;tick&gt; &lt;operation&gt;</code>; blank lines and lines beginning <code>#</code> are skipped:</p>
 <table>
@@ -1405,6 +1432,10 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 <tr>
 <td><code>set_title(text)</code>, <code>title()</code></td>
 <td>The picture's title for page lists, plain text of at most 64 bytes; empty removes it. Never drawn. NAPLPS has no command that carries text without drawing it, so the title comes beside the stream, as objects do.</td>
+</tr>
+<tr>
+<td><code>diagnostics()</code></td>
+<td>The bytes passed over and the work refused at a limit, by kind, with the offset of the first of each: what <code>naplps-render check</code> reports.</td>
 </tr>
 <tr>
 <td><code>set_animation(number, Animation)</code>, <code>clear_animation(number)</code></td>

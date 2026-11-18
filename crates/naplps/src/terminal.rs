@@ -20,8 +20,10 @@ use crate::raster::{self, FillPattern, LineTexture, Masks, Style};
 use crate::surface::{Canvas, Mask, MaskSurface, Surface, pixel_of};
 use crate::text::{self, Field, Ink, Shape};
 
+mod diagnostics;
 mod objects;
 
+pub use diagnostics::{Diagnostics, REFUSAL_KINDS, Refusal};
 pub use objects::{Animation, Look, Object, ObjectKind};
 
 /// The code sets a G-set may hold (section 4.3).
@@ -207,6 +209,10 @@ pub struct Terminal {
     scene: objects::Scene,
     /// The picture's title for page lists, never drawn (DEC-6638 item 3).
     title: Option<String>,
+    /// What the stream's bytes did that its author may not have meant (DEC-6638 item 7).
+    diagnostics: Diagnostics,
+    /// The stream's bytes taken so far, over every call: the offset diagnostics name.
+    stream_taken: usize,
 }
 
 /// Most events kept from one call.
@@ -269,6 +275,8 @@ impl Terminal {
             in_object: false,
             scene: objects::Scene::default(),
             title: None,
+            diagnostics: Diagnostics::default(),
+            stream_taken: 0,
         }
     }
 
@@ -345,6 +353,8 @@ impl Terminal {
         loop {
             if self.processed >= limit {
                 self.event(Event::LimitReached);
+                let left = bytes.len().saturating_sub(position);
+                self.refuse(Refusal::ProcessingLimit, left);
                 // What was expanding is abandoned, as it was before the expansion was kept
                 // between calls: the limit ends the work, it does not defer it.
                 self.frames.clear();
@@ -361,6 +371,7 @@ impl Terminal {
                 match bytes.get(position).copied() {
                     Some(byte) => {
                         position = position.saturating_add(1);
+                        self.stream_taken = self.stream_taken.saturating_add(1);
                         (byte, 0)
                     }
                     None => break,
@@ -368,10 +379,13 @@ impl Terminal {
             };
             self.processed = self.processed.saturating_add(1);
             if let Some(number) = self.byte(surface, byte, depth)
-                && self.frames.len() < MAX_MACRO_DEPTH
                 && let Some(Some(body)) = self.macros.get(usize::from(number.wrapping_sub(FIRST_CODE)))
             {
-                self.frames.push((body.clone(), 0));
+                if self.frames.len() < MAX_MACRO_DEPTH {
+                    self.frames.push((body.clone(), 0));
+                } else {
+                    self.refuse(Refusal::MacroTooDeep, 1);
+                }
             }
             if self.cancel {
                 self.cancel = false;
@@ -399,6 +413,34 @@ impl Terminal {
         core::mem::take(&mut self.events)
     }
 
+    /// What the stream's bytes did that its author may not have meant, since the terminal was
+    /// made: bytes passed over and work refused at a bound (DEC-6638 item 7, row 9.3). An
+    /// authoring check reports them; drawing does not depend on them.
+    #[must_use]
+    pub fn diagnostics(&self) -> Diagnostics {
+        self.diagnostics
+    }
+
+    /// The offset of the stream byte being processed, or of the byte that called the macro
+    /// being run.
+    fn offset(&self) -> usize {
+        self.stream_taken.saturating_sub(1)
+    }
+
+    fn pass_over(&mut self) {
+        if !self.in_object {
+            let offset = self.offset();
+            self.diagnostics.pass_over(offset);
+        }
+    }
+
+    fn refuse(&mut self, kind: Refusal, count: usize) {
+        if !self.in_object {
+            let offset = self.offset();
+            self.diagnostics.refuse(kind, count, offset);
+        }
+    }
+
     fn event(&mut self, event: Event) {
         // An object's macro reports nothing: its bell and its limit are not the stream's.
         if self.events.len() < MAX_EVENTS && !self.in_object {
@@ -415,6 +457,8 @@ impl Terminal {
             if !terminator {
                 if bytes.len() < MAX_MACRO_BYTES {
                     bytes.push(byte);
+                } else {
+                    self.refuse(Refusal::MacroTooLong, 1);
                 }
                 return None;
             }
@@ -429,9 +473,12 @@ impl Terminal {
         // DEFP records at its own depth while executing.
         if let Some(Recording::Macro { execute: true, bytes, depth: recording_depth, .. }) = &mut self.recording
             && depth == *recording_depth
-            && bytes.len() < MAX_MACRO_BYTES
         {
-            bytes.push(byte);
+            if bytes.len() < MAX_MACRO_BYTES {
+                bytes.push(byte);
+            } else {
+                self.refuse(Refusal::MacroTooLong, 1);
+            }
         }
         self.dispatch(canvas, byte)
     }
@@ -513,7 +560,10 @@ impl Terminal {
 
     fn graphic(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) -> Option<u8> {
         match set {
-            CharSet::Null => None,
+            CharSet::Null => {
+                self.pass_over();
+                None
+            }
             CharSet::Macro => {
                 if code == 0x7F {
                     return None;
@@ -530,10 +580,14 @@ impl Terminal {
                     self.settle(canvas);
                     self.flush(canvas);
                     self.pdi = Some((code, Vec::new()));
-                } else if let Some((_, data)) = &mut self.pdi
-                    && data.len() < MAX_PDI_BYTES
-                {
-                    data.push(code);
+                } else if let Some((_, data)) = &mut self.pdi {
+                    if data.len() < MAX_PDI_BYTES {
+                        data.push(code);
+                    } else {
+                        self.refuse(Refusal::PdiTooLong, 1);
+                    }
+                } else {
+                    self.pass_over();
                 }
                 None
             }
@@ -550,6 +604,7 @@ impl Terminal {
     fn control0(&mut self, canvas: &mut dyn Surface, byte: u8) {
         // Section 6.1: these belong to other layers and neither act nor end a PDI.
         if matches!(byte, 0x00..=0x06 | 0x10..=0x17) {
+            self.pass_over();
             return;
         }
         // A C0 control after SS2 or SS3 cancels the single shift (section 6.1.3.3).
@@ -798,13 +853,12 @@ impl Terminal {
                 // transmitted". Nothing is ever transmitted (REQ-5910), so a transmit macro is kept
                 // as nothing: defining one deletes any macro of its name (they share the 96 names)
                 // and calling it does nothing.
+                let full = others.saturating_add(bytes.len()) > MAX_ALL_MACRO_BYTES;
+                if full && !transmit {
+                    self.refuse(Refusal::MacrosFull, bytes.len());
+                }
                 if let Some(slot) = self.macros.get_mut(index) {
-                    *slot = if transmit || bytes.is_empty() || others.saturating_add(bytes.len()) > MAX_ALL_MACRO_BYTES
-                    {
-                        None
-                    } else {
-                        Some(bytes)
-                    };
+                    *slot = if transmit || bytes.is_empty() || full { None } else { Some(bytes) };
                 }
                 None
             }
@@ -955,6 +1009,7 @@ impl Terminal {
                 let mut points = vec![self.point];
                 while let Some(step) = reader.point(domain) {
                     if points.len() >= MAX_VERTICES {
+                        self.refuse(Refusal::TooManyVertices, 1);
                         break;
                     }
                     let last = points.last().copied().unwrap_or_default();
@@ -998,6 +1053,7 @@ impl Terminal {
                 let mut points = vec![self.point];
                 while let Some(step) = reader.point(domain) {
                     if points.len() >= MAX_VERTICES {
+                        self.refuse(Refusal::TooManyVertices, 1);
                         break;
                     }
                     let last = points.last().copied().unwrap_or_default();
@@ -1356,6 +1412,7 @@ impl Terminal {
                 let next = self.point.plus(delta);
                 if filled {
                     if points.len() >= MAX_VERTICES {
+                        self.refuse(Refusal::TooManyVertices, 1);
                         break 'bytes;
                     }
                     points.push(next);
