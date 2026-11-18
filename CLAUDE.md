@@ -16,7 +16,7 @@ That is the one document of how we work, for every NeoTeletext repository, with 
 - **The standard is the source of truth for behaviour; PP3 is the evidence for what the standard's approximations look like** (section 8.3.4). A difference between the two is recorded as a decision in rdm, never settled silently in code.
 - **The renderer library is sans-IO, `no_std` and integer-only** (DEC-5764, DEC-5765): no file, clock or floating point; it draws colour-map addresses into the caller's canvas. Fonts are data passed in (DEC-5768); no font is compiled in.
 - **Behaviour PP3 shows is measured, then recorded**: each rule taken from PP3's frames (pixel rounding, fill edges, hatching, circle radii, glyph placement) cites its measurement in the code and is a decision in rdm.
-- **No library without the owner's approval by name** (DEVELOPMENT.md section 7). The oracle has none: it drives external programs.
+- **No library without the owner's approval by name** (DEVELOPMENT.md section 7), or under the owner's standing approval of pure-Rust libraries (DEC-6579). The renderer library `naplps` has no dependencies and must keep none; the oracle has none either, since it drives external programs. The one library in the workspace is `proptest`, a development dependency of the test-only crate `naplps-fuzz` alone (DEC-6607), which drives the renderer with generated input and keeps every input that found a fault.
 
 ## Commands
 
