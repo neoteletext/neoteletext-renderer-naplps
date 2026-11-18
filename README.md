@@ -21,7 +21,9 @@ naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenth
 
 `--frames` plays the page for that many ticks, WAIT and BLINK on their ticks, and writes `OUT-NNNNN.ppm` every `--frame-step` ticks; `--objects` gives the page numbered objects and `--script` moves, hides and cycles them at stated ticks (docs/reference.html, "Objects and animation").
 
-`--font` takes a stroke font in the library's text form, such as the Microstar font recovered from PP3 (`~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes`). `--preamble` and `--dac-bits 6` render a page as the oracle shows it to PP3, for comparison.
+`naplps-render check [--font FILE] [--objects FILE] [--title TEXT] PAGE` checks a page for its author with the receiver's renderer: the rectangle it draws on, its objects and title, and every byte passed over or refused; it exits 1 on a refusal (docs/reference.html, "naplps-render check").
+
+`--font` takes a stroke font in the library's text form, such as NeoTeletext's own (`fonts/neoteletext.strokes`, both sets) or the Microstar font recovered from PP3 (`~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes`). `--preamble` and `--dac-bits 6` render a page as the oracle shows it to PP3, for comparison.
 
 
 `naplps-oracle` makes the reference frames a NAPLPS renderer is judged by, and judges frames against them.
