@@ -4,7 +4,8 @@
 //! ```text
 //! naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N]
 //!               [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE]
-//!               [--frames TICKS [--frame-step K] [--script FILE]] PAGE OUT.ppm
+//!               [--frames TICKS [--frame-step K] [--script FILE]] [--neoteletext [--double]]
+//!               PAGE OUT.ppm
 //! ```
 //!
 //! `--font` loads a stroke font in the library's text form (without one, text moves the cursor
@@ -15,6 +16,10 @@
 //! screen does (each primary rounded to 6 bits, then widened by repeating its top bits, as DOSBox
 //! shows them). `--preamble` first sends the oracle's page preamble, so a frame compares with the
 //! PP3 reference of the same page.
+//!
+//! `--neoteletext` draws the page as NeoTeletext shows it (REQ-5819,
+//! DEC-6667): on 480 by 462 pixels centred in the 480 by 500 teletext raster, the 19 lines above
+//! and below in the page's background colour; `--double` draws both at twice the size.
 //!
 //! `--objects FILE` gives the page its numbered objects (neoteletext-common `docs/animation.md`,
 //! ANIM-11; the file's form is in [`play::objects`]), drawn over the stream's picture.
@@ -64,6 +69,21 @@ const MAX_BORDER: u32 = 4096;
 const ORACLE_PREAMBLE: [u8; 16] =
     [0x1B, 0x25, 0x41, 0x18, 0x1B, 0x22, 0x46, 0x1B, 0x45, 0x1F, 0x40, 0x40, 0x0E, 0x20, 0x7F, 0x7F];
 
+/// NeoTeletext's raster: 40 columns of 12 pixels by 25 rows of 20 lines (the engine's
+/// `PAGE_WIDTH` and `PAGE_HEIGHT`, REQ-5819).
+const RASTER_WIDTH: u32 = 480;
+/// See [`RASTER_WIDTH`].
+const RASTER_HEIGHT: u32 = 500;
+/// The lines of the raster a NAPLPS page's display area takes (REQ-5819): 480 by 462 shows the
+/// display's 1.28 to 1 shape on the raster's pixels, 16/13 as wide as they are high.
+const DISPLAY_LINES_ON_RASTER: u32 = 462;
+/// The raster's lines above the display area, and as many below.
+const RASTER_BORDER_LINES: u32 = (RASTER_HEIGHT - DISPLAY_LINES_ON_RASTER) / 2;
+const _: () = assert!(RASTER_BORDER_LINES * 2 + DISPLAY_LINES_ON_RASTER == RASTER_HEIGHT);
+const _: () = assert!(RASTER_BORDER_LINES == 19, "REQ-5819: 19 border lines above and below");
+/// `--double`: the raster at twice its size (DEC-6667 item 2).
+const DOUBLE: u32 = 2;
+
 /// The exit status of a check that found a refusal; 2 is any failure to run.
 const EXIT_REFUSED: u8 = 1;
 /// The exit status when the program could not do its work.
@@ -94,13 +114,15 @@ fn main() -> ExitCode {
 }
 
 /// The usage line.
-const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] PAGE OUT.ppm";
+const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] [--neoteletext [--double]] PAGE OUT.ppm";
 
-/// How a picture is written: the border's width and the display's colour registers.
+/// How a picture is written: the border's width, the display's colour registers, and the
+/// lines above and below the display area in the page's background colour (REQ-5819).
 #[derive(Clone, Copy)]
 struct Display {
     border: u32,
     dac_bits: u32,
+    raster_lines: u32,
 }
 
 #[allow(clippy::too_many_lines, reason = "one arm an option, then the two modes; splitting hides the option table")]
@@ -111,7 +133,10 @@ fn run() -> Result<(), String> {
     let mut font_path = None;
     let mut tenths = None;
     let mut preamble = false;
-    let mut display = Display { border: 0, dac_bits: 8 };
+    let mut display = Display { border: 0, dac_bits: 8, raster_lines: 0 };
+    let mut size_given = false;
+    let mut neoteletext = false;
+    let mut double = false;
     let mut stage = None;
     let mut objects_path = None;
     let mut script_path = None;
@@ -122,8 +147,10 @@ fn run() -> Result<(), String> {
     while let Some(argument) = arguments.next() {
         let mut value = |name: &str| arguments.next().ok_or_else(|| format!("{name} needs a value"));
         match argument.as_str() {
-            "--width" => width = number(&value("--width")?)?,
-            "--height" => height = number(&value("--height")?)?,
+            "--width" => (width, size_given) = (number(&value("--width")?)?, true),
+            "--height" => (height, size_given) = (number(&value("--height")?)?, true),
+            "--neoteletext" => neoteletext = true,
+            "--double" => double = true,
             "--palette-bits" => palette_bits = number(&value("--palette-bits")?)?,
             "--font" => font_path = Some(value("--font")?),
             "--tenths" => tenths = Some(number(&value("--tenths")?)?),
@@ -142,6 +169,19 @@ fn run() -> Result<(), String> {
     let [page_path, out_path] = operands.as_slice() else {
         return Err(USAGE.to_owned());
     };
+    if double && !neoteletext {
+        return Err("--double goes with --neoteletext".to_owned());
+    }
+    if neoteletext {
+        if size_given || display.border > 0 {
+            return Err("--neoteletext sets the size and the border; --width, --height and --border do not go with it"
+                .to_owned());
+        }
+        let scale = if double { DOUBLE } else { 1 };
+        width = RASTER_WIDTH.saturating_mul(scale);
+        height = DISPLAY_LINES_ON_RASTER.saturating_mul(scale);
+        display.raster_lines = RASTER_BORDER_LINES.saturating_mul(scale);
+    }
     let page = read_page(page_path)?;
     let mut canvas = Canvas::new(width, height).map_err(|error| error.to_string())?;
     let mut terminal = Terminal::new(palette_bits);
@@ -182,9 +222,9 @@ fn run() -> Result<(), String> {
         if objects_path.is_some() {
             let mut presented = Canvas::new(width, height).map_err(|error| error.to_string())?;
             terminal.compose(&canvas, &mut presented).map_err(|error| error.to_string())?;
-            write_picture(out_path, &presented, &colours, terminal.border(), display)?;
+            write_picture(out_path, &presented, &colours, (terminal.border(), terminal.screen_colour()), display)?;
         } else {
-            write_picture(out_path, &canvas, &colours, terminal.border(), display)?;
+            write_picture(out_path, &canvas, &colours, (terminal.border(), terminal.screen_colour()), display)?;
         }
     }
     if events.contains(&Event::LimitReached) {
@@ -257,7 +297,13 @@ fn play_page(
         terminal.compose(canvas, &mut presented).map_err(|error| error.to_string())?;
         if tick.checked_rem(frame_step) == Some(0) || tick.saturating_add(1) == frames {
             let colours = player.colours(terminal);
-            write_picture(&play::numbered(out_path, tick), &presented, &colours, terminal.border(), display)?;
+            write_picture(
+                &play::numbered(out_path, tick),
+                &presented,
+                &colours,
+                (terminal.border(), terminal.screen_colour()),
+                display,
+            )?;
         }
     }
     let late = steps.count();
@@ -273,15 +319,17 @@ fn play_page(
     Ok(events)
 }
 
-/// Writes `canvas` as a binary PPM with the colour map `colours`, inside its border.
+/// Writes `canvas` as a binary PPM with the colour map `colours`, inside its border, between
+/// the raster's lines above and below in the page's background colour (the entries of
+/// `(border, screen)`).
 fn write_picture(
     path: &str,
     canvas: &Canvas,
     colours: &[Rgb],
-    border_entry: u8,
+    (border_entry, screen_entry): (u8, u8),
     display: Display,
 ) -> Result<(), String> {
-    let Display { border, dac_bits } = display;
+    let Display { border, dac_bits, raster_lines } = display;
     let rgb = |entry: u8| {
         naplps::palette::through_register(colours.get(usize::from(entry)).copied().unwrap_or([0, 0, 0]), dac_bits)
     };
@@ -289,7 +337,13 @@ fn write_picture(
     let (outer_width, outer_height) =
         (width.saturating_add(border.saturating_mul(2)), height.saturating_add(border.saturating_mul(2)));
     let border_rgb = rgb(border_entry);
-    let mut ppm = format!("P6\n{outer_width} {outer_height}\n255\n").into_bytes();
+    let screen_rgb = rgb(screen_entry);
+    let picture_height = outer_height.saturating_add(raster_lines.saturating_mul(2));
+    let mut ppm = format!("P6\n{outer_width} {picture_height}\n255\n").into_bytes();
+    let raster_line = screen_rgb.repeat(usize::try_from(outer_width).unwrap_or(0));
+    for _ in 0..raster_lines {
+        ppm.extend_from_slice(&raster_line);
+    }
     for y in 0..outer_height {
         for x in 0..outer_width {
             let inside = (border..border.saturating_add(width)).contains(&x)
@@ -301,6 +355,9 @@ fn write_picture(
             };
             ppm.extend_from_slice(&colour);
         }
+    }
+    for _ in 0..raster_lines {
+        ppm.extend_from_slice(&raster_line);
     }
     let mut file = fs::File::create(path).map_err(|error| format!("{path}: {error}"))?;
     file.write_all(&ppm).map_err(|error| format!("{path}: {error}"))?;
