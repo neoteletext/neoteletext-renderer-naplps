@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 # Unused: the full gate has no linux_steps. gate.sh reads it only there.
 linux_host="${TELETEXT_LINUX_HOST:-chunko}"
 # What the gates read.
-readonly CHECKED_PATHS=(crates fuzz scripts .githooks Cargo.toml Cargo.lock rust-toolchain.toml clippy.toml rustfmt.toml)
+readonly CHECKED_PATHS=(crates fonts fuzz scripts .githooks Cargo.toml Cargo.lock rust-toolchain.toml clippy.toml rustfmt.toml)
 
 . scripts/gate.sh
 
@@ -51,6 +51,12 @@ commit_steps() {
     step "formatting"
     cargo fmt --check
     check_no_panic_lists
+    step "the stroke font is what scripts/make_font.py writes"
+    need_tool python3 "scripts/make_font.py writes the stroke font (sudo apt-get install python3)"
+    mkdir -p tmp
+    python3 scripts/make_font.py tmp/font-check.strokes
+    cmp -s tmp/font-check.strokes fonts/neoteletext.strokes || fail "fonts/neoteletext.strokes differs from what scripts/make_font.py writes; run scripts/make_font.py"
+    rm tmp/font-check.strokes
     step "Clippy, warnings as errors"
     cargo clippy --quiet --workspace --all-targets -- -D warnings
 }

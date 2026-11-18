@@ -1026,6 +1026,8 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <h3 id="the-supplementary-set">The supplementary set</h3>
 <p>Reached with SS2 (<code>19</code>) for one character, or by shifting G2 in. <code>40</code>-<code>4F</code> are <strong>non-spacing accents</strong>: they draw without advancing, so an accent is sent before its letter (<code>19 42 65</code> is é, <code>19 48 75</code> is ü, <code>19 4B 63</code> is ç).</p>
 <p><img alt="The supplementary set, 20 to 7F, as the recovered PP3 font draws it" src="images/14-supplementary.png"></p>
+<p><strong>Here:</strong> NeoTeletext's own stroke font (<code>fonts/neoteletext.strokes</code>, written by <code>scripts/make_font.py</code>) has a glyph for every position of both sets. Its accents above a letter stand on the grid's rows 8 and 9, clear of the small letters (which reach row 6); over a capital, whose top is row 8, they touch the capital's top stroke, since the grid has no row above 9. The cedilla, ogonek and underscore reach rows 0 and 1, below the baseline. Box drawing (<code>56</code>, <code>57</code>, <code>65</code>) and the full-field diagonals reach only six eighths of the field's width, the grid's last column, so they do not join from field to field.</p>
+<p><img alt="The supplementary set, 20 to 7F, in NeoTeletext's own stroke font" src="images/14-supplementary-neoteletext.png"></p>
 <h2 id="mosaics">Mosaics</h2>
 <p>Codes <code>20</code>-<code>3F</code> and <code>60</code>-<code>7F</code> of the mosaic set are block characters; <code>40</code>-<code>5E</code> are blank and <code>5F</code> is the full block. The field is divided into two columns and three rows, and each of six bits fills one cell:</p>
 <table>

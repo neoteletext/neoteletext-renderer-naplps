@@ -16,3 +16,7 @@ done
 target/release/naplps-render --font "$font" --tenths 5 "$here/pages/11-animation.nap" docs/images/11-animation-5.ppm
 ffmpeg -loglevel error -y -i docs/images/11-animation-5.ppm docs/images/11-animation-5.png
 rm docs/images/11-animation-5.ppm
+# The supplementary set again, in NeoTeletext's own stroke font (fonts/neoteletext.strokes).
+target/release/naplps-render --font fonts/neoteletext.strokes "$here/pages/14-supplementary.nap" docs/images/14-supplementary-neoteletext.ppm
+ffmpeg -loglevel error -y -i docs/images/14-supplementary-neoteletext.ppm docs/images/14-supplementary-neoteletext.png
+rm docs/images/14-supplementary-neoteletext.ppm

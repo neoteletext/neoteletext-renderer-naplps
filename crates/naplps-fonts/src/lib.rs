@@ -17,6 +17,6 @@
     clippy::unimplemented
 )]
 
-/// NeoTeletext's own stroke font for the primary set, written by
+/// NeoTeletext's own stroke font for the primary and supplementary sets, written by
 /// `scripts/make_font.py` (`fonts/neoteletext.strokes`; REQ-6408 item 1).
 pub const NEOTELETEXT: &str = include_str!("../../../fonts/neoteletext.strokes");
