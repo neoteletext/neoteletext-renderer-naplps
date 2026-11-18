@@ -58,7 +58,7 @@ pub mod teletext;
 mod terminal;
 mod text;
 
-pub use bitmap::BitmapSet;
+pub use bitmap::{BitmapSet, JoinForm, JoiningType};
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
 pub use play::Player;

@@ -9,11 +9,12 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::Error;
-use crate::bitmap::BitmapSet;
+use crate::bitmap::{BitmapSet, JoinForm, JoiningType};
 use crate::fixed::{ONE, Point, Unit, fraction};
 use crate::font::{FontSet, StrokeFont};
 use crate::limits::{
-    MASK_SIDE, MAX_ALL_MACRO_BYTES, MAX_MACRO_BYTES, MAX_MACRO_DEPTH, MAX_PDI_BYTES, MAX_PROCESSED_BYTES, MAX_VERTICES,
+    MASK_SIDE, MAX_ALL_MACRO_BYTES, MAX_JOINING_HELD, MAX_MACRO_BYTES, MAX_MACRO_DEPTH, MAX_PDI_BYTES,
+    MAX_PROCESSED_BYTES, MAX_VERTICES,
 };
 use crate::operand::{DATA_MASK, Domain, Reader};
 use crate::palette::Palette;
@@ -148,6 +149,25 @@ enum Pending {
     DefNumber(u8),
 }
 
+/// A run of letters of a joined teletext set being drawn (renderer parity PAR-14, REQ-6765).
+///
+/// A letter's form depends on the letter drawn after it, which has not arrived when it does, so
+/// the letter is held back until the next character of the run comes or the run ends, as word
+/// wrap holds back a word (section 6.2.7.11): drawing it later in its form, rather than drawing
+/// it at once and again over itself, keeps colour mode 2's field background and the transparent
+/// text of modes 0 and 1 exactly as for any other character.
+#[derive(Default)]
+struct JoiningRun {
+    /// The set of the run, by number and form, while one is open.
+    set: Option<(u8, bool)>,
+    /// The joining type of the nearest non-transparent letter of the run drawn before the held
+    /// one; `None` at the run's start.
+    before: Option<JoiningType>,
+    /// The letter waiting for the next, then the transparent codes after it: at most
+    /// [`MAX_JOINING_HELD`].
+    held: Vec<u8>,
+}
+
 /// The colour mode (section 5.3.2.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
@@ -205,8 +225,10 @@ pub struct Terminal {
     border: u8,
     /// A non-spacing accent waiting for the letter it goes over.
     pending_accent: Option<u8>,
-    /// Word wrap's buffered word (section 6.2.7.11).
-    word: Vec<(CharSet, u8)>,
+    /// Word wrap's buffered word (section 6.2.7.11), each character with the form it is drawn in.
+    word: Vec<(CharSet, u8, JoinForm)>,
+    /// The joined letters being held back (PAR-14).
+    joining: JoiningRun,
     /// Whether the byte before this one was a spacing character, which REPEAT and REPEAT TO EOL
     /// need (section 6.2.7.2).
     last_was_spacing: bool,
@@ -286,6 +308,7 @@ impl Terminal {
             border: 0,
             pending_accent: None,
             word: Vec::new(),
+            joining: JoiningRun::default(),
             last_was_spacing: false,
             repeat_allowed: false,
             drcs_cleared: false,
@@ -491,6 +514,11 @@ impl Terminal {
 
     /// One byte. Returns a macro number to expand.
     fn byte(&mut self, canvas: &mut dyn Surface, byte: u8, depth: usize) -> Option<u8> {
+        // PAR-14: a run of joined letters ends at any byte that is not its next character: a
+        // control code, a change of the set in use, a PDI, or any other set's character.
+        if !self.joining.held.is_empty() && !self.continues_joining(byte) {
+            self.release_joining(canvas);
+        }
         // Definitions that record without executing.
         if let Some(Recording::Macro { execute: false, bytes, .. }) = &mut self.recording {
             let escaped = bytes.last() == Some(&ESC);
@@ -1806,6 +1834,19 @@ impl Terminal {
             CharSet::Teletext { full: false, .. } if code == DELETE => return,
             _ => (set, code),
         };
+        if let CharSet::Teletext { number, full } = set
+            && self.is_joined(number)
+        {
+            self.join_letter(canvas, number, full, code);
+            return;
+        }
+        self.release_joining(canvas);
+        self.place(canvas, set, code, JoinForm::Isolated);
+    }
+
+    /// Places one character drawn in `form` (the isolated form for every character that is not
+    /// a joined letter): into word wrap's word, or onto the canvas.
+    fn place(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8, form: JoinForm) {
         self.last_was_spacing = !is_accent(set, code) && set != CharSet::Null;
         let alphanumeric =
             matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs | CharSet::Teletext { .. });
@@ -1817,11 +1858,103 @@ impl Terminal {
             if self.word.len() >= MAX_WORD {
                 self.end_word(canvas, false);
             }
-            self.word.push((set, code));
+            self.word.push((set, code, form));
             return;
         }
         self.end_word(canvas, false);
-        self.draw_character(canvas, set, code);
+        self.draw_character(canvas, set, code, form);
+    }
+
+    /// Whether teletext set `number` was given joining data (PAR-14).
+    fn is_joined(&self, number: u8) -> bool {
+        self.teletext_sets.get(usize::from(number)).and_then(Option::as_ref).is_some_and(BitmapSet::is_joined)
+    }
+
+    /// The joining type of `code` of teletext set `number`.
+    fn joining_of(&self, number: u8, code: u8) -> JoiningType {
+        self.teletext_sets
+            .get(usize::from(number))
+            .and_then(Option::as_ref)
+            .map_or(JoiningType::None, |set| set.joining(code))
+    }
+
+    /// Whether `byte` is the next character of the open joining run: a graphic byte from the
+    /// run's set, not SPACE, with no sequence waiting for it.
+    fn continues_joining(&self, byte: u8) -> bool {
+        if self.pending != Pending::None || byte < SPACE || (0x80..0xA0).contains(&byte) || byte & 0x7F == SPACE {
+            return false;
+        }
+        let set_index = self.single_shift.unwrap_or(if byte >= 0xA0 { self.gr } else { self.gl });
+        matches!(self.g_sets.get(set_index), Some(CharSet::Teletext { number, full })
+            if self.joining.set == Some((*number, *full)))
+    }
+
+    /// The form of a letter of joining type `kind` between the letters of the run drawn before
+    /// and after it (REQ-CHR-015, PAR-14), in visual order: on a rightward path the letter drawn
+    /// before is on the left, which is the letter that follows in reading (the text is
+    /// right-to-left, written in visual order), and on a leftward path it is on the right. The
+    /// vertical paths have no left and right and are taken as the rightward one. A letter joins
+    /// the following letter when it can and the following one can join the letter before it,
+    /// and joins the previous letter likewise.
+    fn form_between(&self, kind: JoiningType, before: Option<JoiningType>, after: Option<JoiningType>) -> JoinForm {
+        // Section 5.3.2.3.3: the character path.
+        let (left, right) = if self.text.path == Path::Left { (after, before) } else { (before, after) };
+        let joins_next = kind.joins_next() && left.is_some_and(JoiningType::joins_previous);
+        let joins_previous = kind.joins_previous() && right.is_some_and(JoiningType::joins_next);
+        JoinForm::of(joins_previous, joins_next)
+    }
+
+    /// One code of a joined set (PAR-14): a transparent code with no letter held is drawn at
+    /// once; one after a held letter waits with it; a letter draws the held letter in the form
+    /// it now has and is held in its place.
+    fn join_letter(&mut self, canvas: &mut dyn Surface, number: u8, full: bool, code: u8) {
+        if self.joining.set != Some((number, full)) {
+            self.release_joining(canvas);
+        }
+        self.joining.set = Some((number, full));
+        let set = CharSet::Teletext { number, full };
+        let kind = self.joining_of(number, code);
+        if kind == JoiningType::Transparent {
+            if self.joining.held.is_empty() {
+                self.place(canvas, set, code, JoinForm::Isolated);
+            } else if self.joining.held.len() < MAX_JOINING_HELD {
+                self.joining.held.push(code);
+            } else {
+                // More marks than the bound after one letter: the run ends there.
+                self.release_joining(canvas);
+                self.joining.set = Some((number, full));
+                self.place(canvas, set, code, JoinForm::Isolated);
+            }
+            return;
+        }
+        self.draw_held(canvas, Some(kind));
+        self.joining.held.push(code);
+    }
+
+    /// Draws the held letter, whose next letter in the run is of joining type `after` (`None`
+    /// at the run's end), and the transparent codes after it.
+    fn draw_held(&mut self, canvas: &mut dyn Surface, after: Option<JoiningType>) {
+        let held = core::mem::take(&mut self.joining.held);
+        let Some((&letter, marks)) = held.split_first() else { return };
+        let Some((number, full)) = self.joining.set else { return };
+        let set = CharSet::Teletext { number, full };
+        let kind = self.joining_of(number, letter);
+        let form = self.form_between(kind, self.joining.before, after);
+        self.place(canvas, set, letter, form);
+        for &mark in marks {
+            self.place(canvas, set, mark, JoinForm::Isolated);
+        }
+        self.joining.before = Some(kind);
+    }
+
+    /// Ends the joining run: draws the held letter as the last of the run.
+    fn release_joining(&mut self, canvas: &mut dyn Surface) {
+        if self.joining.set.is_none() {
+            return;
+        }
+        self.draw_held(canvas, None);
+        self.joining.set = None;
+        self.joining.before = None;
     }
 
     /// Draws a buffered word, first starting a new line if it does not fit on this one, and then
@@ -1833,23 +1966,23 @@ impl Terminal {
             self.line_feed(canvas, true);
         }
         self.auto_wrapped = 0;
-        for &(set, code) in &word {
-            self.draw_character(canvas, set, code);
+        for &(set, code, form) in &word {
+            self.draw_character(canvas, set, code, form);
         }
         if space {
             if self.auto_wrapped == 2 {
                 self.auto_wrapped = 0; // the line ended with the word: the SPACE is dropped
             } else {
-                self.draw_character(canvas, CharSet::Primary, SPACE);
+                self.draw_character(canvas, CharSet::Primary, SPACE, JoinForm::Isolated);
             }
         }
     }
 
     /// Whether every character of `word` fits on the rest of the current line.
-    fn word_fits(&self, word: &[(CharSet, u8)]) -> bool {
+    fn word_fits(&self, word: &[(CharSet, u8, JoinForm)]) -> bool {
         let area = self.area();
         let mut at = self.cursor;
-        for &(set, code) in word {
+        for &(set, code, _) in word {
             if is_accent(set, code) {
                 continue;
             }
@@ -1863,11 +1996,12 @@ impl Terminal {
 
     /// Draws a buffered word and a waiting accent: before anything that is not text.
     fn settle(&mut self, canvas: &mut dyn Surface) {
+        self.release_joining(canvas);
         self.end_word(canvas, false);
         if let Some(accent) = self.pending_accent.take() {
             let field = self.field_now(self.cursor);
             let ink = self.ink(0);
-            self.paint(canvas, CharSet::Supplementary, accent, field, ink);
+            self.paint(canvas, CharSet::Supplementary, accent, JoinForm::Isolated, field, ink);
         }
     }
 
@@ -1897,7 +2031,7 @@ impl Terminal {
     /// Draws one character at the cursor and moves the cursor on. A non-spacing accent (the
     /// supplementary set's 4/0 to 4/15) waits for the next character and is drawn over it, so
     /// that the letter's field, painted in colour mode 2, does not cover it (section 5.3.2.3.4).
-    fn draw_character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) {
+    fn draw_character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8, form: JoinForm) {
         if code == DELETE && matches!(set, CharSet::Primary | CharSet::Supplementary) {
             return; // DEL
         }
@@ -1916,10 +2050,10 @@ impl Terminal {
             field_from = i64::from(left).saturating_mul(text::FIELD_ONE) / text::STROKE_X_DIVISOR;
         }
         let ink = self.ink(field_from);
-        self.paint(canvas, set, code, field, ink);
+        self.paint(canvas, set, code, form, field, ink);
         if let Some(accent) = self.pending_accent.take() {
             let over = Ink { field_from: text::FIELD_ONE, ..ink };
-            self.paint(canvas, CharSet::Supplementary, accent, field, over);
+            self.paint(canvas, CharSet::Supplementary, accent, JoinForm::Isolated, field, over);
         }
         self.last_spacing = Some((set, code));
         let step = self.step_for(set, code);
@@ -1931,12 +2065,13 @@ impl Terminal {
         if let Some(accent) = self.pending_accent.take() {
             let field = self.field_now(self.cursor);
             let ink = self.ink(0);
-            self.paint(canvas, CharSet::Supplementary, accent, field, ink);
+            self.paint(canvas, CharSet::Supplementary, accent, JoinForm::Isolated, field, ink);
         }
     }
 
-    /// Draws one character's shape into `field`, on the definition being recorded if any.
-    fn paint(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8, field: Field, ink: Ink) {
+    /// Draws one character's shape into `field`, on the definition being recorded if any; a
+    /// teletext set's letter in `form` (PAR-14).
+    fn paint(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8, form: JoinForm, field: Field, ink: Ink) {
         let underline = |surface: &dyn Surface, terminal: &Self| {
             terminal.text.underline.then(|| text::underline_share(surface, terminal.pel.y, terminal.text.size.y))
         };
@@ -1982,7 +2117,7 @@ impl Terminal {
                         .teletext_sets
                         .get(usize::from(number))
                         .and_then(Option::as_ref)
-                        .and_then(|bitmaps| Some((bitmaps.glyph(code)?, bitmaps.width())));
+                        .and_then(|bitmaps| Some((bitmaps.form_glyph(code, form)?, bitmaps.width())));
                     let shape = glyph.map_or(Shape::Blank, |(rows, width)| Shape::Glyph { rows, width });
                     text::draw(surface, field, &shape, ink);
                 }

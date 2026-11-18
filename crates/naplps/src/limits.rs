@@ -25,6 +25,10 @@ pub const MAX_BITMAP_WIDTH: u8 = 16;
 /// Pixel rows of one glyph of a bitmap character set (REQ-6668): room for the engine's 20-line
 /// cell with margin.
 pub const MAX_BITMAP_HEIGHT: u8 = 32;
+/// Codes held back for joining (renderer parity PAR-14): one letter of a joined set waiting for
+/// the letter after it, and the transparent codes (combining marks) after it. A letter carries
+/// a few marks at most; past this many the run ends and the letter is drawn as the last of it.
+pub const MAX_JOINING_HELD: usize = 16;
 /// Blink processes at once (Dillon, BLINK: at least 16).
 pub const MAX_BLINKS: usize = 32;
 /// Width or height of a canvas.
