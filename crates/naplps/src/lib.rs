@@ -36,6 +36,7 @@ pub mod font;
 pub mod limits;
 pub mod operand;
 pub mod palette;
+mod play;
 mod raster;
 mod surface;
 mod terminal;
@@ -43,7 +44,7 @@ mod text;
 
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
-
+pub use play::Player;
 pub use raster::{FillPattern, LineTexture};
 pub use surface::{Canvas, Rect};
 pub use terminal::{Animation, CharSet, Event, Look, Object, ObjectKind, Terminal};

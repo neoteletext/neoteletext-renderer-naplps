@@ -290,7 +290,7 @@ impl Terminal {
     /// 5.3.2.8), and says how many of `bytes` it took: all of them when no WAIT ran. A WAIT runs
     /// when the byte after its operands arrives, so that byte is taken, and nothing after the
     /// WAIT has been drawn. The caller holds the rest for the interval the [`Event::Wait`] gives
-    /// and then calls again (animation.md ANIM-20). A WAIT
+    /// and then calls again (animation.md ANIM-20; [`crate::Player`] does this on ticks). A WAIT
     /// inside a macro stops there too: the rest of the macro runs at the next call of this or of
     /// [`Terminal::feed`].
     pub fn feed_until_wait(&mut self, canvas: &mut Canvas, bytes: &[u8]) -> (usize, Vec<Event>) {
