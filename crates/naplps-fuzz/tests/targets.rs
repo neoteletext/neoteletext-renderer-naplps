@@ -185,20 +185,86 @@ fn naplps_stream_holds_on_generated_inputs_at_length() {
 
 // ----- naplps_validator ----------------------------------------------------------------------
 
-/// The inputs of a run of the push gate, and the longest of their streams.
+/// The most piece lengths an input of `naplps_validator` gives; what they leave is one more.
+const MAX_PIECES: usize = 16;
+/// ESC, which begins a designation (ANSI X3.110-1983 section 4.3).
+const ESC: u8 = 0x1B;
+/// SO and SI: the PDI set in G1 into GL, and G0 back (section 6.1.3).
+const SO: u8 = 0x0E;
+/// See [`SO`].
+const SI: u8 = 0x0F;
+/// SS2: the next byte from G2 (section 6.1.3.3).
+const SS2: u8 = 0x19;
+/// ACTIVE POSITION BACKWARD (section 6.1.2.1).
+const APB: u8 = 0x08;
+/// SELECT COLOR (section 5.3.2.6), whose two operands select colour mode 2.
+const SELECT_COLOUR: u8 = 0x3E;
+/// DEF MACRO (Table 3, C1 8/0).
+const DEF_MACRO: u8 = 0x80;
+/// The macro set into G2 as a 96-character set (Table 1), with the further intermediate 2/0
+/// this renderer accepts.
+const MACROS_INTO_G2: [u8; 4] = [ESC, 0x2E, 0x20, 0x7A];
+/// ESC's intermediates that designate a 94-character set into G0 and G1 (section 4.3.1.2).
+const DESIGNATE_G0: u8 = 0x28;
+/// The first graphic code, 2/0, of a macro or character set.
+const FIRST_CODE: u8 = 0x20;
+/// The codes of a macro or 96-character set.
+const CODES: u8 = 96;
+
+/// A part of a stream of `naplps_validator` from three random bytes: mostly one byte as
+/// [`biased`] makes it, and sometimes a sequence whose effect the validator must report as the
+/// terminal does: colour mode 2 (where a character written after APB is counted, PAR-23), APB
+/// and a character, the designation of a provided set (PAR-14 joins sets 44 to 51), the start
+/// of a macro definition, or a call of a macro.
+fn validator_part((kind, byte, other): (u8, u8, u8)) -> Vec<u8> {
+    match kind % 13 {
+        8 => vec![SO, SELECT_COLOUR, 0x40 | (byte & 0x3F), 0x40 | (other & 0x3F), SI],
+        9 => vec![APB, FIRST_CODE + 1 + byte % (CODES - 2)],
+        10 => {
+            let number = other % u8::try_from(naplps::TELETEXT_SET_COUNT).unwrap();
+            let (supplement, final_byte) = naplps::teletext::designation_of(number).unwrap();
+            let mut piece = vec![ESC, DESIGNATE_G0 | (byte & 1)];
+            piece.extend(supplement);
+            piece.push(final_byte);
+            piece
+        }
+        11 => vec![DEF_MACRO, FIRST_CODE + byte % CODES],
+        12 => {
+            let mut piece = MACROS_INTO_G2.to_vec();
+            piece.extend_from_slice(&[SS2, FIRST_CODE + byte % CODES]);
+            piece
+        }
+        _ => vec![biased((kind, byte))],
+    }
+}
+
+/// An input of `naplps_validator`: the number of piece lengths, the lengths, and the stream.
+fn validator_input((stream, lengths): &(Vec<(u8, u8, u8)>, Vec<usize>)) -> Vec<u8> {
+    let mut input = vec![u8::try_from(lengths.len()).unwrap()];
+    for &length in lengths {
+        input.extend_from_slice(&u16::try_from(length).unwrap().to_le_bytes());
+    }
+    input.extend(stream.iter().copied().flat_map(validator_part));
+    input
+}
+
+/// The inputs of a run of the push gate, and the longest of their streams in generated parts.
 const VALIDATOR_QUICK: (u32, usize) = (64, 600);
-/// The inputs of a run of the full gate, and the longest of their streams.
+/// The inputs of a run of the full gate, and the longest of their streams in generated parts.
 const VALIDATOR_LONG: (u32, usize) = (4000, 1500);
 
 fn search_validator((cases, length): (u32, usize)) {
-    let strategy = (any::<u8>(), vec((any::<u8>(), any::<u8>()), 0..=length));
-    search("naplps_validator", validator::naplps_validator, &strategy, stream_input, cases);
+    // A piece length may pass the stream's end, which takes the rest; most bytes a generated part makes
+    // is 6, so `6 * length` covers a whole stream in one piece.
+    let strategy = (vec((any::<u8>(), any::<u8>(), any::<u8>()), 0..=length), vec(0..=6 * length, 0..=MAX_PIECES));
+    search("naplps_validator", validator::naplps_validator, &strategy, validator_input, cases);
 }
 
 #[test]
 fn naplps_validator_holds_on_every_kept_input_and_on_the_empty_one() {
     replay("naplps_validator", validator::naplps_validator);
     validator::naplps_validator(&[]);
+    validator::naplps_validator_in_pieces(&[], &[0, 0]);
 }
 
 #[test]

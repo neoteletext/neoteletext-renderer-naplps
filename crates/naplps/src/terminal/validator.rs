@@ -103,9 +103,10 @@ impl Validator {
 
     /// For each macro name 2/0 to 7/15 in turn, whether the stream has defined it (by DEF MACRO
     /// or DEFP MACRO, and not deleted it since): what a program's later stream may call. A
-    /// transmit macro is not counted, since calling one does nothing (section 6.2.2.3).
+    /// transmit macro is not counted, since calling one does nothing (section 6.2.2.3). It is
+    /// [`Terminal::defined_macros`] of the terminal the validator holds.
     #[must_use]
     pub fn defined_macros(&self) -> [bool; CODES] {
-        core::array::from_fn(|index| self.terminal.macros.get(index).is_some_and(Option::is_some))
+        self.terminal.defined_macros()
     }
 }

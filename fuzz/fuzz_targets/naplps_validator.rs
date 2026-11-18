@@ -1,78 +1,146 @@
-//! The fuzz target `naplps_validator` (renderer parity PAR-15, REQ-6765): any bytes, in any
-//! pieces, read by a `Validator` and drawn by a `Terminal` give the same events and the same
-//! `Diagnostics` after every piece and after the stream ends. The terminal draws as the
-//! receiver does, with the repository's stroke font and a joined teletext set, and the
-//! validator holds none of them, so that what the check reports never depends on what drawing
-//! needs.
+//! The fuzz target `naplps_validator` (renderer parity PAR-15, REQ-6765): any bytes, divided into
+//! any pieces, read by a `Validator` and drawn by a `Terminal` give the same events after every
+//! piece and at the end, the same `Diagnostics` (every count and first offset: the bytes passed
+//! over, each kind of refusal, and the characters written over in colour mode 2) after every
+//! piece and at the end, and the same defined macros at the end. The terminal draws as the
+//! receiver does: on the teletext raster's display area (REQ-5819, DEC-6667) and on the design
+//! picture's canvas, with the repository's stroke font and all 55 provided character sets, the
+//! plain Arabic-script ones with joining data (PAR-14). The validator holds none of them, so
+//! that what the server's check reports never depends on what drawing needs.
 //!
-//! This file holds the target's body, `naplps_validator`, which takes the fuzzer's bytes: the
-//! first says how the rest is divided, and the rest is the stream. `crates/naplps-fuzz` runs it.
+//! This file holds the target's body, `naplps_validator`, which takes the fuzzer's bytes, and
+//! `naplps_validator_in_pieces`, which takes a stream and its division. The bytes are: one byte,
+//! the number of pieces given; that many piece lengths of two bytes each, least significant
+//! first; and the stream. A length past what is left of the stream takes the rest, a length of
+//! zero is an empty feed, and what the lengths leave is fed as one last piece.
+//! `crates/naplps-fuzz` runs it.
 
-use naplps::{BitmapSet, Canvas, JoinForm, JoiningType, StrokeFont, Terminal, Validator};
+use std::sync::OnceLock;
 
-/// The picture drawn on: small, so that an input is quick.
-const WIDTH: u32 = 160;
-/// See [`WIDTH`].
-const HEIGHT: u32 = 120;
-/// The colour map's bits: 16 entries, as the sample pages use.
+use naplps::limits::{OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use naplps::{BitmapSet, Canvas, JoinForm, JoiningType, StrokeFont, TELETEXT_SET_COUNT, Terminal, Validator};
+
+/// The teletext raster's display area a NAPLPS page is drawn on (REQ-5819, DEC-6667): 40 cells
+/// of 12 dots across and lines 19 to 480 of the 500-line page down.
+const RASTER_WIDTH: u32 = 480;
+/// See [`RASTER_WIDTH`].
+const RASTER_HEIGHT: u32 = 462;
+/// The canvases each stream is drawn on: the raster's, and the design picture's (ANIM-11).
+const CANVASES: [(u32, u32); 2] = [(RASTER_WIDTH, RASTER_HEIGHT), (OBJECT_PICTURE_WIDTH, OBJECT_PICTURE_HEIGHT)];
+/// The colour map's bits: 16 entries, as the sample pages use and the validator keeps.
 const PALETTE_BITS: u32 = 4;
-/// The most bytes of one piece, less one: pieces of 1 to 64 bytes.
-const PIECE_SPAN: u8 = 64;
-/// The set given joining data: `G0-Arabic-Persian`, the first of the plain Arabic-script sets.
-const JOINED_SET: u8 = 44;
+/// The bytes of one piece length in the target's input.
+pub const LENGTH_BYTES: usize = 2;
+/// The plain Arabic-script sets, group 1001 (`G0-Arabic-Persian` to `G0-Arabic-Plain`), which
+/// the receiver gives joining data (PAR-14; `naplps-render`'s `JOINED_SETS`).
+const JOINED_SETS: core::ops::RangeInclusive<usize> = 44..=51;
+/// The engine's cell: 12 pixels by 20 lines, the size of every provided set's glyphs.
+const CELL_WIDTH: u8 = 12;
+/// See [`CELL_WIDTH`].
+const CELL_HEIGHT: usize = 20;
+/// A row of a glyph with all of its 12 pixels lit.
+const FULL_ROW: u16 = 0x0FFF;
+/// The graphic codes of a set: 2/0 to 7/15.
+const GRAPHIC_CODES: core::ops::RangeInclusive<u8> = 0x20..=0x7F;
 
-/// A set of 12 by 20 glyphs whose codes take every joining type in turn, each form lit
-/// differently, so that joining changes what is drawn.
-fn joined_set() -> Option<BitmapSet> {
-    let mut set = BitmapSet::new(12, 20).ok()?;
+/// A glyph of one lit row, `row` counted from the top modulo the cell's height.
+fn one_row(row: usize) -> [u16; CELL_HEIGHT] {
+    let mut rows = [0u16; CELL_HEIGHT];
+    if let Some(slot) = rows.get_mut(row % CELL_HEIGHT) {
+        *slot = FULL_ROW;
+    }
+    rows
+}
+
+/// Stand-ins for the 55 provided sets, made once: a set of 12 by 20 glyphs for each number, each
+/// code lit on its own row; the plain Arabic-script sets also give every code a joining type,
+/// in a cycle that starts at a different type in each set, and a glyph for each joined form.
+/// The real glyphs come from the engine's checkout, which this crate does not read; what the
+/// receiver's reading does with a set depends only on whether it is given and on its joining
+/// data, never on its pixels.
+fn provided_sets() -> &'static [Option<BitmapSet>] {
+    static SETS: OnceLock<Vec<Option<BitmapSet>>> = OnceLock::new();
+    SETS.get_or_init(|| (0..TELETEXT_SET_COUNT).map(provided_set).collect())
+}
+
+fn provided_set(number: usize) -> Option<BitmapSet> {
+    let mut set = BitmapSet::new(CELL_WIDTH, u8::try_from(CELL_HEIGHT).ok()?).ok()?;
     let types = [JoiningType::Dual, JoiningType::Right, JoiningType::None, JoiningType::Transparent];
-    for (code, joining) in (0x20u8..=0x7F).zip(types.iter().cycle()) {
-        let mut rows = [0u16; 20];
-        *rows.get_mut(usize::from(code % 20))? = 0x0FFF;
-        set.set_glyph(code, &rows).ok()?;
-        set.set_joining(code, *joining).ok()?;
-        for (form, row) in [(JoinForm::Final, 1u16), (JoinForm::Initial, 2), (JoinForm::Medial, 3)] {
-            let mut rows = [0u16; 20];
-            *rows.get_mut(usize::from(row))? = 0x0FFF;
-            set.set_form_glyph(code, form, &rows).ok()?;
+    let joined = JOINED_SETS.contains(&number);
+    for (code, joining) in GRAPHIC_CODES.zip(types.iter().cycle().skip(number % types.len())) {
+        set.set_glyph(code, &one_row(usize::from(code))).ok()?;
+        if joined {
+            set.set_joining(code, *joining).ok()?;
+            for (form, row) in [(JoinForm::Final, 1), (JoinForm::Initial, 2), (JoinForm::Medial, 3)] {
+                set.set_form_glyph(code, form, &one_row(row)).ok()?;
+            }
         }
     }
     Some(set)
 }
 
-/// Runs one input. Panics when a property fails, as a fuzzing engine expects.
-///
-/// # Panics
-///
-/// When the validator's events or diagnostics differ from the terminal's after any piece or at
-/// the end.
-pub fn naplps_validator(data: &[u8]) {
-    let Some((seed, stream)) = data.split_first() else { return };
-    let Ok(mut canvas) = Canvas::new(WIDTH, HEIGHT) else { return };
+/// A terminal as the receiver has it: the stroke font and every provided set.
+fn receiver() -> Terminal {
     let mut terminal = Terminal::new(PALETTE_BITS);
     if let Ok(font) = StrokeFont::parse(naplps_fonts::NEOTELETEXT) {
         terminal.set_font(font);
     }
-    if let Some(set) = joined_set() {
-        let _ = terminal.set_teletext_set(JOINED_SET, set);
+    for (number, set) in provided_sets().iter().enumerate() {
+        if let (Ok(number), Some(set)) = (u8::try_from(number), set) {
+            let _ = terminal.set_teletext_set(number, set.clone());
+        }
     }
-    let mut validator = Validator::new();
+    terminal
+}
+
+/// Runs one input of the fuzzer's bytes. Panics when a property fails, as a fuzzing engine
+/// expects.
+///
+/// # Panics
+///
+/// As [`naplps_validator_in_pieces`].
+pub fn naplps_validator(data: &[u8]) {
+    let Some((&count, rest)) = data.split_first() else { return };
+    let (lengths, stream) = rest.split_at(usize::from(count).saturating_mul(LENGTH_BYTES).min(rest.len()));
+    let lengths: Vec<usize> =
+        lengths.as_chunks::<LENGTH_BYTES>().0.iter().map(|pair| usize::from(u16::from_le_bytes(*pair))).collect();
+    naplps_validator_in_pieces(stream, &lengths);
+}
+
+/// Feeds `stream` divided by `lengths` (see the module's text) to a validator and to a receiver's
+/// terminal on each of [`CANVASES`].
+///
+/// # Panics
+///
+/// When the validator's events or diagnostics differ from a terminal's after any piece or at the
+/// end, or its defined macros differ at the end.
+pub fn naplps_validator_in_pieces(stream: &[u8], lengths: &[usize]) {
+    let mut pieces = Vec::with_capacity(lengths.len().saturating_add(1));
     let mut rest = stream;
-    let mut chooser = *seed;
-    while !rest.is_empty() {
-        let length = usize::from(chooser % PIECE_SPAN).saturating_add(1).min(rest.len());
-        let (piece, more) = rest.split_at(length);
+    for &length in lengths {
+        let (piece, more) = rest.split_at(length.min(rest.len()));
+        pieces.push(piece);
         rest = more;
-        chooser = chooser.wrapping_mul(31).wrapping_add(piece.last().copied().unwrap_or(0));
-        let drawn = terminal.feed(&mut canvas, piece);
-        let read = validator.feed(piece);
-        assert_eq!(read, drawn, "the validator's events differ from the terminal's");
-        assert_eq!(
-            *validator.diagnostics(),
-            terminal.diagnostics(),
-            "the validator's diagnostics differ from the terminal's"
-        );
     }
-    assert_eq!(validator.finish(), terminal.finish(&mut canvas), "the events at the end differ");
-    assert_eq!(*validator.diagnostics(), terminal.diagnostics(), "the diagnostics at the end differ");
+    if !rest.is_empty() {
+        pieces.push(rest);
+    }
+    for (width, height) in CANVASES {
+        let Ok(mut canvas) = Canvas::new(width, height) else { return };
+        let mut terminal = receiver();
+        let mut validator = Validator::new();
+        for (index, piece) in pieces.iter().enumerate() {
+            let drawn = terminal.feed(&mut canvas, piece);
+            let read = validator.feed(piece);
+            assert_eq!(read, drawn, "the events of piece {index} differ on the {width} by {height} canvas");
+            assert_eq!(
+                *validator.diagnostics(),
+                terminal.diagnostics(),
+                "the diagnostics after piece {index} differ on the {width} by {height} canvas"
+            );
+        }
+        assert_eq!(validator.finish(), terminal.finish(&mut canvas), "the events at the end differ");
+        assert_eq!(*validator.diagnostics(), terminal.diagnostics(), "the diagnostics at the end differ");
+        assert_eq!(validator.defined_macros(), terminal.defined_macros(), "the defined macros differ");
+    }
 }
