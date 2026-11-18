@@ -17,7 +17,7 @@ use crate::limits::{
     LAYERS, MAX_ANIMATED_OBJECTS, MAX_FRAME_NUMBER, MAX_LABEL_BYTES, MAX_OBJECT_BYTES, MAX_OBJECT_FRAMES, MAX_OBJECTS,
     OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH,
 };
-use crate::surface::{Canvas, Rect, Window, join};
+use crate::surface::{Canvas, Rect, Window, design_shift, join};
 
 /// The last macro code, 7/15 (section 6.2.2: the 96 macro names are 2/0 to 7/15).
 const LAST_CODE: u8 = 0x7F;
@@ -139,8 +139,12 @@ pub(super) struct Scene {
     stream_damage: Option<Rect>,
     /// Pixels of the composed picture changed since the damage was last taken.
     composed_damage: Option<Rect>,
-    /// The part of the composed picture that no longer shows what it should.
+    /// The part of the composed picture that no longer shows what it should, in the canvas's
+    /// pixels: what the stream changed.
     pending: Option<Rect>,
+    /// The same for what objects changed, in the design picture's pixels (ANIM-11), which only
+    /// [`Terminal::compose`]'s canvas turns into its own ([`Rect::on_canvas`]).
+    object_pending: Option<Rect>,
     /// Nothing has been composed yet, or the caller asked for everything again.
     whole: bool,
     /// A macro, a DRCS character, a texture or the font changed, so every macro object may
@@ -157,6 +161,7 @@ impl Default for Scene {
             stream_damage: None,
             composed_damage: None,
             pending: None,
+            object_pending: None,
             whole: true,
             definitions_changed: false,
         }
@@ -366,6 +371,27 @@ impl Terminal {
             .collect()
     }
 
+    /// The numbers of the objects a pointer at pixel (`x`, `y`) of a canvas of `width` by
+    /// `height` is inside, in the order they are drawn: as [`Terminal::objects_at`], each
+    /// object's rectangle taken as [`Terminal::compose`] clips it on that canvas
+    /// ([`Rect::on_canvas`]), so a pointer picks an object exactly where it can be drawn. On a
+    /// 640 by 480 canvas it is [`Terminal::objects_at`].
+    #[must_use]
+    pub fn objects_on_canvas(&self, x: u32, y: u32, width: u32, height: u32) -> Vec<u16> {
+        self.drawing_order()
+            .into_iter()
+            .filter(|(object, placed)| {
+                object.detectable
+                    && placed.shown
+                    && placed
+                        .rect
+                        .and_then(|rect| rect.on_canvas(width, height))
+                        .is_some_and(|rect| rect.contains(x, y))
+            })
+            .map(|(object, _)| object.number)
+            .collect()
+    }
+
     /// The rectangle of pixels changed since this was last called: on the stream's canvas by
     /// [`Terminal::feed`], [`Terminal::feed_until_wait`] and [`Terminal::finish`], and on the
     /// composed picture by [`Terminal::compose`] (ANIM-4). No pixel outside it differs from
@@ -390,22 +416,25 @@ impl Terminal {
         if self.scene.whole {
             return Some(whole);
         }
-        let mut pending = self.scene.pending;
+        let mut objects = self.scene.object_pending;
         if self.scene.definitions_changed {
             for (object, placed) in self.drawing_order() {
                 if object.kind == ObjectKind::Macro || matches!(placed.content, Content::Macro(_)) {
-                    pending = join(pending, placed.drawn());
+                    objects = join(objects, placed.drawn());
                 }
             }
         }
-        pending.and_then(|rect| rect.intersection(&whole))
+        let objects = objects.and_then(|rect| rect.on_canvas(presented.width(), presented.height()));
+        join(self.scene.pending, objects).and_then(|rect| rect.intersection(&whole))
     }
 
     /// Composes the stream's picture, `background`, and the objects into `presented`, a canvas
     /// of the same size, repainting only what changed since the last call (ANIM-11, ANIM-12):
     /// the damaged rectangle is filled from the background, then every object reaching into it
     /// is drawn, clipped to it, in order of layer, order and number. The stream is not drawn
-    /// again. Returns the rectangle of `presented` whose pixels changed, which
+    /// again. An object's rectangle and move are in the design picture's pixels (ANIM-11), so on
+    /// a canvas of another size it is clipped to [`Rect::on_canvas`] of its rectangle and its
+    /// drawing moved by the same distance in the canvas's sub-pixels. Returns the rectangle of `presented` whose pixels changed, which
     /// [`Terminal::take_damage`] then also reports.
     ///
     /// # Errors
@@ -418,6 +447,7 @@ impl Terminal {
         let Some(area) = self.pending(presented) else { return Ok(None) };
         let whole = core::mem::take(&mut self.scene.whole);
         self.scene.pending = None;
+        self.scene.object_pending = None;
         self.scene.definitions_changed = false;
         // What the stream changed is inside the area and reaches the picture by this copy.
         self.scene.stream_damage = None;
@@ -428,8 +458,10 @@ impl Terminal {
             .into_iter()
             .map(|(object, placed)| (placed, object.origin_x, object.origin_y))
             .collect();
+        let (width, height) = (presented.width(), presented.height());
         for (placed, origin_x, origin_y) in order {
-            let Some(clip) = placed.rect.and_then(|rect| rect.intersection(&area)) else { continue };
+            let on_canvas = placed.rect.and_then(|rect| rect.on_canvas(width, height));
+            let Some(clip) = on_canvas.and_then(|rect| rect.intersection(&area)) else { continue };
             match placed.content {
                 Content::Nothing => {}
                 Content::Cover(entry) => {
@@ -440,10 +472,12 @@ impl Terminal {
                     }
                 }
                 Content::Macro(code) => {
-                    // ANIM-11: every pixel moved by (x - origin x, y - origin y).
-                    let move_x = i32::from(placed.x).saturating_sub(i32::from(origin_x));
-                    let move_y = i32::from(placed.y).saturating_sub(i32::from(origin_y));
-                    self.draw_macro(&mut Window { canvas: presented, move_x, move_y, clip }, code);
+                    // ANIM-11: every pixel moved by (x - origin x, y - origin y) of the design
+                    // picture.
+                    let across = i64::from(placed.x).saturating_sub(i64::from(origin_x));
+                    let down = i64::from(placed.y).saturating_sub(i64::from(origin_y));
+                    let shift = design_shift(across, down, width, height);
+                    self.draw_macro(&mut Window { canvas: presented, shift, clip }, code);
                 }
             }
         }
@@ -553,12 +587,12 @@ impl Terminal {
             return;
         }
         for placed in [before, after].into_iter().flatten() {
-            self.scene.pending = join(self.scene.pending, placed.drawn());
+            self.scene.object_pending = join(self.scene.object_pending, placed.drawn());
         }
     }
 
     fn damage_every_object(&mut self) {
         let drawn = self.drawing_order().into_iter().fold(None, |all, (_, placed)| join(all, placed.drawn()));
-        self.scene.pending = join(self.scene.pending, drawn);
+        self.scene.object_pending = join(self.scene.object_pending, drawn);
     }
 }

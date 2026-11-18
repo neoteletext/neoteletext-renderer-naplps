@@ -64,7 +64,7 @@ pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
 pub use play::Player;
 pub use raster::{FillPattern, LineTexture};
-pub use surface::{Canvas, Rect};
+pub use surface::{Canvas, Rect, design_pixel};
 pub use teletext::{TELETEXT_SET_COUNT, TELETEXT_SETS};
 pub use terminal::{
     Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal, Validator,

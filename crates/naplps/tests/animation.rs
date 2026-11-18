@@ -10,7 +10,7 @@
 )]
 
 use naplps::limits::{MAX_OBJECT_FRAMES, MAX_OBJECTS, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
-use naplps::{Animation, Canvas, Error, Look, Object, ObjectKind, Rect, Terminal};
+use naplps::{Animation, Canvas, Error, Look, Object, ObjectKind, Rect, Terminal, design_pixel};
 
 const SO: u8 = 0x0E;
 const ESC: u8 = 0x1B;
@@ -121,10 +121,15 @@ struct Page {
 
 impl Page {
     fn new(stream: &[u8]) -> Self {
+        Self::sized(stream, WIDTH, HEIGHT)
+    }
+
+    /// A page on a canvas of `width` by `height`.
+    fn sized(stream: &[u8], width: u32, height: u32) -> Self {
         let mut page = Self {
             terminal: Terminal::new(4),
-            background: Canvas::new(WIDTH, HEIGHT).unwrap(),
-            presented: Canvas::new(WIDTH, HEIGHT).unwrap(),
+            background: Canvas::new(width, height).unwrap(),
+            presented: Canvas::new(width, height).unwrap(),
         };
         page.feed(stream);
         page.compose();
@@ -645,4 +650,165 @@ fn compose_refuses_canvases_of_different_sizes() {
     let background = Canvas::new(WIDTH, HEIGHT).unwrap();
     let mut presented = Canvas::new(320, 240).unwrap();
     assert_eq!(terminal.compose(&background, &mut presented), Err(Error::CanvasSize));
+}
+
+// ----- ANIM-11 on a canvas other than the design picture (DEC-6667, REQ-5819) -----------------
+
+/// The teletext raster's display area a NAPLPS page is drawn on: 40 cells of 12 dots across and
+/// lines 19 to 480 of the 500-line page down (REQ-5819, DEC-6667).
+const RASTER_WIDTH: u32 = 480;
+const RASTER_HEIGHT: u32 = 462;
+/// The canvases an object is checked on: the design picture's own and the teletext raster's.
+const CANVASES: [(u32, u32); 2] = [(WIDTH, HEIGHT), (RASTER_WIDTH, RASTER_HEIGHT)];
+
+/// Every pixel of `canvas` equal to `entry`.
+fn pixels_of(canvas: &Canvas, entry: u8) -> Vec<(u32, u32)> {
+    let mut found = Vec::new();
+    for y in 0..canvas.height() {
+        for x in 0..canvas.width() {
+            if canvas.pixel(x, y) == Some(entry) {
+                found.push((x, y));
+            }
+        }
+    }
+    found
+}
+
+/// Every pixel of `rect`.
+fn pixels_in(rect: Rect) -> Vec<(u32, u32)> {
+    (rect.y..rect.bottom()).flat_map(|y| (rect.x..rect.right()).map(move |x| (x, y))).collect()
+}
+
+/// A macro object of macro `code` whose rectangle is `rect` of the design picture, its drawing
+/// moved there from (`origin_x`, `origin_y`).
+fn object_at(number: u16, code: u8, rect: Rect, origin: (i16, i16)) -> Object {
+    let mut object = macro_object(number, code, rect.x as i16, rect.y as i16);
+    object.width = rect.width as u16;
+    object.height = rect.height as u16;
+    (object.origin_x, object.origin_y) = origin;
+    object
+}
+
+#[test]
+fn an_object_on_the_teletext_raster_is_clipped_to_its_rectangle_scaled() {
+    // ANIM-11 on the raster of DEC-6667: a macro drawing far more than its object is cut to the
+    // object's design rectangle as it lies on the canvas. The rectangle is the cells of row 7,
+    // columns 12 to 15, as the component library writes them (design y 126 to 146 for raster
+    // lines 140 to 159, which are canvas rows 121 to 140; 16 design pixels a column, 12 canvas
+    // pixels): before this was fixed the design rectangle was used as canvas pixels, cutting
+    // its top five lines and a quarter of its width. Canvas column 192 is shared with the next
+    // cell: its centre is design x 256, its left edge in design pixel 255.
+    let design = Rect { x: 192, y: 126, width: 64, height: 20 };
+    let expected = [design, Rect { x: 144, y: 121, width: 49, height: 20 }];
+    for ((width, height), expected) in CANVASES.into_iter().zip(expected) {
+        assert_eq!(design.on_canvas(width, height), Some(expected), "{width} by {height}");
+        let mut page = Page::sized(&define(0x20, &rectangle(3, 0, 0, 255, 199)), width, height);
+        page.terminal.set_objects(&[object_at(1, 0x20, design, (192, 126))]).unwrap();
+        page.compose();
+        assert_eq!(page.terminal.bounds(1), Some(design), "bounds stay in the design picture (ANIM-13)");
+        assert_eq!(pixels_of(&page.presented, 3), pixels_in(expected), "{width} by {height}: exactly its cells");
+    }
+}
+
+#[test]
+fn an_object_draws_on_every_canvas_whatever_its_macro_draws_inside_its_rectangle() {
+    // ANIM-11: a macro that fills its object's rectangle in the design picture is drawn whole
+    // on the canvas, nothing cut, and only inside the rectangle on the canvas, wherever the
+    // object is moved.
+    let body = rectangle(3, 64, 40, 31, 23);
+    let fill = define(0x20, &body);
+    // What the macro draws on the design picture is the object's rectangle, at its origin.
+    let drawn = extent(&Page::new(&body).background, 3).expect("the macro draws");
+    let origin = (drawn.x as i16, drawn.y as i16);
+    for (width, height) in CANVASES {
+        let as_stream = pixels_of(&Page::sized(&body, width, height).background, 3);
+        for (x, y) in
+            [(drawn.x, drawn.y), (0, 1), (1, 0), (192, 126), (17, 301), (639 - drawn.width, 479 - drawn.height)]
+        {
+            let rect = Rect { x, y, ..drawn };
+            let object_pixels = |rect: Rect| {
+                let mut page = Page::sized(&fill, width, height);
+                page.terminal.set_objects(&[object_at(1, 0x20, rect, origin)]).unwrap();
+                page.compose();
+                pixels_of(&page.presented, 3)
+            };
+            let object = object_pixels(rect);
+            // The same move with a rectangle reaching to the picture's right and bottom edges.
+            let unclipped = object_pixels(Rect { x, y, width: WIDTH - x, height: HEIGHT - y });
+            assert_eq!(object, unclipped, "{width} by {height} at ({x}, {y}): nothing cut");
+            let on_canvas = rect.on_canvas(width, height).unwrap();
+            assert!(object.iter().all(|&(x, y)| on_canvas.contains(x, y)), "{width} by {height} at ({x}, {y})");
+            if (x, y) == (drawn.x, drawn.y) {
+                assert_eq!(object, as_stream, "{width} by {height}: unmoved, as the stream draws it");
+            }
+            if (width, height) == (WIDTH, HEIGHT) {
+                assert_eq!(object, pixels_in(rect), "the design picture: exactly its rectangle");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_pointer_picks_an_object_exactly_where_it_is_drawn() {
+    // ANIM-11, picking: objects_on_canvas picks an object exactly at the canvas pixels compose
+    // clips it to, and a canvas pixel's design pixel lies in the object only where it is drawn.
+    let design = Rect { x: 192, y: 126, width: 64, height: 20 };
+    for (width, height) in CANVASES {
+        let mut page = Page::sized(&define(0x20, &rectangle(3, 0, 0, 255, 199)), width, height);
+        page.terminal.set_objects(&[object_at(1, 0x20, design, (192, 126))]).unwrap();
+        page.compose();
+        for y in 0..height {
+            for x in 0..width {
+                let drawn = page.presented.pixel(x, y) == Some(3);
+                let picked = page.terminal.objects_on_canvas(x, y, width, height) == [1];
+                assert_eq!(picked, drawn, "{width} by {height}: ({x}, {y})");
+                let (across, down) = design_pixel(x, y, width, height);
+                if page.terminal.objects_at(across, down) == [1] {
+                    assert!(drawn, "{width} by {height}: ({x}, {y}) is in the object's design pixels");
+                }
+                if (width, height) == (WIDTH, HEIGHT) {
+                    assert_eq!(page.terminal.objects_at(x, y), page.terminal.objects_on_canvas(x, y, width, height));
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn design_rectangles_cover_every_canvas_and_are_the_identity_on_the_design_picture() {
+    // Adjacent design rectangles leave no canvas pixel out and share at most one, and the design
+    // picture's own canvas maps every pixel and rectangle to itself.
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
+            assert_eq!(design_pixel(x, y, WIDTH, HEIGHT), (x, y));
+        }
+    }
+    for (width, height) in [(RASTER_WIDTH, RASTER_HEIGHT), (320, 240), (800, 600), (1280, 960), (WIDTH, HEIGHT)] {
+        for side in [1, 5, 12, 16] {
+            let columns: Vec<Rect> = (0..WIDTH.div_ceil(side))
+                .filter_map(|column| {
+                    Rect::cut(i64::from(column * side), 0, i64::from(column * side + side), 1, WIDTH, HEIGHT)
+                })
+                .map(|rect| rect.on_canvas(width, height).unwrap())
+                .collect();
+            assert_eq!(columns.first().map(|rect| rect.x), Some(0));
+            assert!(columns.last().unwrap().right() + 1 >= width, "{width} by {height}");
+            let rows: Vec<Rect> = (0..HEIGHT.div_ceil(side))
+                .filter_map(|row| Rect::cut(0, i64::from(row * side), 1, i64::from(row * side + side), WIDTH, HEIGHT))
+                .map(|rect| rect.on_canvas(width, height).unwrap())
+                .collect();
+            assert!(rows.first().unwrap().y <= 1, "{width} by {height}");
+            assert!(rows.last().unwrap().bottom() + 1 >= height, "{width} by {height}");
+            for pair in columns.windows(2) {
+                assert!((0..=1).contains(&(pair[0].right() - pair[1].x)), "{width} by {height}: {pair:?}");
+            }
+            for pair in rows.windows(2) {
+                assert!((0..=1).contains(&(pair[0].bottom() - pair[1].y)), "{width} by {height}: {pair:?}");
+            }
+            if (width, height) == (WIDTH, HEIGHT) {
+                assert!(columns.iter().all(|rect| rect.width == side.min(WIDTH - rect.x)));
+                assert!(rows.iter().all(|rect| rect.height == side.min(HEIGHT - rect.y)));
+            }
+        }
+    }
 }
