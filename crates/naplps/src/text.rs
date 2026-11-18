@@ -38,6 +38,9 @@ pub(crate) enum Shape<'a> {
     Strokes(&'a [[u8; 4]]),
     /// A DRCS character's bitmap, scaled to the field.
     Bitmap(&'a Mask),
+    /// A glyph of a NeoTeletext character set (REQ-6668): rows from the top, the most
+    /// significant of `width` bits the leftmost pixel, scaled to the field as a DRCS bitmap is.
+    Glyph { rows: &'a [u16], width: u8 },
     /// A mosaic character's code (section 5.4): bits 1 to 5 and 7 are the six blocks. In
     /// separated mode, how much each lit block is reduced across and up, in fractions of
     /// [`FIELD_ONE`] of the field.
@@ -131,6 +134,13 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
         return;
     }
     let half = 0; // pixel centres sit on whole multiples of SUBPIXELS
+    // A glyph is sampled at the middle of each pixel's share of the field: the field's corner
+    // lies on a pixel centre, so the pixels' own centres fall on the edges between glyph rows
+    // and columns, where an error of one sub-pixel in the field's size would take the row
+    // below or the column to the left. Half a pixel in field fractions along each axis (the
+    // axes are along x or y at every rotation, so a length is the sum of the components).
+    let half_u = FIELD_ONE * SUBPIXELS / (2 * (u_vector.0.abs() + u_vector.1.abs())).max(1);
+    let half_v = FIELD_ONE * SUBPIXELS / (2 * (v_vector.0.abs() + v_vector.1.abs())).max(1);
     for row in top..=bottom {
         for column in left..=right {
             let offset = (column * SUBPIXELS + half - origin.0, row * SUBPIXELS + half - origin.1);
@@ -154,6 +164,14 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
                     let mask_x = mu * i64::from(mask.width()) / FIELD_ONE;
                     let mask_y = i64::from(mask.height()) - 1 - mv * i64::from(mask.height()) / FIELD_ONE;
                     mask.bit(mask_x, mask_y)
+                }
+                Shape::Glyph { rows, width } => {
+                    let width = i64::from(*width);
+                    let height = i64::try_from(rows.len()).unwrap_or(0);
+                    let glyph_x = ((mu + half_u) * width / FIELD_ONE).min(width - 1);
+                    let glyph_y = height - 1 - ((mv + half_v) * height / FIELD_ONE).min(height - 1);
+                    let row = usize::try_from(glyph_y).ok().and_then(|y| rows.get(y)).copied().unwrap_or(0);
+                    u32::try_from(width - 1 - glyph_x).is_ok_and(|shift| (u32::from(row) >> shift) & 1 != 0)
                 }
                 Shape::Mosaic { code, separation } => mosaic(*code, mu, mv, *separation),
             };

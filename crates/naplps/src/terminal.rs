@@ -9,6 +9,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::Error;
+use crate::bitmap::BitmapSet;
 use crate::fixed::{ONE, Point, Unit, fraction};
 use crate::font::{FontSet, StrokeFont};
 use crate::limits::{
@@ -18,6 +19,7 @@ use crate::operand::{DATA_MASK, Domain, Reader};
 use crate::palette::Palette;
 use crate::raster::{self, FillPattern, LineTexture, Masks, Style};
 use crate::surface::{Canvas, Mask, MaskSurface, Surface, pixel_of};
+use crate::teletext::{self, TELETEXT_SET_COUNT};
 use crate::text::{self, Field, Ink, Shape};
 
 mod diagnostics;
@@ -41,6 +43,15 @@ pub enum CharSet {
     Macro,
     /// The dynamically redefinable character set.
     Drcs,
+    /// One of NeoTeletext's teletext character sets, by its number (REQ-6668, DEC-6677): in
+    /// the 96-character form (`full`) every code 2/0 to 7/15 is the set's; in the 94-character
+    /// form 2/0 is SPACE and 7/15 DELETE (section 4.3.1.2).
+    Teletext {
+        /// The set's number, below [`TELETEXT_SET_COUNT`].
+        number: u8,
+        /// Designated as a 96-character set.
+        full: bool,
+    },
     /// A null set, designated by any sequence this standard does not define: every code is a
     /// null operation (section 4.3.2).
     Null,
@@ -153,6 +164,8 @@ enum Mode {
 pub struct Terminal {
     palette: Palette,
     font: Option<StrokeFont>,
+    /// The glyphs of NeoTeletext's character sets the caller gave, by number (REQ-6668).
+    teletext_sets: Vec<Option<BitmapSet>>,
     g_sets: [CharSet; 4],
     gl: usize,
     gr: usize,
@@ -233,6 +246,7 @@ impl Terminal {
         Self {
             palette,
             font: None,
+            teletext_sets: vec![None; TELETEXT_SET_COUNT],
             g_sets: [CharSet::Primary, CharSet::Pdi, CharSet::Supplementary, CharSet::Mosaic],
             gl: 0,
             gr: 1,
@@ -284,6 +298,19 @@ impl Terminal {
     pub fn set_font(&mut self, font: StrokeFont) {
         self.font = Some(font);
         self.scene.definitions_changed = true;
+    }
+
+    /// Uses `set` for NeoTeletext character set `number` (REQ-6668), which a page designates by
+    /// the private designation of [`teletext::designation_of`].
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Bitmap`] when `number` is not below [`TELETEXT_SET_COUNT`].
+    pub fn set_teletext_set(&mut self, number: u8, set: BitmapSet) -> Result<(), Error> {
+        let slot = self.teletext_sets.get_mut(usize::from(number)).ok_or(Error::Bitmap)?;
+        *slot = Some(set);
+        self.scene.definitions_changed = true;
+        Ok(())
     }
 
     /// Gives the picture its title, the name a page list shows for it when the program's index
@@ -637,9 +664,10 @@ impl Terminal {
                 // During DEF DRCS or DEF TEXTURE, drawing goes to the definition, never the
                 // display (section 6.2): clear screen clears the bitmap being defined. (SHARK.NAP
                 // sends CS inside DEF TEXTURE; clearing the display there blanked the page.)
-                match &mut self.recording {
-                    Some(Recording::Drcs { mask, .. } | Recording::Texture { mask, .. }) => mask.clear(),
-                    _ => canvas.fill_all(entry),
+                if let Some(Recording::Drcs { mask, .. } | Recording::Texture { mask, .. }) = &mut self.recording {
+                    mask.clear();
+                } else {
+                    canvas.fill_all(entry);
                 }
             }
             0x0D => {
@@ -700,6 +728,11 @@ impl Terminal {
         }
         // The final byte.
         let first = collected.first().copied().unwrap_or(0);
+        let further = collected.get(1..).unwrap_or(&[]);
+        if teletext::is_private_final(byte) {
+            self.private_designation(first, further, byte);
+            return None;
+        }
         let target = match first {
             0x28 => Some(0),
             0x29 | 0x2D => Some(1),
@@ -723,6 +756,28 @@ impl Terminal {
             *slot = set;
         }
         None
+    }
+
+    /// A designation with a private final byte (REQ-6668, DEC-6677): one of NeoTeletext's sets,
+    /// or the null set for every other (section 4.3.2: "All other designation sequences shall
+    /// designate ... a null G-set"), including a multiple-byte one (ESC 2/4 I F, ECMA-35
+    /// section 14.3.2), whose slot is its second intermediate, or G0 when it has none.
+    fn private_designation(&mut self, first: u8, further: &[u8], final_byte: u8) {
+        let (slot, form, further) = if first == teletext::MULTIPLE_BYTE {
+            let slot_byte = further.first().copied();
+            (slot_byte.map_or(Some((0, false)), designating_slot), None, further.get(1..).unwrap_or(&[]))
+        } else {
+            let slot = designating_slot(first);
+            (slot, slot.map(|(_, full)| full), further)
+        };
+        let Some((slot, _)) = slot else { return };
+        let set = match (form, teletext::private_set_number(further, final_byte)) {
+            (Some(full), Some(number)) => CharSet::Teletext { number, full },
+            _ => CharSet::Null,
+        };
+        if let Some(entry) = self.g_sets.get_mut(slot) {
+            *entry = set;
+        }
     }
 
     fn control1(&mut self, canvas: &mut dyn Surface, code: u8) {
@@ -1727,8 +1782,17 @@ impl Terminal {
     /// characters are buffered into words and a word that does not fit on the rest of the line
     /// starts the next (section 6.2.7.11); anything else ends the word first.
     fn character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) {
+        // Every teletext set's 2/0 is a space (the engine's code tables), and in the 94-character
+        // form 2/0 is SPACE (section 4.3.1.2): it is the primary set's SPACE, which ends a word.
+        // In that form 7/15 is DELETE, which draws nothing.
+        let (set, code) = match set {
+            CharSet::Teletext { .. } if code == SPACE => (CharSet::Primary, SPACE),
+            CharSet::Teletext { full: false, .. } if code == DELETE => return,
+            _ => (set, code),
+        };
         self.last_was_spacing = !is_accent(set, code) && set != CharSet::Null;
-        let alphanumeric = matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs);
+        let alphanumeric =
+            matches!(set, CharSet::Primary | CharSet::Supplementary | CharSet::Drcs | CharSet::Teletext { .. });
         if self.text.word_wrap && alphanumeric {
             if set == CharSet::Primary && code == SPACE {
                 self.end_word(canvas, true);
@@ -1818,7 +1882,7 @@ impl Terminal {
     /// supplementary set's 4/0 to 4/15) waits for the next character and is drawn over it, so
     /// that the letter's field, painted in colour mode 2, does not cover it (section 5.3.2.3.4).
     fn draw_character(&mut self, canvas: &mut dyn Surface, set: CharSet, code: u8) {
-        if code == 0x7F && matches!(set, CharSet::Primary | CharSet::Supplementary) {
+        if code == DELETE && matches!(set, CharSet::Primary | CharSet::Supplementary) {
             return; // DEL
         }
         if is_accent(set, code) {
@@ -1894,6 +1958,16 @@ impl Terminal {
                     ink.underline = underline(surface, self);
                     let mask = self.drcs.get(usize::from(code.wrapping_sub(FIRST_CODE))).and_then(Option::as_ref);
                     let shape = mask.map_or(Shape::Blank, Shape::Bitmap);
+                    text::draw(surface, field, &shape, ink);
+                }
+                CharSet::Teletext { number, .. } => {
+                    ink.underline = underline(surface, self);
+                    let glyph = self
+                        .teletext_sets
+                        .get(usize::from(number))
+                        .and_then(Option::as_ref)
+                        .and_then(|bitmaps| Some((bitmaps.glyph(code)?, bitmaps.width())));
+                    let shape = glyph.map_or(Shape::Blank, |(rows, width)| Shape::Glyph { rows, width });
                     text::draw(surface, field, &shape, ink);
                 }
                 CharSet::Pdi | CharSet::Macro | CharSet::Null => {}
@@ -2004,6 +2078,8 @@ const CURSOR_CROSS_HAIR: u8 = 2;
 
 /// SPACE in the primary set.
 const SPACE: u8 = 0x20;
+/// DELETE: 7/15 of a 94-character set in the in-use table (section 4.3.1.2).
+const DELETE: u8 = 0x7F;
 
 /// The longest word word wrap buffers: a word as long as the longest possible line (section
 /// 6.2.7.11: a character that makes a word as long as a line ends it). 80 columns of SMALL TEXT
@@ -2011,6 +2087,22 @@ const SPACE: u8 = 0x20;
 const MAX_WORD: usize = 320;
 
 /// Whether a character is a non-spacing accent: the supplementary set's 4/0 to 4/15 (section 5.2).
+/// The slot a designating intermediate names, and whether it designates a 96-character set
+/// (ECMA-35 section 14.3.2, Table 6: 2/8 to 2/11 a 94-character set into G0 to G3, 2/13 to
+/// 2/15 a 96-character set into G1 to G3).
+const fn designating_slot(intermediate: u8) -> Option<(usize, bool)> {
+    match intermediate {
+        0x28 => Some((0, false)),
+        0x29 => Some((1, false)),
+        0x2A => Some((2, false)),
+        0x2B => Some((3, false)),
+        0x2D => Some((1, true)),
+        0x2E => Some((2, true)),
+        0x2F => Some((3, true)),
+        _ => None,
+    }
+}
+
 fn is_accent(set: CharSet, code: u8) -> bool {
     set == CharSet::Supplementary && (0x40..=0x4F).contains(&code)
 }

@@ -475,6 +475,7 @@ impl Terminal {
     fn exchange_definitions(&mut self, other: &mut Self) {
         core::mem::swap(&mut self.palette, &mut other.palette);
         core::mem::swap(&mut self.font, &mut other.font);
+        core::mem::swap(&mut self.teletext_sets, &mut other.teletext_sets);
         core::mem::swap(&mut self.macros, &mut other.macros);
         core::mem::swap(&mut self.drcs, &mut other.drcs);
         core::mem::swap(&mut self.masks, &mut other.masks);

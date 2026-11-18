@@ -19,6 +19,12 @@ pub const MAX_VERTICES: usize = 4096;
 /// Pixels on the longer side of the one-bit bitmap a DRCS character or fill mask is drawn into
 /// (section 5.6 leaves the resolution to the implementation).
 pub const MASK_SIDE: u32 = 128;
+/// Pixels across one glyph of a bitmap character set (REQ-6668): room for the engine's 12-pixel
+/// cell with margin, and the width of a `u16` row.
+pub const MAX_BITMAP_WIDTH: u8 = 16;
+/// Pixel rows of one glyph of a bitmap character set (REQ-6668): room for the engine's 20-line
+/// cell with margin.
+pub const MAX_BITMAP_HEIGHT: u8 = 32;
 /// Blink processes at once (Dillon, BLINK: at least 16).
 pub const MAX_BLINKS: usize = 32;
 /// Width or height of a canvas.
@@ -71,6 +77,7 @@ pub const MAX_LABEL_BYTES: usize = 64;
 /// one short line of plain text.
 pub const MAX_TITLE_BYTES: usize = 64;
 
+const _: () = assert!(MAX_BITMAP_WIDTH as u32 == u16::BITS);
 const _: () = assert!(MAX_FRAME_NUMBER as usize + 1 == MAX_OBJECT_FRAMES);
 const _: () = assert!(MAX_ANIMATED_OBJECTS >= MAX_OBJECTS);
 const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK * 2 == OBJECT_PICTURE_WIDTH as u64 * OBJECT_PICTURE_HEIGHT as u64);

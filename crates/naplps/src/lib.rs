@@ -5,7 +5,9 @@
 //! and [`Terminal::palette`] turns them into colours. The library does no input or output, keeps
 //! no clock (WAIT and BEL come back as [`Event`]s, and [`Palette::at`] gives the colour map at a
 //! time for BLINK), contains no font ([`Terminal::set_font`] takes a [`StrokeFont`] the caller
-//! supplies), and bounds everything a page can make it hold or do ([`limits`]).
+//! supplies, and [`Terminal::set_teletext_set`] a [`BitmapSet`] of one of NeoTeletext's character
+//! sets, which a page designates by the private designations of [`teletext`]), and bounds
+//! everything a page can make it hold or do ([`limits`]).
 //!
 //! A picture may carry a title for page lists ([`Terminal::set_title`]) and each object a label
 //! for a screen reader ([`Object::label`]); neither is ever drawn (DEC-6638 items 3 and 6).
@@ -43,6 +45,7 @@
 
 extern crate alloc;
 
+pub mod bitmap;
 pub mod fixed;
 pub mod font;
 pub mod limits;
@@ -51,14 +54,17 @@ pub mod palette;
 mod play;
 mod raster;
 mod surface;
+pub mod teletext;
 mod terminal;
 mod text;
 
+pub use bitmap::BitmapSet;
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
 pub use play::Player;
 pub use raster::{FillPattern, LineTexture};
 pub use surface::{Canvas, Rect};
+pub use teletext::{TELETEXT_SET_COUNT, TELETEXT_SETS};
 pub use terminal::{
     Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal,
 };
@@ -75,6 +81,10 @@ pub enum Error {
     /// The object at this index of the set given is not one the `NAPLPS_OBJECTS` record allows,
     /// or repeats an earlier object's number.
     Object(usize),
+    /// A bitmap character set's glyph size is outside [`limits::MAX_BITMAP_WIDTH`] by
+    /// [`limits::MAX_BITMAP_HEIGHT`], a glyph is not that size or its code is outside 2/0 to
+    /// 7/15, or a set's number is not below [`TELETEXT_SET_COUNT`].
+    Bitmap,
     /// A picture's title is longer than [`limits::MAX_TITLE_BYTES`] or is not plain text.
     Title,
 }
@@ -95,6 +105,13 @@ impl core::fmt::Display for Error {
             Self::Font(line) => write!(formatter, "the font is malformed at line {line}"),
             Self::TooManyObjects => write!(formatter, "a sub-page has at most {} objects", limits::MAX_OBJECTS),
             Self::Object(index) => write!(formatter, "object {index} of the set is not a valid object"),
+            Self::Bitmap => write!(
+                formatter,
+                "a bitmap set has glyphs of at most {} by {} pixels for the codes 2/0 to 7/15, and one of {} numbers",
+                limits::MAX_BITMAP_WIDTH,
+                limits::MAX_BITMAP_HEIGHT,
+                TELETEXT_SET_COUNT
+            ),
             Self::Title => {
                 write!(formatter, "a title is plain text of at most {} bytes", limits::MAX_TITLE_BYTES)
             }
