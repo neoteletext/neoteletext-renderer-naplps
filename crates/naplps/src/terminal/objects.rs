@@ -14,10 +14,11 @@ use alloc::vec::Vec;
 use super::{FIRST_CODE, Terminal};
 use crate::Error;
 use crate::limits::{
-    LAYERS, MAX_ANIMATED_OBJECTS, MAX_FRAME_NUMBER, MAX_LABEL_BYTES, MAX_OBJECT_BYTES, MAX_OBJECT_FRAMES, MAX_OBJECTS,
-    OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH,
+    LAYERS, MAX_ANIMATED_OBJECTS, MAX_COMPOSE_WORK, MAX_FRAME_NUMBER, MAX_LABEL_BYTES, MAX_OBJECT_BYTES,
+    MAX_OBJECT_FRAMES, MAX_OBJECTS, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH,
 };
 use crate::surface::{Canvas, Rect, Window, design_shift, join};
+use crate::work::Work;
 
 /// The last macro code, 7/15 (section 6.2.2: the 96 macro names are 2/0 to 7/15).
 const LAST_CODE: u8 = 0x7F;
@@ -150,6 +151,8 @@ pub(super) struct Scene {
     /// A macro, a DRCS character, a texture or the font changed, so every macro object may
     /// look different.
     pub(super) definitions_changed: bool,
+    /// What the last [`Terminal::compose`] spent of [`MAX_COMPOSE_WORK`] (TODO-6844).
+    compose_work: Work,
 }
 
 impl Default for Scene {
@@ -161,6 +164,7 @@ impl Default for Scene {
             stream_damage: None,
             composed_damage: None,
             pending: None,
+            compose_work: Work::with(MAX_COMPOSE_WORK),
             object_pending: None,
             whole: true,
             definitions_changed: false,
@@ -460,12 +464,18 @@ impl Terminal {
             .map(|(object, placed)| (placed, object.origin_x, object.origin_y))
             .collect();
         let (width, height) = (presented.width(), presented.height());
+        // TODO-6844: every object's drawing in this composing is paid for from one allowance,
+        // so that a page of many objects whose macros fill the screen costs a bounded time.
+        let mut work = Work::with(MAX_COMPOSE_WORK);
         for (placed, origin_x, origin_y) in order {
             let on_canvas = placed.rect.and_then(|rect| rect.on_canvas(width, height));
             let Some(clip) = on_canvas.and_then(|rect| rect.intersection(&area)) else { continue };
             match placed.content {
                 Content::Nothing => {}
                 Content::Cover(entry) => {
+                    if !work.spend(clip.area()) {
+                        continue;
+                    }
                     for y in clip.y..clip.bottom() {
                         for x in clip.x..clip.right() {
                             presented.set(x, y, entry);
@@ -478,10 +488,11 @@ impl Terminal {
                     let across = i64::from(placed.x).saturating_sub(i64::from(origin_x));
                     let down = i64::from(placed.y).saturating_sub(i64::from(origin_y));
                     let shift = design_shift(across, down, width, height);
-                    self.draw_macro(&mut Window { canvas: presented, shift, clip }, code);
+                    self.draw_macro(&mut Window { canvas: presented, shift, clip }, code, &mut work);
                 }
             }
         }
+        self.scene.compose_work = work;
         // A canvas composed into for the first time holds nothing the caller has seen.
         let changed = if whole { Some(area) } else { presented.take_written() };
         let _ = presented.take_written();
@@ -489,20 +500,31 @@ impl Terminal {
         Ok(changed)
     }
 
+    /// The pixel work the last [`Terminal::compose`] spent drawing objects, at most
+    /// [`MAX_COMPOSE_WORK`], and whether it stopped there with objects left undrawn (TODO-6844).
+    /// While a composing stays within its allowance, a picture composed by damage is the
+    /// picture composed whole (ANIM-4); one that stopped shows only what was paid for.
+    #[must_use]
+    pub fn compose_work(&self) -> (u64, bool) {
+        (self.scene.compose_work.spent(), self.scene.compose_work.stopped())
+    }
+
     /// Executes macro `code`, as the stream last defined it, onto `window` in a fresh
     /// presentation state (ANIM-11): the state a terminal powers up in, which is the state
     /// after a RESET of every attribute (section 5.3.2.9), sharing the stream's macros, DRCS
-    /// characters, textures, font and colour map and changing none of them.
-    fn draw_macro(&mut self, window: &mut Window<'_>, code: u8) {
+    /// characters, textures, font and colour map and changing none of them. Its drawing is
+    /// paid for from `work`.
+    fn draw_macro(&mut self, window: &mut Window<'_>, code: u8, work: &mut Work) {
         let Some(Some(body)) = self.macros.get(usize::from(code.wrapping_sub(FIRST_CODE))) else { return };
         let body = body.clone();
         let mut state = Self::new(self.palette.bits());
         state.in_object = true;
         self.exchange_definitions(&mut state);
         state.frames.push((body, 0));
+        state.work = *work;
         state.run(window, &[], MAX_OBJECT_BYTES, false);
-        state.settle(window);
-        state.flush(window);
+        state.end(window);
+        *work = state.work;
         self.exchange_definitions(&mut state);
     }
 

@@ -20,6 +20,10 @@ pub enum Refusal {
     MacroTooDeep,
     /// Processing stopped at [`crate::limits::MAX_PROCESSED_BYTES`] in one call.
     ProcessingLimit,
+    /// Drawing stopped because its pixel work could not be paid for from the stream's
+    /// allowance ([`crate::limits::WORK_CAP`], earning [`crate::limits::WORK_PER_BYTE`] a byte),
+    /// and the rest of the call was passed over (TODO-6844).
+    WorkLimit,
 }
 
 impl Refusal {
@@ -31,6 +35,7 @@ impl Refusal {
         Self::TooManyVertices,
         Self::MacroTooDeep,
         Self::ProcessingLimit,
+        Self::WorkLimit,
     ];
 
     /// A short name, for a report.
@@ -43,6 +48,7 @@ impl Refusal {
             Self::TooManyVertices => "points beyond the vertex limit",
             Self::MacroTooDeep => "a macro call nested beyond the depth limit",
             Self::ProcessingLimit => "bytes left unprocessed at the processing limit",
+            Self::WorkLimit => "bytes left unprocessed at the pixel work limit",
         }
     }
 
@@ -54,12 +60,13 @@ impl Refusal {
             Self::TooManyVertices => 3,
             Self::MacroTooDeep => 4,
             Self::ProcessingLimit => 5,
+            Self::WorkLimit => 6,
         }
     }
 }
 
 /// How many kinds of [`Refusal`] there are.
-pub const REFUSAL_KINDS: usize = 6;
+pub const REFUSAL_KINDS: usize = 7;
 
 /// What the renderer passed over and refused in a stream since the terminal was made. Bytes
 /// that an object's macro runs are not counted: they are the stream's macros run again.
@@ -74,7 +81,7 @@ pub struct Diagnostics {
     /// it, over every call; a byte a macro runs is counted at the byte that called the macro.
     pub first_passed_over: Option<usize>,
     /// For each kind of [`Refusal`], in the order of [`Refusal::ALL`], how many times it
-    /// happened; for [`Refusal::ProcessingLimit`] and the dropped bytes of
+    /// happened; for [`Refusal::ProcessingLimit`], [`Refusal::WorkLimit`] and the dropped bytes of
     /// [`Refusal::MacroTooLong`], [`Refusal::MacrosFull`] and [`Refusal::PdiTooLong`], how many
     /// bytes.
     pub refusals: [u32; REFUSAL_KINDS],

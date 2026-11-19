@@ -2,7 +2,8 @@
 //! any stream, objects, single objects redefined, and animation states. It must never panic, every object's drawing must
 //! stay inside its rectangle, picking at a canvas pixel must equal picking at the design pixel
 //! its centre lies in (TODO-6826), and the picture composed by damage must equal the picture
-//! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11). Each
+//! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11), while
+//! every composing stays within its pixel work allowance, which none may pass (TODO-6844). Each
 //! input runs on the design picture's own canvas and on the teletext raster's 480 by 462 one
 //! (DEC-6667, REQ-5819), where objects are placed by the design picture's pixels.
 //!
@@ -10,6 +11,7 @@
 //! `crates/naplps-fuzz` runs it on its kept inputs and on inputs made by property testing
 //! (DEC-6607); an engine guided by coverage would call it unchanged.
 
+use naplps::limits::MAX_COMPOSE_WORK;
 use naplps::{Animation, Canvas, Look, Object, ObjectKind, Terminal};
 
 /// The picture objects are placed on (ANIM-11).
@@ -152,6 +154,9 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
     let mut terminal = Terminal::new(4);
     let _ = terminal.compose(&background, &mut presented);
     let _ = terminal.take_damage();
+    // TODO-6844: a composing that stopped at its allowance shows only what was paid for, so
+    // the picture composed by damage is compared with the whole one only when none stopped.
+    let mut any_stopped = false;
     while !input.is_empty() {
         let before = presented.clone();
         let command = input.byte();
@@ -195,6 +200,9 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
         );
         let composed = terminal.compose(&background, &mut presented);
         assert!(composed.is_ok(), "two canvases of one size compose");
+        let (spent, stopped) = terminal.compose_work();
+        assert!(spent <= MAX_COMPOSE_WORK, "a composing spent {spent}, more than MAX_COMPOSE_WORK");
+        any_stopped |= stopped;
         let damage = terminal.take_damage();
         for (x, y) in differing(&before, &presented) {
             assert!(
@@ -213,6 +221,11 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
     let Ok(mut whole) = Canvas::new(width, height) else { return };
     terminal.invalidate();
     assert!(terminal.compose(&background, &mut whole).is_ok());
+    let (spent, stopped) = terminal.compose_work();
+    assert!(spent <= MAX_COMPOSE_WORK, "the whole composing spent {spent}, more than MAX_COMPOSE_WORK");
+    if any_stopped || stopped {
+        return;
+    }
     let same = whole == presented;
     assert!(same, "the picture composed by damage differs from the picture composed whole");
 }

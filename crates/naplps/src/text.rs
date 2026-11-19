@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 
 use crate::fixed::{Point, Unit};
 use crate::surface::{Mask, SUBPIXELS, Surface, subpixel_of};
+use crate::work::span;
 
 /// Where a stroke glyph's 7 x 10 grid sits in the field: grid x at x/8 of the width and grid y
 /// at y/10 of the height from the field's bottom, drawn with a square pen about 1/12 of the
@@ -97,7 +98,9 @@ pub(crate) struct Ink {
     pub(crate) field_from: i64,
 }
 
-/// Draws one character.
+/// Draws one character: paid for first by the pixels of its field's box and, for a stroke
+/// glyph, by the pen's pixels along each stroke (TODO-6844); nothing is drawn when that cannot
+/// be paid for.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry inside one character field: coordinates within 2^27 sub-pixels, field fractions within 2^16, products within i64"
@@ -121,11 +124,19 @@ pub(crate) fn draw(surface: &mut dyn Surface, field: Field, shape: &Shape<'_>, i
     }
     let box_width = usize::try_from(right - left + 1).unwrap_or(0);
     let box_height = usize::try_from(bottom - top + 1).unwrap_or(0);
+    let frame = Frame { origin, u_vector, v_vector, left, top, right, bottom, box_width, box_height };
+    let stroke_work = match shape {
+        Shape::Strokes(segments) => stroke_work(&frame, field, segments),
+        _ => 0,
+    };
+    if !surface.spend(span(left, right).saturating_mul(span(top, bottom)).saturating_add(stroke_work)) {
+        return;
+    }
+    if !surface.keeps_pixels() {
+        return;
+    }
     let strokes = match shape {
-        Shape::Strokes(segments) => {
-            let frame = Frame { origin, u_vector, v_vector, left, top, right, bottom, box_width, box_height };
-            stroke_coverage(&frame, field, segments)
-        }
+        Shape::Strokes(segments) => stroke_coverage(&frame, field, segments),
         _ => Vec::new(),
     };
     let u_length = u_vector.0 * u_vector.0 + u_vector.1 * u_vector.1;
@@ -275,16 +286,23 @@ struct Frame {
     box_height: usize,
 }
 
-/// The pixels a stroke glyph covers within the frame's box, row by row.
+/// The pen's side in pixels: a share of the field's height.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry inside one character field: coordinates within 2^27 sub-pixels, field fractions within 2^16, products within i64"
 )]
-fn stroke_coverage(frame: &Frame, field: Field, segments: &[[u8; 4]]) -> Vec<bool> {
-    let Frame { origin, u_vector, v_vector, left, top, right, bottom, box_width, box_height } = *frame;
-    let mut strokes = vec![false; box_width.saturating_mul(box_height)];
-    let field_height = (v_vector.0.abs() + v_vector.1.abs()) / SUBPIXELS;
-    let pen = ((field_height + PEN_DIVISOR / 2) / PEN_DIVISOR).max(1);
+fn pen_side(frame: &Frame) -> i64 {
+    let field_height = (frame.v_vector.0.abs() + frame.v_vector.1.abs()) / SUBPIXELS;
+    ((field_height + PEN_DIVISOR / 2) / PEN_DIVISOR).max(1)
+}
+
+/// The pixels, rounded to the nearest, of a stroke's ends in the frame.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "pixel geometry inside one character field: coordinates within 2^27 sub-pixels, field fractions within 2^16, products within i64"
+)]
+fn stroke_ends(frame: &Frame, field: Field, segment: [u8; 4]) -> ((i64, i64), (i64, i64)) {
+    let Frame { origin, u_vector, v_vector, .. } = *frame;
     let place = |gx: u8, gy: u8| {
         let mut u = i64::from(gx) * FIELD_ONE / STROKE_X_DIVISOR;
         let mut v = i64::from(gy) * FIELD_ONE / STROKE_Y_DIVISOR;
@@ -298,11 +316,38 @@ fn stroke_coverage(frame: &Frame, field: Field, segments: &[[u8; 4]]) -> Vec<boo
         let y = origin.1 + (u_vector.1 * u + v_vector.1 * v) / FIELD_ONE;
         ((x + SUBPIXELS / 2).div_euclid(SUBPIXELS), (y + SUBPIXELS / 2).div_euclid(SUBPIXELS))
     };
+    let [x1, y1, x2, y2] = segment;
+    (place(x1, y1), place(x2, y2))
+}
+
+/// The steps of a stroke between its ends: one for each pixel along its longer axis.
+fn stroke_steps(a: (i64, i64), b: (i64, i64)) -> i64 {
+    b.0.saturating_sub(a.0).saturating_abs().max(b.1.saturating_sub(a.1).saturating_abs()).max(1)
+}
+
+/// What [`stroke_coverage`] visits: the pen's pixels at every step of every stroke.
+fn stroke_work(frame: &Frame, field: Field, segments: &[[u8; 4]]) -> u64 {
+    let pen = u64::try_from(pen_side(frame)).unwrap_or(u64::MAX);
+    let pen_pixels = pen.saturating_mul(pen);
+    segments.iter().fold(0u64, |work, segment| {
+        let (a, b) = stroke_ends(frame, field, *segment);
+        let steps = u64::try_from(stroke_steps(a, b)).unwrap_or(u64::MAX).saturating_add(1);
+        work.saturating_add(steps.saturating_mul(pen_pixels))
+    })
+}
+
+/// The pixels a stroke glyph covers within the frame's box, row by row.
+#[allow(
+    clippy::arithmetic_side_effects,
+    reason = "pixel geometry inside one character field: coordinates within 2^27 sub-pixels, field fractions within 2^16, products within i64"
+)]
+fn stroke_coverage(frame: &Frame, field: Field, segments: &[[u8; 4]]) -> Vec<bool> {
+    let Frame { left, top, right, bottom, box_width, box_height, .. } = *frame;
+    let mut strokes = vec![false; box_width.saturating_mul(box_height)];
+    let pen = pen_side(frame);
     for segment in segments {
-        let [x1, y1, x2, y2] = *segment;
-        let (ax, ay) = place(x1, y1);
-        let (bx, by) = place(x2, y2);
-        let steps = (bx - ax).abs().max((by - ay).abs()).max(1);
+        let ((ax, ay), (bx, by)) = stroke_ends(frame, field, *segment);
+        let steps = stroke_steps((ax, ay), (bx, by));
         for step in 0..=steps {
             let x = ax + (bx - ax) * step / steps;
             let y = ay + (by - ay) * step / steps;

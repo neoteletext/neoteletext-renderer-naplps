@@ -371,6 +371,19 @@ pub(crate) trait Surface {
     fn put(&mut self, x: i32, y: i32, entry: u8);
     /// A pixel's value.
     fn get(&self, x: i32, y: i32) -> Option<u8>;
+    /// Pays for `units` of drawing work, the pixels about to be visited, before they are
+    /// visited; false when the allowance is spent, and the work is then not done (TODO-6844).
+    /// Drawing straight onto a surface is free: a terminal draws through a
+    /// [`crate::work::Metered`] one.
+    fn spend(&mut self, _units: u64) -> bool {
+        true
+    }
+    /// Whether pixels written are kept. A surface that keeps none (a validator's) is paid for
+    /// every pixel a drawing would visit, the same as a canvas of its size, but the drawing
+    /// routines pass over the visiting itself.
+    fn keeps_pixels(&self) -> bool {
+        true
+    }
     /// Sets every pixel (clear screen, and RESET's clearing of the display).
     fn fill_all(&mut self, entry: u8) {
         for y in 0..self.height() {

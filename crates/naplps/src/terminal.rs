@@ -22,6 +22,7 @@ use crate::raster::{self, FillPattern, LineTexture, Masks, Style};
 use crate::surface::{Canvas, Mask, MaskSurface, Surface, pixel_of};
 use crate::teletext::{self, TELETEXT_SET_COUNT};
 use crate::text::{self, Field, Ink, Shape};
+use crate::work::{Metered, PaidBy, Work, span};
 
 mod diagnostics;
 mod objects;
@@ -69,6 +70,9 @@ pub enum Event {
     Bell,
     /// Processing stopped at the limit on bytes processed (macro expansion counts).
     LimitReached,
+    /// Drawing stopped at the limit on pixel work ([`crate::limits::WORK_CAP`] and
+    /// [`crate::limits::WORK_PER_BYTE`]), and the rest of the call's bytes were passed over.
+    WorkLimitReached,
 }
 
 /// Character path (section 5.3.2.3.3).
@@ -257,6 +261,9 @@ pub struct Terminal {
     diagnostics: Diagnostics,
     /// The stream's bytes taken so far, over every call: the offset diagnostics name.
     stream_taken: usize,
+    /// The pixel work the stream may still spend, and has spent (TODO-6844). Lent to the
+    /// surface drawn on while a call runs.
+    work: Work,
 }
 
 /// Most events kept from one call.
@@ -325,6 +332,7 @@ impl Terminal {
             title: None,
             diagnostics: Diagnostics::default(),
             stream_taken: 0,
+            work: Work::new(),
         }
     }
 
@@ -407,9 +415,56 @@ impl Terminal {
     }
 
     /// Processes `bytes`, after any macro still expanding, until they end, `limit` bytes have
-    /// been processed (macro expansion counted), or, with `stop_at_wait`, a WAIT ran. Returns
-    /// how many of `bytes` were taken.
+    /// been processed (macro expansion counted), drawing could not be paid for, or, with
+    /// `stop_at_wait`, a WAIT ran. Returns how many of `bytes` were taken.
     fn run(&mut self, surface: &mut dyn Surface, bytes: &[u8], limit: usize, stop_at_wait: bool) -> usize {
+        self.metered(surface, |terminal, surface| terminal.read(surface, bytes, limit, stop_at_wait))
+    }
+
+    /// Ends the stream's reading as [`Terminal::finish`] does, paid for as [`Terminal::run`]
+    /// is: a word or accent still buffered is drawn and a PDI still collecting runs.
+    fn end(&mut self, surface: &mut dyn Surface) {
+        self.metered(surface, |terminal, surface| {
+            let stopped_before = surface.work.stopped();
+            terminal.settle(surface);
+            terminal.flush(surface);
+            if surface.work.stopped() && !stopped_before {
+                terminal.event(Event::WorkLimitReached);
+                terminal.refuse(Refusal::WorkLimit, 1);
+            }
+        });
+    }
+
+    /// Runs `body` drawing onto `surface` through the terminal's work allowance (TODO-6844).
+    /// Not nested: the allowance is lent to the surface for the call.
+    fn metered<R>(&mut self, surface: &mut dyn Surface, body: impl FnOnce(&mut Self, &mut Metered<'_>) -> R) -> R {
+        let mut work = core::mem::take(&mut self.work);
+        let result = body(self, &mut Metered { surface, work: &mut work });
+        self.work = work;
+        result
+    }
+
+    /// The pixel work the stream's drawing has spent since the terminal was made (TODO-6844):
+    /// one unit for each pixel a drawing routine visited or would have visited, and one for
+    /// each pel stamped or row of a fill crossed, on the canvas drawn on. A stream may spend at
+    /// most [`crate::limits::WORK_CAP`] plus [`crate::limits::WORK_PER_BYTE`] for each of its
+    /// bytes. Composing objects is not counted here: each [`Terminal::compose`] has its own
+    /// [`crate::limits::MAX_COMPOSE_WORK`].
+    #[must_use]
+    pub fn work_spent(&self) -> u64 {
+        self.work.spent()
+    }
+
+    /// The body of [`Terminal::run`], drawing through the work allowance.
+    fn read(&mut self, surface: &mut Metered<'_>, bytes: &[u8], limit: usize, stop_at_wait: bool) -> usize {
+        if surface.work.stopped() {
+            // TODO-6844: drawing stopped at the work limit in an earlier call, and the rest of
+            // the stream is passed over, whatever calls it comes in.
+            if !bytes.is_empty() {
+                self.refuse(Refusal::WorkLimit, bytes.len());
+            }
+            return bytes.len();
+        }
         self.display_top =
             fraction(crate::surface::DISPLAY_HEIGHT_NUMERATOR, crate::surface::DISPLAY_HEIGHT_DENOMINATOR);
         if !self.started {
@@ -442,6 +497,7 @@ impl Terminal {
                     Some(byte) => {
                         position = position.saturating_add(1);
                         self.stream_taken = self.stream_taken.saturating_add(1);
+                        surface.work.earn(1);
                         (byte, 0)
                     }
                     None => break,
@@ -461,6 +517,17 @@ impl Terminal {
                 self.cancel = false;
                 self.frames.clear();
             }
+            if surface.work.stopped() {
+                // TODO-6844: drawing that cannot be paid for ends the stream: the byte whose
+                // drawing stopped and the call's bytes after it are counted, as the processing
+                // limit counts what it leaves, what was expanding is abandoned, and every later
+                // call is passed over too.
+                self.event(Event::WorkLimitReached);
+                let left = bytes.len().saturating_sub(position);
+                self.refuse(Refusal::WorkLimit, left.saturating_add(1));
+                self.frames.clear();
+                break;
+            }
             if core::mem::take(&mut self.waited) && stop_at_wait {
                 break;
             }
@@ -477,8 +544,7 @@ impl Terminal {
 
     /// Ends a page: draws a word or accent still buffered and runs a PDI still collecting data.
     pub fn finish(&mut self, canvas: &mut Canvas) -> Vec<Event> {
-        self.settle(canvas);
-        self.flush(canvas);
+        self.end(canvas);
         self.scene.wrote(canvas.take_written());
         core::mem::take(&mut self.events)
     }
@@ -613,7 +679,7 @@ impl Terminal {
                 }
             }
             Pending::DefNumber(kind) => {
-                self.begin_definition(kind, byte);
+                self.begin_definition(canvas, kind, byte);
                 return None;
             }
         }
@@ -728,7 +794,9 @@ impl Terminal {
                 // display (section 6.2): clear screen clears the bitmap being defined. (SHARK.NAP
                 // sends CS inside DEF TEXTURE; clearing the display there blanked the page.)
                 if let Some(Recording::Drcs { mask, .. } | Recording::Texture { mask, .. }) = &mut self.recording {
-                    mask.clear();
+                    if canvas.spend(mask_area(mask)) {
+                        mask.clear();
+                    }
                 } else {
                     canvas.fill_all(entry);
                     self.screen = entry;
@@ -856,7 +924,7 @@ impl Terminal {
                     // DEF DRCS ending a DEF DRCS: the next code, 7/15 wrapping to 2/0.
                     let next = previous
                         .map_or(FIRST_CODE, |code| if code >= 0x7F { FIRST_CODE } else { code.saturating_add(1) });
-                    self.begin_definition(3, next);
+                    self.begin_definition(canvas, 3, next);
                 } else {
                     self.pending = Pending::DefNumber(kind);
                 }
@@ -909,7 +977,7 @@ impl Terminal {
     }
 
     /// Starts DEF MACRO (0), DEFP (1), DEFT (2), DEF DRCS (3) or DEF TEXTURE (4) for `number`.
-    fn begin_definition(&mut self, kind: u8, number: u8) {
+    fn begin_definition(&mut self, canvas: &mut dyn Surface, kind: u8, number: u8) {
         let number = number & 0x7F;
         match kind {
             0..=2 => {
@@ -929,6 +997,8 @@ impl Terminal {
                     return;
                 }
                 let (mask, per_unit) = mask_for(self.text.size);
+                // A new bitmap is cleared pixel by pixel; it is paid for as a clear screen is.
+                let _ = canvas.spend(mask_area(&mask));
                 self.recording = Some(Recording::Drcs { code: number, mask, per_unit });
                 self.point = Point::default();
             }
@@ -937,6 +1007,7 @@ impl Terminal {
                     return;
                 }
                 let (mask, per_unit) = mask_for(self.mask_size);
+                let _ = canvas.spend(mask_area(&mask));
                 self.recording = Some(Recording::Texture { index: number.wrapping_sub(0x41), mask, per_unit });
                 self.point = Point::default();
             }
@@ -1008,7 +1079,8 @@ impl Terminal {
         let mut recording = self.recording.take();
         match &mut recording {
             Some(Recording::Drcs { mask, per_unit, .. } | Recording::Texture { mask, per_unit, .. }) => {
-                let mut surface = MaskSurface { mask, per_unit: *per_unit };
+                let mut surface =
+                    PaidBy { surface: &mut MaskSurface { mask, per_unit: *per_unit }, payer: &mut *canvas };
                 self.pdi_on(&mut surface, opcode, &data);
             }
             _ => self.pdi_on(canvas, opcode, &data),
@@ -1018,7 +1090,9 @@ impl Terminal {
         {
             // Section 6.2.3: such a RESET "will clear the character pattern definition in
             // progress, but the downloading operation will continue".
-            mask.clear();
+            if canvas.spend(mask_area(mask)) {
+                mask.clear();
+            }
         }
         if self.recording.is_none() {
             self.recording = recording;
@@ -1103,7 +1177,7 @@ impl Terminal {
                 let relative = opcode & 1 == 1;
                 while let Some(value) = reader.point(domain) {
                     let end = if relative { self.point.plus(value) } else { value };
-                    raster::line(surface, &self.style(), self.point, end, self.colour, false);
+                    let _ = raster::line(surface, &self.style(), self.point, end, self.colour, false);
                     self.point = end;
                 }
             }
@@ -1116,7 +1190,7 @@ impl Terminal {
                     self.point = start;
                     let Some(value) = reader.point(domain) else { break };
                     let end = if relative { start.plus(value) } else { value };
-                    raster::line(surface, &self.style(), start, end, self.colour, false);
+                    let _ = raster::line(surface, &self.style(), start, end, self.colour, false);
                     self.point = end;
                 }
             }
@@ -1468,7 +1542,9 @@ impl Terminal {
             };
             style.colour = entry;
             let (x, y) = pixel_of(surface, at);
-            raster::stamp(surface, &style, x, y, entry);
+            if !raster::stamp(surface, &style, x, y, entry) {
+                return;
+            }
             at.x = at.x.saturating_add(pel_x);
             let beyond = if pel_x > 0 { at.x.saturating_add(pel_x) > right } else { at.x.saturating_add(pel_x) < left };
             if beyond {
@@ -1538,7 +1614,7 @@ impl Terminal {
                     }
                     points.push(next);
                 } else if draw {
-                    raster::line(surface, &style, self.point, next, style.colour, false);
+                    let _ = raster::line(surface, &style, self.point, next, style.colour, false);
                 }
                 self.point = next;
             }
@@ -1739,6 +1815,10 @@ impl Terminal {
         let blank = if self.mode == Mode::MapWithBackground { self.background } else { self.palette.black() };
         let (x0, y0) = (top_left.0.max(0), top_left.1.max(0));
         let (x1, y1) = (bottom_right.0.min(canvas.width() - 1), bottom_right.1.min(canvas.height() - 1));
+        let pixels = span(x0.into(), x1.into()).saturating_mul(span(y0.into(), y1.into()));
+        if !canvas.spend(pixels) || !canvas.keeps_pixels() {
+            return;
+        }
         // Scrolling up (a line feed downward) moves content up the screen: rows read from below.
         let rows: Vec<i32> = if shift_y < 0 { (y0..=y1).collect() } else { (y0..=y1).rev().collect() };
         let columns: Vec<i32> = if shift_x > 0 { (x0..=x1).collect() } else { (x0..=x1).rev().collect() };
@@ -2105,7 +2185,7 @@ impl Terminal {
         {
             let surface: &mut dyn Surface = match &mut recording {
                 Some(Recording::Drcs { mask, per_unit, .. } | Recording::Texture { mask, per_unit, .. }) => {
-                    &mut MaskSurface { mask, per_unit: *per_unit }
+                    &mut PaidBy { surface: &mut MaskSurface { mask, per_unit: *per_unit }, payer: &mut *canvas }
                 }
                 _ => &mut *canvas,
             };
@@ -2228,6 +2308,11 @@ fn mask_for(size: Point) -> (Mask, u32) {
     let mask_width = u32::try_from((width * mask_side / longer).max(1)).unwrap_or(1);
     let mask_height = u32::try_from((height * mask_side / longer).max(1)).unwrap_or(1);
     (Mask::new(mask_width, mask_height), MASK_SIDE)
+}
+
+/// The pixels of a definition's bitmap: what clearing it visits.
+fn mask_area(mask: &Mask) -> u64 {
+    u64::from(mask.width()).saturating_mul(u64::from(mask.height()))
 }
 
 fn ordered(a: Unit, b: Unit) -> (Unit, Unit) {

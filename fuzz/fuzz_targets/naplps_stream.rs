@@ -4,11 +4,25 @@
 //! (`Terminal::feed_until_wait`) and played with its WAITs passing without delay
 //! (`Player`), a stream gives the same pixels, colour map and border. Every pixel a feed
 //! changes lies inside the damage it reports (neoteletext-common `docs/animation.md`, ANIM-4).
+//! However it is fed, a stream spends no more pixel work than its allowance, `WORK_CAP` and
+//! `WORK_PER_BYTE` for each of its bytes (TODO-6844).
 //!
 //! This file holds the target's body, `naplps_stream`, which takes the fuzzer's bytes: the
 //! first says how the rest is divided, and the rest is the stream. `crates/naplps-fuzz` runs it.
 
+use naplps::limits::{WORK_CAP, WORK_PER_BYTE};
 use naplps::{Canvas, Player, StrokeFont, Terminal};
+
+/// The most pixel work a stream of `bytes` may spend (TODO-6844).
+fn allowance(bytes: usize) -> u64 {
+    WORK_CAP.saturating_add(WORK_PER_BYTE.saturating_mul(u64::try_from(bytes).unwrap_or(u64::MAX)))
+}
+
+/// Panics when `terminal` has spent more than a stream of `bytes` may.
+fn within_allowance(terminal: &Terminal, bytes: usize, how: &str) {
+    let spent = terminal.work_spent();
+    assert!(spent <= allowance(bytes), "fed {how}, {bytes} bytes spent {spent} work units, past their allowance");
+}
 
 /// The picture drawn on: small, so that an input is quick, and neither side a power of two or
 /// equal to the other, so that scaling is exercised.
@@ -95,6 +109,7 @@ fn in_pieces(stream: &[u8], seed: u8) -> Option<Left> {
         }
     }
     let _ = terminal.finish(&mut canvas);
+    within_allowance(&terminal, stream.len(), "in pieces");
     Some(left(&terminal, canvas))
 }
 
@@ -113,6 +128,7 @@ pub fn naplps_stream(data: &[u8]) {
     let mut whole = terminal();
     let _ = whole.feed(&mut canvas, stream);
     let _ = whole.finish(&mut canvas);
+    within_allowance(&whole, stream.len(), "whole");
     let whole = left(&whole, canvas);
 
     // In pieces.
@@ -133,6 +149,7 @@ pub fn naplps_stream(data: &[u8]) {
         assert!(calls <= most_calls(stream), "feeding up to each WAIT does not finish");
     }
     let _ = staged.finish(&mut canvas);
+    within_allowance(&staged, stream.len(), "up to each WAIT");
     assert!(left(&staged, canvas) == whole, "the picture fed up to each WAIT differs from the picture fed whole");
 
     // Played, with every WAIT passing without delay.

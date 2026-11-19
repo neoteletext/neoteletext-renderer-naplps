@@ -243,6 +243,9 @@ fn run() -> Result<(), String> {
     if events.contains(&Event::LimitReached) {
         eprintln!("naplps-render: {page_path}: processing stopped at the limit on bytes processed");
     }
+    if events.contains(&Event::WorkLimitReached) {
+        eprintln!("naplps-render: {page_path}: drawing stopped at the limit on pixel work");
+    }
     Ok(())
 }
 

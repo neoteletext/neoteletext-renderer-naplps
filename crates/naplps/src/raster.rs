@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 use crate::fixed::{Point, to_pixels_up_at};
 use crate::limits::MAX_VERTICES;
 use crate::surface::{Mask, SUBPIXELS, Surface, pixel_of, subpixel_of};
+use crate::work::span;
 
 /// Line textures (section 5.3.2.4.2).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -91,28 +92,36 @@ fn hatch_pixels(surface: &dyn Surface, pel: Point) -> (i32, i32) {
 
 /// Stamps the logical pel whose drawing point is at pixel (`x`, `y`): it extends right for a
 /// positive width and left for a negative one, up for a positive height and down for a negative
-/// one, so the drawing point is the pel's corner named by the signs.
+/// one, so the drawing point is the pel's corner named by the signs. False when the work it
+/// visits, one for the stamp and one for each pixel on the surface, could not be paid for.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
 )]
-pub(crate) fn stamp(surface: &mut dyn Surface, style: &Style, x: i32, y: i32, entry: u8) {
+pub(crate) fn stamp(surface: &mut dyn Surface, style: &Style, x: i32, y: i32, entry: u8) -> bool {
     let (width, height) = pel_pixels(surface, style.pel);
     let (x0, x1) = if style.pel.x >= 0 { (x, x.saturating_add(width - 1)) } else { (x.saturating_sub(width - 1), x) };
     let (y0, y1) = if style.pel.y >= 0 { (y.saturating_sub(height - 1), y) } else { (y, y.saturating_add(height - 1)) };
     let (x0, x1) = (x0.max(0), x1.min(surface.width().saturating_sub(1)));
     let (y0, y1) = (y0.max(0), y1.min(surface.height().saturating_sub(1)));
-    for row in y0..=y1 {
-        for column in x0..=x1 {
-            surface.put(column, row, entry);
+    let pixels = span(x0.into(), x1.into()).saturating_mul(span(y0.into(), y1.into()));
+    if !surface.spend(pixels.saturating_add(1)) {
+        return false;
+    }
+    if surface.keeps_pixels() {
+        for row in y0..=y1 {
+            for column in x0..=x1 {
+                surface.put(column, row, entry);
+            }
         }
     }
+    true
 }
 
 /// A point: one logical pel in the drawing colour (section 5.3.3.1).
 pub(crate) fn point(surface: &mut dyn Surface, style: &Style, at: Point) {
     let (x, y) = pixel_of(surface, at);
-    stamp(surface, style, x, y, style.colour);
+    let _ = stamp(surface, style, x, y, style.colour);
 }
 
 /// Whether the pel is stamped at step `index` of a textured line; `unit` is the pel's length
@@ -140,8 +149,9 @@ fn texture_on(texture: LineTexture, index: i64, unit: i64) -> bool {
 
 /// A line from `from` to `to` with the pel as brush and the line texture; gaps take the
 /// background colour in colour mode 2 and are left alone otherwise; both ends are always drawn
-/// (section 5.3.2.4.2). `solid` forces a solid line (outlines of filled objects).
-pub(crate) fn line(surface: &mut dyn Surface, style: &Style, from: Point, to: Point, entry: u8, solid: bool) {
+/// (section 5.3.2.4.2). `solid` forces a solid line (outlines of filled objects). False when its
+/// work could not all be paid for, and it stopped there.
+pub(crate) fn line(surface: &mut dyn Surface, style: &Style, from: Point, to: Point, entry: u8, solid: bool) -> bool {
     let (x0, y0) = pixel_of(surface, from);
     let (x1, y1) = pixel_of(surface, to);
     let dx = i64::from(x1).saturating_sub(i64::from(x0));
@@ -159,12 +169,19 @@ pub(crate) fn line(surface: &mut dyn Surface, style: &Style, from: Point, to: Po
         let y = i64::from(y0).saturating_add(super_div(dy.saturating_mul(index), steps));
         let (x, y) = (clamp_i32(x), clamp_i32(y));
         let end = index == 0 || index == steps;
-        if !textured || end || texture_on(style.line, index, unit) {
-            stamp(surface, style, x, y, entry);
+        let paid = if !textured || end || texture_on(style.line, index, unit) {
+            stamp(surface, style, x, y, entry)
         } else if let Some(background) = style.background {
-            stamp(surface, style, x, y, background);
+            stamp(surface, style, x, y, background)
+        } else {
+            // A gap left alone is still a step walked.
+            surface.spend(1)
+        };
+        if !paid {
+            return false;
         }
     }
+    true
 }
 
 /// `numerator / denominator` rounded to nearest, zero for a zero denominator.
@@ -195,15 +212,17 @@ pub(crate) fn polyline(
     solid: bool,
 ) {
     for pair in points.windows(2) {
-        if let [a, b] = pair {
-            line(surface, style, *a, *b, entry, solid);
+        if let [a, b] = pair
+            && !line(surface, style, *a, *b, entry, solid)
+        {
+            return;
         }
     }
     if closed
         && points.len() > 2
         && let (Some(first), Some(last)) = (points.first(), points.last())
     {
-        line(surface, style, *last, *first, entry, solid);
+        let _ = line(surface, style, *last, *first, entry, solid);
     }
 }
 
@@ -261,22 +280,24 @@ pub(crate) fn outline_colour(style: &Style) -> u8 {
 pub(crate) fn polygon_filled(surface: &mut dyn Surface, style: &Style, masks: &Masks, points: &[Point]) {
     let points = points.get(..points.len().min(MAX_VERTICES)).unwrap_or(&[]);
     let vertices: Vec<(i64, i64)> = points.iter().map(|point| subpixel_of(surface, *point)).collect();
-    fill_scanlines(surface, style, masks, &vertices, &|_, _| true);
+    if !fill_scanlines(surface, style, masks, &vertices, &|_, _| true) {
+        return;
+    }
     // PP3 strokes a filled object's edge with the logical pel in the fill's own colours, so a
     // fill reaches pel - 1 pixels further right and up (a 3-pixel pel: filled rectangles end 3
     // pixels right of and above the corner's pixel, measured against the oracle's captures).
-    fill_edge(surface, style, masks, points, true);
-    if style.highlight {
+    if fill_edge(surface, style, masks, points, true) && style.highlight {
         polyline(surface, style, points, true, outline_colour(style), true);
     }
 }
 
-/// Strokes the edge through `points` with the pel, each pixel in the fill's colour there.
+/// Strokes the edge through `points` with the pel, each pixel in the fill's colour there. False
+/// when its work could not all be paid for.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
 )]
-fn fill_edge(surface: &mut dyn Surface, style: &Style, masks: &Masks, points: &[Point], closed: bool) {
+fn fill_edge(surface: &mut dyn Surface, style: &Style, masks: &Masks, points: &[Point], closed: bool) -> bool {
     let count = points.len();
     let segments = if closed { count } else { count.saturating_sub(1) };
     for index in 0..segments {
@@ -289,30 +310,45 @@ fn fill_edge(surface: &mut dyn Surface, style: &Style, masks: &Masks, points: &[
         for step in 0..=steps {
             let x = clamp_i32(i64::from(x0) + super_div(dx * step, steps));
             let y = clamp_i32(i64::from(y0) + super_div(dy * step, steps));
-            stamp_fill(surface, style, masks, x, y);
+            if !stamp_fill(surface, style, masks, x, y) {
+                return false;
+            }
         }
     }
+    true
 }
 
-/// Stamps the pel at a pixel with the fill's colour at each covered pixel.
+/// Stamps the pel at a pixel with the fill's colour at each covered pixel; paid for as
+/// [`stamp`] is.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
 )]
-fn stamp_fill(surface: &mut dyn Surface, style: &Style, masks: &Masks, x: i32, y: i32) {
+fn stamp_fill(surface: &mut dyn Surface, style: &Style, masks: &Masks, x: i32, y: i32) -> bool {
     let (width, height) = pel_pixels(surface, style.pel);
     let (x0, x1) = if style.pel.x >= 0 { (x, x.saturating_add(width - 1)) } else { (x.saturating_sub(width - 1), x) };
     let (y0, y1) = if style.pel.y >= 0 { (y.saturating_sub(height - 1), y) } else { (y, y.saturating_add(height - 1)) };
-    for row in y0.max(0)..=y1.min(surface.height() - 1) {
-        for column in x0.max(0)..=x1.min(surface.width() - 1) {
-            if let Some(entry) = fill_colour(surface, style, masks, column, row) {
-                surface.put(column, row, entry);
+    let (x0, x1) = (x0.max(0), x1.min(surface.width() - 1));
+    let (y0, y1) = (y0.max(0), y1.min(surface.height() - 1));
+    let pixels = span(x0.into(), x1.into()).saturating_mul(span(y0.into(), y1.into()));
+    if !surface.spend(pixels.saturating_add(1)) {
+        return false;
+    }
+    if surface.keeps_pixels() {
+        for row in y0..=y1 {
+            for column in x0..=x1 {
+                if let Some(entry) = fill_colour(surface, style, masks, column, row) {
+                    surface.put(column, row, entry);
+                }
             }
         }
     }
+    true
 }
 
-/// Fills the even-odd interior of `vertices` (sub-pixels), restricted by `keep`.
+/// Fills the even-odd interior of `vertices` (sub-pixels), restricted by `keep`. Each row pays
+/// for its crossings, one for each edge, and each span for its pixels; false when that could
+/// not be paid for.
 #[allow(
     clippy::arithmetic_side_effects,
     reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
@@ -323,10 +359,11 @@ fn fill_scanlines(
     masks: &Masks,
     vertices: &[(i64, i64)],
     keep: &dyn Fn(i64, i64) -> bool,
-) {
+) -> bool {
     if vertices.len() < 3 {
-        return;
+        return true;
     }
+    let edges = u64::try_from(vertices.len()).unwrap_or(u64::MAX);
     let top = vertices.iter().map(|v| v.1).min().unwrap_or(0).div_euclid(SUBPIXELS);
     let bottom = vertices.iter().map(|v| v.1).max().unwrap_or(0).div_euclid(SUBPIXELS).saturating_add(1);
     let top = i32::try_from(top.max(0)).unwrap_or(0);
@@ -335,6 +372,9 @@ fn fill_scanlines(
     let mut crossings: Vec<i64> = Vec::new();
     for row in top..=bottom {
         let centre = i64::from(row) * SUBPIXELS + half;
+        if !surface.spend(edges) {
+            return false;
+        }
         crossings.clear();
         for (index, start) in vertices.iter().enumerate() {
             let end = vertices.get((index + 1) % vertices.len()).unwrap_or(start);
@@ -350,6 +390,12 @@ fn fill_scanlines(
             if let [left, right] = pair {
                 let first = (left + SUBPIXELS - 1).div_euclid(SUBPIXELS).max(0);
                 let last = (right - 1).div_euclid(SUBPIXELS).min(i64::from(surface.width()) - 1);
+                if !surface.spend(span(first, last)) {
+                    return false;
+                }
+                if !surface.keeps_pixels() {
+                    continue;
+                }
                 for column in first..=last {
                     let x = i32::try_from(column).unwrap_or(0);
                     if keep(column * SUBPIXELS + half, centre)
@@ -361,6 +407,7 @@ fn fill_scanlines(
             }
         }
     }
+    true
 }
 
 /// The circle through three unit-screen points: centre and radius in units; `None` if collinear.
@@ -454,6 +501,20 @@ impl Ellipse {
         dx * dx + dy * dy <= r * r
     }
 
+    /// [`Ellipse::pixels`], paid for first by the columns and rows it walks, two pixels each:
+    /// a circle far larger than the screen has as many, and none of them on it. `None` when
+    /// they could not be paid for.
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "pixel geometry: unit coordinates are at most 2^31 in Q8.24, so pixels and sub-pixels stay within 2^27 and their products within i64; circle construction uses i128; no operation here can overflow"
+    )]
+    fn paid_pixels(&self, surface: &mut dyn Surface) -> Option<Vec<(i64, i64)>> {
+        let (cx, cy) = self.centre;
+        let columns = span((cx - self.rx).div_euclid(SUBPIXELS), (cx + self.rx).div_euclid(SUBPIXELS) + 1);
+        let rows = span((cy - self.ry).div_euclid(SUBPIXELS), (cy + self.ry).div_euclid(SUBPIXELS) + 1);
+        surface.spend(columns.saturating_add(rows).saturating_mul(2)).then(|| self.pixels())
+    }
+
     /// The outline's pixels: for each column the top and bottom rows, and for each row the left
     /// and right columns, so the outline is connected at every slope.
     #[allow(
@@ -524,7 +585,7 @@ pub(crate) fn arc(
         circle(start, middle, end)
     };
     let Some((centre, radius)) = geometry else {
-        line(surface, style, start, end, style.colour, false);
+        let _ = line(surface, style, start, end, style.colour, false);
         return;
     };
     let ellipse = Ellipse::new(surface, centre, radius);
@@ -539,6 +600,12 @@ pub(crate) fn arc(
         let left = ((ellipse.centre.0 - ellipse.rx).div_euclid(SUBPIXELS)).max(0);
         let right = ((ellipse.centre.0 + ellipse.rx).div_euclid(SUBPIXELS) + 1).min(i64::from(surface.width()) - 1);
         for row in top..=bottom {
+            if !surface.spend(span(left, right)) {
+                return;
+            }
+            if !surface.keeps_pixels() {
+                continue;
+            }
             for column in left..=right {
                 let centre = (column * SUBPIXELS, row * SUBPIXELS);
                 if ellipse.contains(centre) && on_arc(centre) {
@@ -549,27 +616,35 @@ pub(crate) fn arc(
                 }
             }
         }
-        for (x, y) in ellipse.pixels() {
-            if on_arc((x * SUBPIXELS, y * SUBPIXELS)) {
-                stamp_fill(surface, style, masks, clamp_i32(x), clamp_i32(y));
+        let Some(pixels) = ellipse.paid_pixels(surface) else { return };
+        for (x, y) in pixels {
+            if on_arc((x * SUBPIXELS, y * SUBPIXELS)) && !stamp_fill(surface, style, masks, clamp_i32(x), clamp_i32(y))
+            {
+                return;
             }
         }
-        if !full {
-            fill_edge(surface, style, masks, &[start, end], false);
+        if !full && !fill_edge(surface, style, masks, &[start, end], false) {
+            return;
         }
         if style.highlight {
-            for (x, y) in ellipse.pixels() {
-                if on_arc((x * SUBPIXELS, y * SUBPIXELS)) {
-                    stamp(surface, style, clamp_i32(x), clamp_i32(y), outline_colour(style));
+            let Some(pixels) = ellipse.paid_pixels(surface) else { return };
+            for (x, y) in pixels {
+                if on_arc((x * SUBPIXELS, y * SUBPIXELS))
+                    && !stamp(surface, style, clamp_i32(x), clamp_i32(y), outline_colour(style))
+                {
+                    return;
                 }
             }
         }
     } else if style.line != LineTexture::Solid && style.pel.x != 0 && style.pel.y != 0 {
         textured_arc(surface, style, &ellipse, on_arc);
     } else {
-        for (x, y) in ellipse.pixels() {
-            if on_arc((x * SUBPIXELS, y * SUBPIXELS)) {
-                stamp(surface, style, clamp_i32(x), clamp_i32(y), style.colour);
+        let Some(pixels) = ellipse.paid_pixels(surface) else { return };
+        for (x, y) in pixels {
+            if on_arc((x * SUBPIXELS, y * SUBPIXELS))
+                && !stamp(surface, style, clamp_i32(x), clamp_i32(y), style.colour)
+            {
+                return;
             }
         }
     }
@@ -584,9 +659,16 @@ pub(crate) fn arc(
 )]
 fn textured_arc(surface: &mut dyn Surface, style: &Style, ellipse: &Ellipse, on_arc: impl Fn((i64, i64)) -> bool) {
     let centre = ellipse.centre;
+    let Some(pixels) = ellipse.paid_pixels(surface) else { return };
     let mut pixels: Vec<(i64, i64)> =
-        ellipse.pixels().into_iter().filter(|&(x, y)| on_arc((x * SUBPIXELS, y * SUBPIXELS))).collect();
+        pixels.into_iter().filter(|&(x, y)| on_arc((x * SUBPIXELS, y * SUBPIXELS))).collect();
     if pixels.is_empty() {
+        return;
+    }
+    // The sort below compares its pixels about log2 of their count times each; that is paid for
+    // as one more visit of each pixel for every doubling.
+    let to_sort = u64::try_from(pixels.len()).unwrap_or(u64::MAX);
+    if !surface.spend(to_sort.saturating_mul(u64::from(to_sort.ilog2()))) {
         return;
     }
     // Order by angle about the centre: the half-plane first, then the cross product.
@@ -616,10 +698,15 @@ fn textured_arc(surface: &mut dyn Surface, style: &Style, ellipse: &Ellipse, on_
         walked += distance(previous, pixel);
         previous = pixel;
         let end = index == 0 || index + 1 == count;
-        if end || texture_on(style.line, walked, unit) {
-            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), style.colour);
+        let paid = if end || texture_on(style.line, walked, unit) {
+            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), style.colour)
         } else if let Some(background) = style.background {
-            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), background);
+            stamp(surface, style, clamp_i32(pixel.0), clamp_i32(pixel.1), background)
+        } else {
+            surface.spend(1)
+        };
+        if !paid {
+            return;
         }
     }
 }

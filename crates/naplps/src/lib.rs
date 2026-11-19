@@ -58,6 +58,7 @@ mod surface;
 pub mod teletext;
 mod terminal;
 mod text;
+mod work;
 
 pub use bitmap::{BitmapSet, JoinForm, JoiningType};
 pub use font::{FontSet, Glyph, StrokeFont};

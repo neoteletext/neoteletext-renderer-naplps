@@ -2,11 +2,14 @@
 //! any pieces, read by a `Validator` and drawn by a `Terminal` give the same events after every
 //! piece and at the end, the same `Diagnostics` (every count and first offset: the bytes passed
 //! over, each kind of refusal, and the characters written over in colour mode 2) after every
-//! piece and at the end, and the same defined macros at the end. The terminal draws as the
-//! receiver does: on the teletext raster's display area (REQ-5819, DEC-6667) and on the design
-//! picture's canvas, with the repository's stroke font and all 55 provided character sets, the
-//! plain Arabic-script ones with joining data (PAR-14). The validator holds none of them, so
-//! that what the server's check reports never depends on what drawing needs.
+//! piece and at the end, the same defined macros at the end, and the same pixel work spent
+//! after every piece, never more than the allowance of the bytes fed (TODO-6844). The terminal
+//! draws as the receiver does: on the teletext raster's display area (REQ-5819, DEC-6667) and on
+//! the design picture's canvas, with the repository's stroke font and all 55 provided character
+//! sets, the plain Arabic-script ones with joining data (PAR-14). The validator is made for the
+//! terminal's canvas and given the stroke font and the joined sets, since a drawing's pixel
+//! work depends on them (TODO-6844); it holds no other set, so that what the server's check
+//! reports never depends on them.
 //!
 //! This file holds the target's body, `naplps_validator`, which takes the fuzzer's bytes, and
 //! `naplps_validator_in_pieces`, which takes a stream and its division. The bytes are: one byte,
@@ -17,7 +20,7 @@
 
 use std::sync::OnceLock;
 
-use naplps::limits::{OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use naplps::limits::{OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH, WORK_CAP, WORK_PER_BYTE};
 use naplps::{BitmapSet, Canvas, JoinForm, JoiningType, StrokeFont, TELETEXT_SET_COUNT, Terminal, Validator};
 
 /// The teletext raster's display area a NAPLPS page is drawn on (REQ-5819, DEC-6667): 40 cells
@@ -112,8 +115,9 @@ pub fn naplps_validator(data: &[u8]) {
 ///
 /// # Panics
 ///
-/// When the validator's events or diagnostics differ from a terminal's after any piece or at the
-/// end, or its defined macros differ at the end.
+/// When the validator's events, diagnostics or pixel work differ from a terminal's after any
+/// piece or at the end, the terminal's work passes the allowance of the bytes fed, or the
+/// defined macros differ at the end.
 pub fn naplps_validator_in_pieces(stream: &[u8], lengths: &[usize]) {
     let mut pieces = Vec::with_capacity(lengths.len().saturating_add(1));
     let mut rest = stream;
@@ -128,8 +132,18 @@ pub fn naplps_validator_in_pieces(stream: &[u8], lengths: &[usize]) {
     for (width, height) in CANVASES {
         let Ok(mut canvas) = Canvas::new(width, height) else { return };
         let mut terminal = receiver();
-        let mut validator = Validator::new();
+        let Ok(mut validator) = Validator::with_canvas(width, height) else { return };
+        if let Ok(font) = StrokeFont::parse(naplps_fonts::NEOTELETEXT) {
+            validator.set_font(font);
+        }
+        for number in JOINED_SETS {
+            if let (Ok(number), Some(Some(set))) = (u8::try_from(number), provided_sets().get(number)) {
+                let _ = validator.set_teletext_set(number, set.clone());
+            }
+        }
+        let mut fed = 0usize;
         for (index, piece) in pieces.iter().enumerate() {
+            fed = fed.saturating_add(piece.len());
             let drawn = terminal.feed(&mut canvas, piece);
             let read = validator.feed(piece);
             assert_eq!(read, drawn, "the events of piece {index} differ on the {width} by {height} canvas");
@@ -138,9 +152,18 @@ pub fn naplps_validator_in_pieces(stream: &[u8], lengths: &[usize]) {
                 terminal.diagnostics(),
                 "the diagnostics after piece {index} differ on the {width} by {height} canvas"
             );
+            assert_eq!(
+                validator.work_spent(),
+                terminal.work_spent(),
+                "the work after piece {index} differs on the {width} by {height} canvas"
+            );
+            let allowance =
+                WORK_CAP.saturating_add(WORK_PER_BYTE.saturating_mul(u64::try_from(fed).unwrap_or(u64::MAX)));
+            assert!(terminal.work_spent() <= allowance, "the work after piece {index} is past the allowance");
         }
         assert_eq!(validator.finish(), terminal.finish(&mut canvas), "the events at the end differ");
         assert_eq!(*validator.diagnostics(), terminal.diagnostics(), "the diagnostics at the end differ");
         assert_eq!(validator.defined_macros(), terminal.defined_macros(), "the defined macros differ");
+        assert_eq!(validator.work_spent(), terminal.work_spent(), "the work at the end differs");
     }
 }
