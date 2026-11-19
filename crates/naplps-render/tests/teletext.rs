@@ -8,6 +8,7 @@
 )]
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -225,5 +226,128 @@ fn a_persian_word_joins_as_the_engine_joins_it() {
             }
         }
         assert_ne!(form.map(|_| drawn), Some(letter), "a joined form is not the letter's own glyph");
+    }
+}
+
+/// RAS-8's full page: 23 rows of 40 characters, row r column c the G0 Latin English code
+/// 0x21 + ((r + c) mod 94).
+const TEXT_ROWS: std::ops::RangeInclusive<u32> = 1..=23;
+const TEXT_COLUMNS: u32 = 40;
+/// The printable codes of a 94-character set, 2/1 to 7/14.
+const FIRST_PRINTABLE: u32 = 0x21;
+const PRINTABLE_CODES: u32 = 94;
+/// NeoTeletext's set of the Latin English G0 table (`naplps::TELETEXT_SETS`).
+const LATIN_ENGLISH: &str = "G0-Latin-English";
+/// The operand bytes every NeoTeletext writer selects (RAS-6).
+const OPERAND_BYTES: u8 = 6;
+const SO: u8 = 0x0E;
+const SI: u8 = 0x0F;
+/// The first intermediate that designates a 94-character set into G0 (ANSI X3.110-1983
+/// section 4.3.1.2).
+const INTO_G0: u8 = 0x28;
+/// RESET (section 5.3.2.9) clearing the display to nominal black (Table 15: b6 b5 b4 = 001).
+const RESET_TO_BLACK: [u8; 3] = [0x20, 0x48, 0x40];
+/// DOMAIN (section 5.3.2.2): its fixed-format byte 5/4 (one-byte single values, six-byte
+/// multi-value operands, two dimensions; Figure 14) and the logical pel (0, 0).
+const DOMAIN_SIX: [u8; 2] = [0x21, 0x54];
+/// TEXT (section 5.3.2.3) and its two fixed-format bytes: no spacing change, path right, no
+/// rotation; the cursor and the drawing point move together.
+const TEXT: [u8; 3] = [0x22, 0x40, 0x40];
+/// SELECT COLOR (section 5.3.2.6) with two single values: colour mode 2, drawing in entry 7
+/// (white) on entry 8 (blue) in the default colour map of 16.
+const MODE_TWO: [u8; 3] = [0x3E, 0x40 | (7 << 2), 0x40 | (8 << 2)];
+/// POINT SET ABSOLUTE (section 5.3.3.1).
+const POINT_SET: u8 = 0x24;
+const WHITE: [u8; 3] = [255, 255, 255];
+const BLUE: [u8; 3] = [0, 0, 255];
+const BLACK: [u8; 3] = [0, 0, 0];
+/// The raster, which `naplps-render` draws by default (RAS-11).
+const RASTER_WIDTH: usize = 480;
+const RASTER_HEIGHT: usize = 500;
+
+/// The code of row `row`, column `column` of the page.
+fn page_code(row: u32, column: u32) -> u8 {
+    u8::try_from(FIRST_PRINTABLE + (row + column) % PRINTABLE_CODES).unwrap()
+}
+
+/// The page's bytes, written as RAS-8 says a writer writes text: a six-byte DOMAIN, the TEXT
+/// field of 3,276 by 4,452 steps (`unit_steps` rounded down), and each row as one run from the
+/// point of the dot (12 c, 20 r + 19) with c = 0, rounded down on both axes (`dot_steps`).
+fn text_page() -> Vec<u8> {
+    use naplps::{Rounding, dot_steps, multi_value_operand, unit_steps};
+    let number = TELETEXT_SETS.iter().position(|name| *name == LATIN_ENGLISH).unwrap();
+    let (supplement, final_byte) = designation_of(u8::try_from(number).unwrap()).unwrap();
+    let mut bytes = vec![SO];
+    bytes.extend(RESET_TO_BLACK);
+    bytes.extend(DOMAIN_SIX);
+    multi_value_operand(0, 0, OPERAND_BYTES, &mut bytes);
+    bytes.extend(TEXT);
+    let across = unit_steps(1, i64::from(TEXT_COLUMNS), OPERAND_BYTES, Rounding::Down);
+    let up = unit_steps(20 * 25, 32 * 460, OPERAND_BYTES, Rounding::Down);
+    assert_eq!((across, up), (3_276, 4_452), "RAS-8 item 1");
+    multi_value_operand(across, up, OPERAND_BYTES, &mut bytes);
+    bytes.extend(MODE_TWO);
+    bytes.extend([SI, ESC, INTO_G0]);
+    bytes.extend(supplement);
+    bytes.push(final_byte);
+    for row in TEXT_ROWS {
+        let (x, y) = dot_steps(0, i64::from(20 * row + 19), 1, OPERAND_BYTES, Rounding::Down);
+        bytes.extend([SO, POINT_SET]);
+        multi_value_operand(x, y, OPERAND_BYTES, &mut bytes);
+        bytes.push(SI);
+        bytes.extend((0..TEXT_COLUMNS).map(|column| page_code(row, column)));
+    }
+    bytes
+}
+
+/// RAS-8's test, which every writer of NAPLPS text passes: the page written at six-byte
+/// precision and drawn by `naplps-render` with the engine's Noto Teletext glyphs puts every
+/// character exactly on its 12 by 20 cell, glyph column k on dot 12 c + k and glyph row j on
+/// line 20 r + j, the glyph's dots in the drawing colour on the field's background (colour mode
+/// 2), across a whole 40-cell run from one point; and nothing is written on rows 0 and 24. The
+/// page's bytes are the shared example `naplps-text-page` (neoteletext-common
+/// `docs/picture-examples.jsonl`), written to `naplps-text-page.hex` beside the picture.
+#[test]
+#[ignore = "needs the engine's checkout at ~/devel/neoteletext-renderer-teletext (or NEOTELETEXT_ENGINE); scripts/check.sh full runs it"]
+fn a_full_page_of_text_puts_every_character_on_its_noto_cell() {
+    let list = engine_file("crates/neoteletext-core/src/glyphs/required.txt");
+    let glyphs = noto_glyphs();
+    let page = text_page();
+    let hex = page.iter().fold(String::new(), |mut hex, byte| {
+        let _ = write!(hex, "{byte:02x}");
+        hex
+    });
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+    fs::write(base.join("naplps-text-page.hex"), format!("{hex}\n")).unwrap();
+    let picture = render("text-page", &page, &["--teletext", engine().to_str().unwrap()]);
+    let header = format!("P6\n{RASTER_WIDTH} {RASTER_HEIGHT}\n255\n");
+    assert!(picture.starts_with(header.as_bytes()));
+    let at = |x: usize, y: usize| -> [u8; 3] {
+        picture[header.len() + (y * RASTER_WIDTH + x) * 3..][..3].try_into().unwrap()
+    };
+    let list_name = list_name(LATIN_ENGLISH);
+    let mut wrong_cells = Vec::new();
+    for row in TEXT_ROWS {
+        for column in 0..TEXT_COLUMNS {
+            let code = page_code(row, column);
+            let position = format!("{:X}/{:X}", code >> 4, code & 0xF);
+            let rows = &glyphs[&listed_character(&list, &list_name, &position)];
+            let right = (0..CELL_HEIGHT).all(|line| {
+                (0..CELL_WIDTH).all(|dot| {
+                    let ink = rows[line] >> (CELL_WIDTH - 1 - dot) & 1 != 0;
+                    let (x, y) = (12 * column as usize + dot, 20 * row as usize + line);
+                    at(x, y) == if ink { WHITE } else { BLUE }
+                })
+            });
+            if !right {
+                wrong_cells.push((row, column));
+            }
+        }
+    }
+    assert_eq!(wrong_cells, [], "every one of the 920 cells is exactly its glyph");
+    for y in (0..CELL_HEIGHT).chain(RASTER_HEIGHT - CELL_HEIGHT..RASTER_HEIGHT) {
+        for x in 0..RASTER_WIDTH {
+            assert_eq!(at(x, y), BLACK, "({x}, {y}) of rows 0 and 24 is not written");
+        }
     }
 }
