@@ -15,7 +15,7 @@ use common::{DEF_DRCS, DEF_MACRO, DEF_TEXTURE, END, FILL, FIRST_TEXTURE, POLYGON
 use naplps::limits::{
     ALLOCATION_OVERHEAD_BYTES, DEFINABLE_CODES, MASK_BYTES, MASK_SIDE, MAX_ALL_MACRO_BYTES, MAX_HELD_BYTES,
     MAX_LABEL_BYTES, MAX_MACRO_BYTES, MAX_MACRO_DEPTH, MAX_OBJECT_FRAMES, MAX_OBJECTS, MAX_PDI_BYTES, MAX_TITLE_BYTES,
-    TEXTURE_MASKS,
+    RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH, TEXTURE_MASKS,
 };
 use naplps::palette::MAX_BITS;
 use std::path::{Path, PathBuf};
@@ -197,7 +197,7 @@ fn the_heaviest_state_of_a_terminal_stays_within_the_bound_without_what_it_was_g
     wait.extend_from_slice(&WAIT);
     wait.push(common::SI);
     let stream = heaviest(&wait);
-    let mut canvas = Canvas::new(480, 462).unwrap();
+    let mut canvas = Canvas::new(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT).unwrap();
     let (taken, _) = terminal.feed_until_wait(&mut canvas, &stream);
     assert!(taken < stream.len(), "the call stops at the WAIT");
     let held = terminal.held_bytes();

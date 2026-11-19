@@ -31,8 +31,10 @@ use std::process::Command;
 
 use common::{colour, macro_rectangle, rectangle, wait};
 
-/// Raise when what `naplps-render` draws for one of these pages changes on purpose.
-const FORMAT_VERSION: u32 = 1;
+/// Raise when what `naplps-render` draws for one of these pages changes on purpose. 2: objects
+/// are placed in raster dots (DEC-6853, `docs/naplps-raster.md` RAS-4), so the sequences with
+/// objects, `layers` and `cycle`, changed; those without kept their pictures.
+const FORMAT_VERSION: u32 = 2;
 
 /// The first line of the golden file.
 fn heading() -> String {
@@ -68,6 +70,8 @@ fn play(sequence: &Sequence<'_>) -> BTreeMap<u32, Vec<u8>> {
     let _ = fs::remove_dir_all(&folder);
     fs::create_dir_all(&folder).unwrap();
     let mut command = Command::new(env!("CARGO_BIN_EXE_naplps-render"));
+    // PP3's 640 by 480, a bare canvas showing the display area (RAS-11).
+    command.args(["--width", "640", "--height", "480"]);
     command.args(["--frames", &sequence.frames.to_string(), "--frame-step", &sequence.step.to_string()]);
     for (option, text) in [("--objects", sequence.objects), ("--script", sequence.script)] {
         if let Some(text) = text {
@@ -136,10 +140,16 @@ fn written(name: &str, page: &[u8]) -> PathBuf {
     path
 }
 
-/// A macro's rectangle, 16/256 of the unit screen each way, is 41 by 40 pixels of a 640 by
-/// 480 picture and lies at the picture's lower left; an object's origin of (0, 440) is its
-/// top left corner there.
-const FRAME: &str = "41 40 0 440";
+/// A macro's rectangle, 16/256 of the unit screen each way, is 31 dots by 38 lines of the
+/// raster (RAS-4) and lies at the display area's lower left; an object's origin of (0, 442) is
+/// its top left corner there.
+const FRAME: &str = "31 38 0 442";
+
+/// The pixel of the 640 by 480 canvas the centre of raster dot (`x`, `y`) lands on (RAS-2): x
+/// 640/480 and the lines from the display area's foot, line 479, 480/460, each rounded.
+fn pixel_of_dot(x: usize, y: usize) -> (usize, usize) {
+    ((2 * x * 640 + 480) / 960, 479 - (2 * (479 - y) * 480 + 460) / 920)
+}
 
 /// ANIM-12: three objects that overlap, each drawn by a macro of one colour, played through
 /// the layers and orders.
@@ -153,10 +163,10 @@ fn the_same_objects_in_each_layer_and_order_are_the_golden_images() {
     }
     page.extend(rectangle(1, 0, 0, 255, 128));
     let page = written("layers", &page);
-    // Objects 1, 2 and 3, each 41 by 40, stepped 15 pixels apart so that all three cover the
-    // pixel (135, 135) and each shows alone at one corner.
+    // Objects 1, 2 and 3, each 31 by 38 dots, stepped 11 dots apart so that all three cover
+    // the dot (101, 128) and each shows alone at one corner.
     let objects =
-        format!("macro 1 1 0 100 100 {FRAME} 20\nmacro 2 1 0 115 115 {FRAME} 21\nmacro 3 1 0 130 130 {FRAME} 22\n");
+        format!("macro 1 1 0 75 100 {FRAME} 20\nmacro 2 1 0 86 111 {FRAME} 21\nmacro 3 1 0 97 122 {FRAME} 22\n");
     // Within a layer the order decides, then the number; a higher layer wins whatever the
     // order; layer 0 of the animation state is still over the stream's picture.
     let script = "1 order 1 keep 5\n\
@@ -185,14 +195,18 @@ fn the_same_objects_in_each_layer_and_order_are_the_golden_images() {
     };
     let pictures = held_to_golden(&sequence);
     assert_eq!(pictures.len(), 16);
-    let at = |tick: u32, x: usize, y: usize| colour(&pictures[&tick], x, y);
-    let [one, two, three] = [at(0, 102, 102), at(0, 117, 152), at(0, 168, 168)];
+    let at = |tick: u32, (x, y): (usize, usize)| {
+        let (x, y) = pixel_of_dot(x, y);
+        colour(&pictures[&tick], x, y)
+    };
+    let (alone, all) = ([(77, 102), (110, 115), (125, 150)], (101, 128));
+    let [one, two, three] = alone.map(|dot| at(0, dot));
     assert!(one != two && two != three && one != three);
-    let top: Vec<[u8; 3]> = (0..16).map(|tick| at(tick, 135, 135)).collect();
+    let top: Vec<[u8; 3]> = (0..16).map(|tick| at(tick, all)).collect();
     let expected = [three, one, one, two, one, three, three, three, three, three, two, one, two, three, two, two];
     assert_eq!(top, expected);
     // At tick 9 all three are in layer 0, over the stream's picture: each still shows.
-    assert_eq!([at(9, 102, 102), at(9, 117, 152), at(9, 168, 168)], [one, two, three]);
+    assert_eq!(alone.map(|dot| at(9, dot)), [one, two, three]);
 }
 
 /// ANIM-14: an image sequence of a four-frame cycle, and of one played once.
@@ -205,7 +219,7 @@ fn a_four_frame_cycle_is_the_golden_sequence() {
         page.extend(macro_rectangle(0x20 + frame, 3 + frame, 16 - u16::from(frame) * 3, 16));
     }
     let page = written("cycle", &page);
-    let objects = format!("macro 1 2 0 300 100 {FRAME} 20,21,22,23\n");
+    let objects = format!("macro 1 2 0 225 95 {FRAME} 20,21,22,23\n");
     let cycle = Sequence {
         name: "cycle",
         page: &page,

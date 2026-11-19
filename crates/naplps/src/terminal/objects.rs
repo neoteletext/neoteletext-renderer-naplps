@@ -15,9 +15,9 @@ use super::{FIRST_CODE, Terminal};
 use crate::Error;
 use crate::limits::{
     LAYERS, MAX_ANIMATED_OBJECTS, MAX_COMPOSE_WORK, MAX_FRAME_NUMBER, MAX_LABEL_BYTES, MAX_OBJECT_BYTES,
-    MAX_OBJECT_FRAMES, MAX_OBJECTS, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH,
+    MAX_OBJECT_FRAMES, MAX_OBJECTS, RASTER_HEIGHT, RASTER_WIDTH,
 };
-use crate::surface::{Canvas, Rect, Window, design_shift, join};
+use crate::surface::{Canvas, Rect, Window, join, raster_dot, raster_shift};
 use crate::work::Work;
 
 /// The last macro code, 7/15 (section 6.2.2: the 96 macro names are 2/0 to 7/15).
@@ -80,17 +80,22 @@ pub struct Object {
     pub layer: u8,
     /// The order within the layer, lowest drawn first.
     pub order: i8,
-    /// The left of the object's rectangle.
+    /// The raster dot of the rectangle's left (DEC-6853, `docs/naplps-raster.md` RAS-4: the
+    /// 480 by 500 teletext raster, the origin at its top left).
     pub x: i16,
-    /// The top of the object's rectangle.
+    /// The raster line of the rectangle's top.
     pub y: i16,
-    /// 1 to 640.
+    /// Dots across, 1 to 480 ([`crate::limits::RASTER_WIDTH`]): the rectangle is dots `x` to
+    /// `x` + `width` − 1.
     pub width: u16,
-    /// 1 to 480.
+    /// Lines down, 1 to 500 ([`crate::limits::RASTER_HEIGHT`]): the rectangle is lines `y` to
+    /// `y` + `height` − 1.
     pub height: u16,
-    /// Where the rectangle's left lies in the macro's own drawing; 0 for a region.
+    /// The raster dot at which the macro, drawn where the stream would draw it, puts what is to
+    /// be the rectangle's left; 0 for a region.
     pub origin_x: i16,
-    /// Where the rectangle's top lies in the macro's own drawing; 0 for a region.
+    /// The raster line at which the macro puts what is to be the rectangle's top; 0 for a
+    /// region.
     pub origin_y: i16,
     /// A region: the colour-map entry that fills it while hidden. A macro object: 0.
     pub cover: u8,
@@ -143,8 +148,8 @@ pub(super) struct Scene {
     /// The part of the composed picture that no longer shows what it should, in the canvas's
     /// pixels: what the stream changed.
     pending: Option<Rect>,
-    /// The same for what objects changed, in the design picture's pixels (ANIM-11), which only
-    /// [`Terminal::compose`]'s canvas turns into its own ([`Rect::on_canvas`]).
+    /// The same for what objects changed, in raster dots (ANIM-11, RAS-4), which only
+    /// [`Terminal::compose`]'s canvas turns into its own pixels ([`Rect::on_canvas`]).
     object_pending: Option<Rect>,
     /// Nothing has been composed yet, or the caller asked for everything again.
     whole: bool,
@@ -236,8 +241,8 @@ fn is_look(code: u8) -> bool {
 fn is_valid(object: &Object) -> bool {
     let common = object.number != 0
         && (FIRST_OBJECT_LAYER..LAYERS).contains(&object.layer)
-        && (1..=OBJECT_PICTURE_WIDTH).contains(&u32::from(object.width))
-        && (1..=OBJECT_PICTURE_HEIGHT).contains(&u32::from(object.height))
+        && (1..=RASTER_WIDTH).contains(&u32::from(object.width))
+        && (1..=RASTER_HEIGHT).contains(&u32::from(object.height))
         && is_look(object.hover)
         && is_look(object.pressed)
         && is_look(object.alternative)
@@ -375,18 +380,20 @@ impl Terminal {
         true
     }
 
-    /// The bounding rectangle of object `number` as its state stands, cut to the picture of
-    /// 640 by 480; `None` while it does not exist, is not shown, or lies wholly outside
-    /// (ANIM-13). Collision and pointer tests are made on these rectangles, never on pixels.
+    /// The bounding rectangle of object `number` as its state stands, in raster dots, cut to the
+    /// raster of 480 by 500 (ANIM-13, RAS-4); `None` while it does not exist, is not shown, or
+    /// lies wholly outside. Collision and pointer tests are made on these rectangles, never on
+    /// pixels. A rectangle reaching rows 0 or 24 keeps those lines, where nothing is drawn.
     #[must_use]
     pub fn bounds(&self, number: u16) -> Option<Rect> {
         let placed = self.placed_by_number(number)?;
         if placed.shown { placed.rect } else { None }
     }
 
-    /// The numbers of the objects a pointer at pixel (`x`, `y`) is inside, in the order they
-    /// are drawn: each object that is shown, detectable and whose rectangle holds the pixel
-    /// (ANIM-11, picking). Nothing else of a NAPLPS picture can be picked.
+    /// The numbers of the objects a pointer at raster dot (`x`, `y`) is inside, in the order
+    /// they are drawn: each object that is shown, detectable and whose bounds hold the dot
+    /// (ANIM-11, picking; RAS-4). A dot of rows 0 or 24 picks an object whose bounds reach it.
+    /// Nothing else of a NAPLPS picture can be picked.
     #[must_use]
     pub fn objects_at(&self, x: u32, y: u32) -> Vec<u16> {
         self.drawing_order()
@@ -399,25 +406,14 @@ impl Terminal {
     }
 
     /// The numbers of the objects a pointer at pixel (`x`, `y`) of a canvas of `width` by
-    /// `height` is inside, in the order they are drawn: as [`Terminal::objects_at`], each
-    /// object's rectangle taken as [`Terminal::compose`] clips it on that canvas
-    /// ([`Rect::on_canvas`]), so a pointer picks an object exactly where it can be drawn. It is
-    /// [`Terminal::objects_at`] of the design pixel the canvas pixel's centre lies in
-    /// ([`crate::design_pixel`]), and on a 640 by 480 canvas of the pixel itself.
+    /// `height`, showing the display area, is inside, in the order they are drawn:
+    /// [`Terminal::objects_at`] of the raster dot the canvas pixel's centre lies in
+    /// ([`crate::raster_dot`]), so a pointer picks an object exactly where [`Terminal::compose`]
+    /// can draw it ([`Rect::on_canvas`]). On the receiver's canvas it is the dot (`x`, `y` + 20).
     #[must_use]
     pub fn objects_on_canvas(&self, x: u32, y: u32, width: u32, height: u32) -> Vec<u16> {
-        self.drawing_order()
-            .into_iter()
-            .filter(|(object, placed)| {
-                object.detectable
-                    && placed.shown
-                    && placed
-                        .rect
-                        .and_then(|rect| rect.on_canvas(width, height))
-                        .is_some_and(|rect| rect.contains(x, y))
-            })
-            .map(|(object, _)| object.number)
-            .collect()
+        let (across, down) = raster_dot(x, y, width, height);
+        self.objects_at(across, down)
     }
 
     /// The rectangle of pixels changed since this was last called: on the stream's canvas by
@@ -460,9 +456,9 @@ impl Terminal {
     /// of the same size, repainting only what changed since the last call (ANIM-11, ANIM-12):
     /// the damaged rectangle is filled from the background, then every object reaching into it
     /// is drawn, clipped to it, in order of layer, order and number. The stream is not drawn
-    /// again. An object's rectangle and move are in the design picture's pixels (ANIM-11), so on
-    /// a canvas of another size it is clipped to [`Rect::on_canvas`] of its rectangle and its
-    /// drawing moved by the same distance in the canvas's sub-pixels. Returns the rectangle of `presented` whose pixels changed, which
+    /// again. An object's rectangle and move are in raster dots (ANIM-11, RAS-4), so it is
+    /// clipped to [`Rect::on_canvas`] of its rectangle, nothing on rows 0 and 24, and its
+    /// drawing moved by the same distance in the canvas's sub-pixels ([`crate::raster_shift`]). Returns the rectangle of `presented` whose pixels changed, which
     /// [`Terminal::take_damage`] then also reports.
     ///
     /// # Errors
@@ -506,11 +502,10 @@ impl Terminal {
                     }
                 }
                 Content::Macro(code) => {
-                    // ANIM-11: every pixel moved by (x - origin x, y - origin y) of the design
-                    // picture.
+                    // ANIM-11, RAS-4: every point moved by (x - origin x, y - origin y) dots.
                     let across = i64::from(placed.x).saturating_sub(i64::from(origin_x));
                     let down = i64::from(placed.y).saturating_sub(i64::from(origin_y));
-                    let shift = design_shift(across, down, width, height);
+                    let shift = raster_shift(across, down, width, height);
                     self.draw_macro(&mut Window { canvas: presented, shift, clip }, code, &mut work);
                 }
             }
@@ -603,8 +598,8 @@ impl Terminal {
             top,
             left.saturating_add(i64::from(object.width)),
             top.saturating_add(i64::from(object.height)),
-            OBJECT_PICTURE_WIDTH,
-            OBJECT_PICTURE_HEIGHT,
+            RASTER_WIDTH,
+            RASTER_HEIGHT,
         );
         Placed {
             shown,

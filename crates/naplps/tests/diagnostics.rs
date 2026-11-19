@@ -2,7 +2,7 @@
 //! passed over and work it refused at a bound, with the offset of the first of each.
 #![allow(clippy::arithmetic_side_effects, reason = "a test: fixed inputs within range, and failure is a panic")]
 
-use naplps::limits::{MAX_MACRO_BYTES, MAX_PDI_BYTES, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use naplps::limits::{MAX_MACRO_BYTES, MAX_PDI_BYTES};
 use naplps::{Canvas, Refusal, Terminal};
 
 const SO: u8 = 0x0E;
@@ -11,8 +11,11 @@ const DEF_MACRO: u8 = 0x80;
 const END: u8 = 0x85;
 /// RECTANGLE, filled, from the drawing point (section 5.3.3.4).
 const RECT_FILLED: u8 = 0x31;
-const WIDTH: u32 = OBJECT_PICTURE_WIDTH;
-const HEIGHT: u32 = OBJECT_PICTURE_HEIGHT;
+/// PP3's VGA screen: these tests draw a stream alone and place nothing NeoTeletext defines, so
+/// the size is the oracle's (`docs/naplps-raster.md` section 1, out of scope of DEC-6853).
+const WIDTH: u32 = 640;
+/// See [`WIDTH`].
+const HEIGHT: u32 = 480;
 
 /// A terminal that has drawn `bytes` as a whole page.
 fn drawn(bytes: &[u8]) -> Terminal {

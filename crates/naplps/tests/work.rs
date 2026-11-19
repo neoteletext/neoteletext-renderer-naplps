@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use naplps::limits::{
-    MAX_COMPOSE_WORK, MAX_OBJECTS, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH, RECEIVER_CANVAS_HEIGHT,
-    RECEIVER_CANVAS_PIXELS, RECEIVER_CANVAS_WIDTH, WORK_CAP, WORK_PER_BYTE,
+    MAX_COMPOSE_WORK, MAX_OBJECTS, RASTER_HEIGHT, RASTER_WIDTH, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_PIXELS,
+    RECEIVER_CANVAS_WIDTH, WORK_CAP, WORK_PER_BYTE,
 };
 use naplps::{
     BitmapSet, Canvas, Event, Object, ObjectKind, Refusal, StrokeFont, TELETEXT_SET_COUNT, Terminal, Validator,
@@ -202,8 +202,8 @@ fn composing_objects_that_fill_the_screen_is_bounded() {
             order: 0,
             x: 0,
             y: 0,
-            width: u16::try_from(OBJECT_PICTURE_WIDTH).unwrap(),
-            height: u16::try_from(OBJECT_PICTURE_HEIGHT).unwrap(),
+            width: u16::try_from(RASTER_WIDTH).unwrap(),
+            height: u16::try_from(RASTER_HEIGHT).unwrap(),
             origin_x: 0,
             origin_y: 0,
             cover: 0,

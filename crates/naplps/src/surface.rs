@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 
 use crate::Error;
 use crate::fixed::{Point, scale};
-use crate::limits::{MAX_CANVAS_SIDE, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use crate::limits::{DISPLAY_FIRST_LINE, DISPLAY_LINES, MAX_CANVAS_SIDE, RASTER_WIDTH};
 
 /// Sub-pixel steps per pixel used for fills and arcs.
 pub(crate) const SUBPIXELS: i64 = 256;
@@ -128,36 +128,41 @@ impl Rect {
 }
 
 impl Rect {
-    /// This rectangle of the design picture (ANIM-11: 640 by 480, the origin at the top left, y
-    /// down) on a canvas of `width` by `height`: every canvas pixel whose centre lies in one of
-    /// its design pixels, as [`design_pixel`] places a centre. The unit screen spans both
-    /// pictures, so the canvas pixels of adjacent design rectangles neither overlap nor leave a
-    /// gap: an object's clip never reaches a canvas pixel that belongs to the next row's or
-    /// column's cells (TODO-6826), and every canvas pixel whose centre lies inside the
+    /// This rectangle of raster dots (DEC-6853: the 480 by 500 teletext raster, the origin at
+    /// its top left, y down) on a canvas of `width` by `height` showing the NAPLPS display area,
+    /// raster lines [`DISPLAY_FIRST_LINE`] onwards for [`DISPLAY_LINES`] lines (DEC-6857,
+    /// `docs/naplps-raster.md` RAS-3): every canvas pixel whose centre lies in one of its dots,
+    /// as [`raster_dot`] places a centre, cut to the canvas. The unit screen spans the display
+    /// area and the canvas alike, so the canvas pixels of adjacent rectangles neither overlap
+    /// nor leave a gap: an object's clip never reaches a canvas pixel that belongs to the next
+    /// row's or column's cells (TODO-6826), and every canvas pixel whose centre lies inside the
     /// rectangle is kept, so nothing the object draws there is cut. A filled RECTANGLE covers
     /// the pixel its far edge lies in (ANSI X3.110-1983 sections 5.3.3.4.1 and 5.3.2.2.6: the
     /// outline's region traced by the logical pel is filled, and a drawing lights every pixel
-    /// its locus lies under), so a fill reaching the next cell's first design line lights a
-    /// canvas pixel whose centre is in that cell; the clip cuts it. On a 640 by 480 canvas it
-    /// is the rectangle itself; `None` when no canvas pixel's centre lies in it.
+    /// its locus lies under), so a fill reaching the next cell's first line lights a canvas
+    /// pixel whose centre is in that cell; the clip cuts it. On the receiver's canvas of 480 by
+    /// 460 it is the rectangle moved up [`DISPLAY_FIRST_LINE`] lines and cut; `None` when no
+    /// canvas pixel's centre lies in it, as for a rectangle wholly on teletext rows 0 or 24.
     #[must_use]
     pub fn on_canvas(&self, width: u32, height: u32) -> Option<Self> {
-        let (design_width, design_height) = (i64::from(OBJECT_PICTURE_WIDTH), i64::from(OBJECT_PICTURE_HEIGHT));
+        let (raster_width, display_lines) = (i64::from(RASTER_WIDTH), i64::from(DISPLAY_LINES));
+        let first_line = i64::from(DISPLAY_FIRST_LINE);
         let (canvas_width, canvas_height) = (i64::from(width), i64::from(height));
         let (left, top) = (i64::from(self.x), i64::from(self.y));
         let (right, bottom) = (i64::from(self.right()), i64::from(self.bottom()));
-        // Across: design_pixel puts column c in design column floor((2 c Wd + W) / 2 W), which
-        // is at least `edge` exactly when c >= (2 edge - 1) W / 2 Wd; the first column is that
-        // rounded up, for the left edge and for the right one after the last.
-        let twice_design_width = design_width.saturating_mul(2);
+        // Across: raster_dot puts column c in dot floor((2 c 480 + W) / 2 W), which is at least
+        // `edge` exactly when c >= (2 edge - 1) W / (2 480); the first column is that rounded
+        // up, for the left edge and for the right one after the last.
+        let twice_raster_width = raster_width.saturating_mul(2);
         let column_from = |edge: i64| {
-            ceiling(edge.saturating_mul(2).saturating_sub(1).saturating_mul(canvas_width), twice_design_width)
+            ceiling(edge.saturating_mul(2).saturating_sub(1).saturating_mul(canvas_width), twice_raster_width)
         };
-        // Down: design_pixel puts row r in design row floor((2 Hd (r + 1) - H) / 2 H), which is
-        // at least `edge` exactly when r + 1 >= (2 edge + 1) H / 2 Hd.
-        let twice_design_height = design_height.saturating_mul(2);
+        // Down: raster_dot puts row r on line F + floor((2 D (r + 1) - H) / 2 H), which is at
+        // least `edge` exactly when r + 1 >= (2 (edge - F) + 1) H / 2 D.
+        let twice_display_lines = display_lines.saturating_mul(2);
         let row_from = |edge: i64| {
-            ceiling(edge.saturating_mul(2).saturating_add(1).saturating_mul(canvas_height), twice_design_height)
+            let below_first = edge.saturating_sub(first_line);
+            ceiling(below_first.saturating_mul(2).saturating_add(1).saturating_mul(canvas_height), twice_display_lines)
                 .saturating_sub(1)
         };
         Self::cut(column_from(left), row_from(top), column_from(right), row_from(bottom), width, height)
@@ -169,43 +174,47 @@ fn ceiling(value: i64, divisor: i64) -> i64 {
     scale(value.saturating_neg(), 1, divisor).saturating_neg()
 }
 
-/// The pixel of the design picture (ANIM-11) the centre of pixel (`x`, `y`) of a canvas of
-/// `width` by `height` lies in, rounded half up as the drawing routines round a point to a
-/// canvas pixel: where a point given on the canvas lies in the design picture. On a 640 by 480 canvas it is (`x`, `y`). It may lie
-/// past the design picture's right or bottom edge, where no object is. [`Rect::on_canvas`] is
-/// exactly the canvas pixels whose design pixel this gives lies in the rectangle, so picking
-/// at this design pixel ([`crate::Terminal::objects_at`]) and at the canvas pixel
+/// The raster dot (DEC-6853) the centre of pixel (`x`, `y`) of a canvas of `width` by `height`
+/// lies in, the canvas showing the NAPLPS display area (DEC-6857), rounded half up as the
+/// drawing routines round a point to a canvas pixel: where a point given on the canvas lies on
+/// the teletext raster (`docs/naplps-raster.md` RAS-3). On the receiver's canvas of 480 by 460
+/// it is (`x`, `y` + 20); on twice that, (floor((`x` + 1) / 2), 20 + floor(`y` / 2)).
+/// [`Rect::on_canvas`] is exactly the canvas pixels whose dot this gives lies in the rectangle,
+/// so picking at this dot ([`crate::Terminal::objects_at`]) and at the canvas pixel
 /// ([`crate::Terminal::objects_on_canvas`]) agree.
 #[must_use]
-pub fn design_pixel(x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
-    let (design_width, design_height) = (i64::from(OBJECT_PICTURE_WIDTH), i64::from(OBJECT_PICTURE_HEIGHT));
+pub fn raster_dot(x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
+    let (raster_width, display_lines) = (i64::from(RASTER_WIDTH), i64::from(DISPLAY_LINES));
     let (width, height) = (i64::from(width.max(1)), i64::from(height.max(1)));
-    // Across: x Wd / W rounded half up, floor((2 x Wd + W) / 2W).
+    // Across: x 480 / W rounded half up, floor((2 x 480 + W) / 2W).
     let across = scale(
-        i64::from(x).saturating_mul(2).saturating_mul(design_width).saturating_add(width),
+        i64::from(x).saturating_mul(2).saturating_mul(raster_width).saturating_add(width),
         1,
         width.saturating_mul(2),
     );
-    // Down: canvas row r is design row d with (H - 1 - r) / H = (Hd - 1 - d) / Hd, rounded half
-    // up: floor((2 Hd (r + 1) - H) / 2H).
+    // Down: canvas row r is display line d with (H - 1 - r) / H = (D - 1 - d) / D, rounded half
+    // up, floor((2 D (r + 1) - H) / 2H), then moved down to the display area's first line.
     let down = scale(
-        i64::from(y).saturating_add(1).saturating_mul(2).saturating_mul(design_height).saturating_sub(height),
+        i64::from(y).saturating_add(1).saturating_mul(2).saturating_mul(display_lines).saturating_sub(height),
         1,
         height.saturating_mul(2),
-    );
+    )
+    .saturating_add(i64::from(DISPLAY_FIRST_LINE));
     let narrow = |value: i64| u32::try_from(value.max(0)).unwrap_or(u32::MAX);
     (narrow(across), narrow(down))
 }
 
-/// A displacement of the design picture (ANIM-11) in sub-pixels of a canvas of `width` by
-/// `height`, rounded down: what moves an object's drawing by (`across`, `down`) design pixels.
-/// Moving in sub-pixels before [`pixel_of`] rounds, rather than in whole canvas pixels after,
-/// lands every point where it would land were the macro drawn at the place moved to, so the
-/// drawing lies inside the object's rectangle ([`Rect::on_canvas`]) on every canvas as it does on the design picture.
-pub(crate) fn design_shift(across: i64, down: i64, width: u32, height: u32) -> (i64, i64) {
+/// A move of (`across`, `down`) raster dots in sub-pixels of a canvas of `width` by `height`
+/// showing the display area, rounded down (`docs/naplps-raster.md` RAS-3): what moves an
+/// object's drawing. On the receiver's canvas it is exact, 256 sub-pixels a dot. Moving in
+/// sub-pixels before the drawing rounds a point to a pixel, rather than in whole canvas pixels
+/// after, lands every point where it would land were the macro drawn at the place moved to, so
+/// the drawing lies inside the object's rectangle ([`Rect::on_canvas`]) on every canvas.
+#[must_use]
+pub fn raster_shift(across: i64, down: i64, width: u32, height: u32) -> (i64, i64) {
     (
-        scale(across, i64::from(width).saturating_mul(SUBPIXELS), i64::from(OBJECT_PICTURE_WIDTH)),
-        scale(down, i64::from(height).saturating_mul(SUBPIXELS), i64::from(OBJECT_PICTURE_HEIGHT)),
+        scale(across, i64::from(width).saturating_mul(SUBPIXELS), i64::from(RASTER_WIDTH)),
+        scale(down, i64::from(height).saturating_mul(SUBPIXELS), i64::from(DISPLAY_LINES)),
     )
 }
 
@@ -406,7 +415,7 @@ pub(crate) trait Surface {
 /// rectangle being repainted, and a damage repaint equals a whole one (ANIM-4).
 pub(crate) struct Window<'a> {
     pub(crate) canvas: &'a mut Canvas,
-    /// The move across and down, in sub-pixels of the canvas ([`design_shift`]).
+    /// The move across and down, in sub-pixels of the canvas ([`raster_shift`]).
     pub(crate) shift: (i64, i64),
     pub(crate) clip: Rect,
 }

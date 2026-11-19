@@ -7,9 +7,7 @@
     reason = "a test: fixed inputs within range, and failure is a panic"
 )]
 
-use naplps::limits::{
-    MAX_WAIT_HELD_BYTES, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH, TENTH_TICKS, WAIT_BUDGET_TICKS,
-};
+use naplps::limits::{MAX_WAIT_HELD_BYTES, TENTH_TICKS, WAIT_BUDGET_TICKS};
 use naplps::{Canvas, Event, Player, Terminal};
 
 const SO: u8 = 0x0E;
@@ -25,8 +23,11 @@ const RECT_FILLED: u8 = 0x31;
 const POINT_SET: u8 = 0x24;
 /// WAIT and its fixed-format byte (section 5.3.2.8).
 const WAIT: [u8; 2] = [0x3D, 0x5C];
-const WIDTH: u32 = OBJECT_PICTURE_WIDTH;
-const HEIGHT: u32 = OBJECT_PICTURE_HEIGHT;
+/// PP3's VGA screen: these tests draw a stream alone and place nothing NeoTeletext defines, so
+/// the size is the oracle's (`docs/naplps-raster.md` section 1, out of scope of DEC-6853).
+const WIDTH: u32 = 640;
+/// See [`WIDTH`].
+const HEIGHT: u32 = 480;
 
 /// A three-byte coordinate pair in the default domain: (`x`/256, `y`/256) of the unit screen
 /// (section 5.3.2.2.3: three bits of x and three of y a byte, the sign first).

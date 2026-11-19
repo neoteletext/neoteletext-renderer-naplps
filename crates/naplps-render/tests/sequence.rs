@@ -17,8 +17,9 @@ use std::process::Command;
 use common::{DEF_MACRO, END, HEADER, HEIGHT, WIDTH, colour, rectangle};
 
 /// The sequence's format: raised, with the reason, when a change alters any picture
-/// (DEVELOPMENT.md section 8). 1: the first sequence, 18 November 2026.
-const SEQUENCE_FORMAT: u32 = 1;
+/// (DEVELOPMENT.md section 8). 1: the first sequence, 18 November 2026. 2: the objects in
+/// raster dots on a 640 by 480 canvas (DEC-6853, RAS-4), 19 November 2026.
+const SEQUENCE_FORMAT: u32 = 2;
 /// The page: macros 2/0 to 2/3, a rectangle of entries 3 to 6 each; a rectangle of entry 1
 /// that blinks to entry 7, 5 tenths on and 5 off; a WAIT of 2 tenths; a rectangle of entry 2.
 fn page() -> Vec<u8> {
@@ -35,9 +36,11 @@ fn page() -> Vec<u8> {
     page
 }
 
+/// In raster dots (RAS-4): the macros' rectangle of 16/256 each way at the display area's
+/// bottom left is the 31 dots by 38 lines from (0, 442), drawn on PP3's 640 by 480 canvas.
 const OBJECTS: &str = "# one four-frame sprite and a region that covers part of the page\n\
-                       macro 1 2 0 300 100 41 40 0 440 20,21,22,23\n\
-                       region 2 1 0 0 440 40 40 9\n";
+                       macro 1 2 0 225 95 31 38 0 442 20,21,22,23\n\
+                       region 2 1 0 0 442 30 38 9\n";
 
 const SCRIPT: &str = "0 cycle 1 0 3 2\n\
                       10 move 1 20 0 relative\n\
@@ -59,7 +62,7 @@ fn play(directory: &Path) -> Vec<(u32, Vec<u8>)> {
     let objects = file("objects.txt", OBJECTS.as_bytes());
     let script = file("script.txt", SCRIPT.as_bytes());
     let output = Command::new(env!("CARGO_BIN_EXE_naplps-render"))
-        .args(["--frames", "40", "--frame-step", "3", "--objects"])
+        .args(["--width", "640", "--height", "480", "--frames", "40", "--frame-step", "3", "--objects"])
         .arg(&objects)
         .arg("--script")
         .arg(&script)
@@ -80,7 +83,7 @@ fn play(directory: &Path) -> Vec<(u32, Vec<u8>)> {
 
 #[test]
 fn a_page_played_twice_gives_the_same_pictures_and_they_are_the_animation() {
-    assert_eq!(SEQUENCE_FORMAT, 1);
+    assert_eq!(SEQUENCE_FORMAT, 2);
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
     let first = play(&base.join("sequence-first"));
     let second = play(&base.join("sequence-second"));
@@ -109,15 +112,18 @@ fn a_page_played_twice_gives_the_same_pictures_and_they_are_the_animation() {
     assert_eq!(blinking(0), blinking(27));
     assert_ne!(blinking(27), blinking(30));
     assert_eq!(blinking(30), blinking(39));
-    // ANIM-14: the cycle starts at tick 1 with a period of 2: frame ((t - 1) / 2) mod 4.
-    let sprite = |tick: u32, x: usize| colour(picture(tick), x, 120);
+    // ANIM-14: the cycle starts at tick 1 with a period of 2: frame ((t - 1) / 2) mod 4. Row
+    // 99 of the 640 by 480 canvas is raster line 115, inside the sprite's lines 95 to 132.
+    let sprite = |tick: u32, x: usize| colour(picture(tick), x, 99);
     let frames: Vec<[u8; 3]> = [0, 3, 6, 9].iter().map(|&tick| sprite(tick, 310)).collect();
     assert_eq!(frames[0], frames[3], "ticks 0 and 9 both show frame 0");
     assert_ne!(frames[0], frames[1], "tick 3 shows frame 1");
     assert_ne!(frames[1], frames[2], "tick 6 shows frame 2");
-    // ANIM-6: the relative move at tick 10 takes the sprite 20 pixels right, leaving nothing.
+    // ANIM-6: the relative move at tick 10 takes the sprite 20 dots right, leaving nothing:
+    // columns 305 and 350 of the canvas are dots 229 and 262, the sprite's dots 225 to 255
+    // before and 245 to 275 after.
     assert_eq!(sprite(12, 305), black, "the sprite has left its old place");
-    assert_ne!(sprite(12, 350), black, "and is drawn 20 pixels to the right");
+    assert_ne!(sprite(12, 350), black, "and is drawn 20 dots to the right");
     assert_eq!(sprite(9, 350), black);
     // `frame` at tick 14 stops the cycle on frame 3.
     assert_eq!(sprite(15, 350), sprite(39, 350));

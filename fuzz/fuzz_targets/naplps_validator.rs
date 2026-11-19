@@ -7,8 +7,8 @@
 //! held after every piece and at the end (`held_bytes`, TODO-6854), once each is counted
 //! without the font and the sets it was given and the validator without its surface, and never
 //! more than `MAX_HELD_BYTES`. The terminal
-//! draws as the receiver does: on the teletext raster's display area (REQ-5819, DEC-6667) and on
-//! the design picture's canvas, with the repository's stroke font and all 55 provided character
+//! draws as the receiver does: on the receiver's canvas, the display area of 480 by 460
+//! (REQ-5819, DEC-6857), and on PP3's 640 by 480, with the repository's stroke font and all 55 provided character
 //! sets, the plain Arabic-script ones with joining data (PAR-14). The validator is made for the
 //! terminal's canvas and given the stroke font and the joined sets, since a drawing's pixel
 //! work depends on them (TODO-6844); it holds no other set, so that what the server's check
@@ -23,16 +23,12 @@
 
 use std::sync::OnceLock;
 
-use naplps::limits::{MAX_HELD_BYTES, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH, WORK_CAP, WORK_PER_BYTE};
+use naplps::limits::{MAX_HELD_BYTES, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH, WORK_CAP, WORK_PER_BYTE};
 use naplps::{BitmapSet, Canvas, JoinForm, JoiningType, StrokeFont, TELETEXT_SET_COUNT, Terminal, Validator};
 
-/// The teletext raster's display area a NAPLPS page is drawn on (REQ-5819, DEC-6667): 40 cells
-/// of 12 dots across and lines 19 to 480 of the 500-line page down.
-const RASTER_WIDTH: u32 = 480;
-/// See [`RASTER_WIDTH`].
-const RASTER_HEIGHT: u32 = 462;
-/// The canvases each stream is drawn on: the raster's, and the design picture's (ANIM-11).
-const CANVASES: [(u32, u32); 2] = [(RASTER_WIDTH, RASTER_HEIGHT), (OBJECT_PICTURE_WIDTH, OBJECT_PICTURE_HEIGHT)];
+/// The canvases each stream is drawn on: the receiver's, and PP3's 640 by 480, a canvas of
+/// another size showing the same display area (RAS-3).
+const CANVASES: [(u32, u32); 2] = [(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT), (640, 480)];
 /// The colour map's bits: 16 entries, as the sample pages use and the validator keeps.
 const PALETTE_BITS: u32 = 4;
 /// The bytes of one piece length in the target's input.

@@ -42,16 +42,20 @@ fn stdout(output: &Output) -> String {
 #[test]
 fn a_clean_page_reports_its_bounds_objects_and_title_and_exits_zero() {
     // A rectangle of a quarter of the unit screen's width and an eighth of its height at its
-    // origin: about 160 by 80 pixels at the bottom left of the 640 by 480 picture, as the
-    // renderer rounds a rectangle's edges (its own tests fix that rounding; this one fixes the
-    // report).
+    // origin: about 120 by 74 dots at the bottom left of the display area, 480 by 460 from
+    // raster line 20, as the renderer rounds a rectangle's edges (its own tests fix that
+    // rounding; this one fixes the report).
     let mut page = macro_rectangle(0x20, 2, 16, 16);
     page.extend(rectangle(1, 0, 0, 64, 32));
     let objects = "macro 1 2 0 300 100 41 40 0 440 20 detectable label=Next page\n";
     let output = check("clean", &page, Some(objects), &["--title", "Harbour webcam"]);
     let report = stdout(&output);
     assert_eq!(output.status.code(), Some(0), "{report}");
-    assert!(report.contains("drawn: x 0 to 160, y 402 to 479 of 640 by 480 (4 % of the picture)"), "{report}");
+    assert!(
+        report
+            .contains("drawn: x 0 to 120, y 405 to 479 of the display area, 480 by 460 dots from line 20 (4 % of it)"),
+        "{report}"
+    );
     assert!(report.contains("title: \"Harbour webcam\""), "{report}");
     assert!(report.contains("objects: 1"), "{report}");
     assert!(

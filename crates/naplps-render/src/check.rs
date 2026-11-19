@@ -1,6 +1,7 @@
 //! `naplps-render check`: an authoring check of a NAPLPS page, as `regis-minify` checks a `ReGIS`
 //! picture by rendering it (DEC-6638 item 7, row 9.3). It draws the page with the renderer the
-//! receiver uses and reports what an author needs to know: how much of the picture the page
+//! receiver uses, on the receiver's canvas of 480 by 460 (REQ-6646, `docs/naplps-raster.md`
+//! RAS-11), and reports what an author needs to know: how much of the picture the page
 //! draws on, its objects and title, and every byte the renderer passed over or refused.
 //!
 //! ```text
@@ -15,7 +16,7 @@
 use std::fmt::Write as _;
 use std::fs;
 
-use naplps::limits::{OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use naplps::limits::{DISPLAY_FIRST_LINE, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_PIXELS, RECEIVER_CANVAS_WIDTH};
 use naplps::{Canvas, Event, ObjectKind, Refusal, StrokeFont, Terminal};
 
 use crate::play;
@@ -77,25 +78,25 @@ fn check(terminal: &mut Terminal, page: &[u8], objects: Option<&[naplps::Object]
         report.push_str(&text);
         report.push('\n');
     };
-    let Ok(mut canvas) = Canvas::new(OBJECT_PICTURE_WIDTH, OBJECT_PICTURE_HEIGHT) else {
+    let Ok(mut canvas) = Canvas::new(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT) else {
         return Outcome { report: "the picture could not be made\n".to_owned(), refused: true };
     };
     let mut events = terminal.feed(&mut canvas, page);
     events.extend(terminal.finish(&mut canvas));
     line(format!("page: {} bytes", page.len()));
 
-    // How much of the picture the page draws on: the rectangle of every pixel it wrote.
+    // How much of the picture the page draws on: the rectangle of every pixel it wrote, in
+    // raster dots (DEC-6853), the canvas's row 0 being raster line 20 (DEC-6857).
     match terminal.take_damage() {
         Some(rect) => {
-            let area = rect.area();
-            let whole = u64::from(OBJECT_PICTURE_WIDTH).saturating_mul(u64::from(OBJECT_PICTURE_HEIGHT));
-            let percent = area.saturating_mul(100).checked_div(whole).unwrap_or(0);
+            let percent = rect.area().saturating_mul(100).checked_div(RECEIVER_CANVAS_PIXELS).unwrap_or(0);
+            let line_of = |row: u32| row.saturating_add(DISPLAY_FIRST_LINE);
             line(format!(
-                "drawn: x {} to {}, y {} to {} of {OBJECT_PICTURE_WIDTH} by {OBJECT_PICTURE_HEIGHT} ({percent} % of the picture)",
+                "drawn: x {} to {}, y {} to {} of the display area, {RECEIVER_CANVAS_WIDTH} by {RECEIVER_CANVAS_HEIGHT} dots from line {DISPLAY_FIRST_LINE} ({percent} % of it)",
                 rect.x,
                 rect.right().saturating_sub(1),
-                rect.y,
-                rect.bottom().saturating_sub(1),
+                line_of(rect.y),
+                line_of(rect.bottom().saturating_sub(1)),
             ));
         }
         None => line("drawn: nothing".to_owned()),

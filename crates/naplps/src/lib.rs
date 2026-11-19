@@ -22,14 +22,21 @@
 //! repainting only what changed; and [`Player`] plays WAIT and BLINK on ticks of one sixtieth of
 //! a second that its caller says have passed.
 //!
+//! Every place NeoTeletext defines on a NAPLPS page is a dot of the 480 by 500 teletext raster,
+//! and the receiver draws the display area on a canvas of [`limits::RECEIVER_CANVAS_WIDTH`] by
+//! [`limits::RECEIVER_CANVAS_HEIGHT`] placed at raster line [`limits::DISPLAY_FIRST_LINE`]
+//! (DEC-6853, DEC-6857): [`dot_steps`] writes a dot as an operand, [`dot_of_point`] reads one
+//! back, [`raster_dot`] and [`Rect::on_canvas`] go between dots and any canvas's pixels.
+//!
 //! ```
+//! use naplps::limits::{RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH};
 //! use naplps::{Canvas, Terminal};
-//! let mut canvas = Canvas::new(640, 480).unwrap();
+//! let mut canvas = Canvas::new(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT).unwrap();
 //! let mut terminal = Terminal::new(4);
 //! // SO, then RECT FILLED from the drawing point (0, 0): half the screen wide, a quarter high.
 //! terminal.feed(&mut canvas, &[0x0E, 0x31, 0x51, 0x40, 0x40]);
 //! terminal.finish(&mut canvas);
-//! assert_eq!(canvas.pixel(10, 470), Some(terminal.palette().white()));
+//! assert_eq!(canvas.pixel(10, 450), Some(terminal.palette().white()));
 //! ```
 #![no_std]
 #![deny(
@@ -47,6 +54,7 @@
 extern crate alloc;
 
 pub mod bitmap;
+mod dots;
 pub mod fixed;
 pub mod font;
 pub mod limits;
@@ -61,11 +69,12 @@ mod text;
 mod work;
 
 pub use bitmap::{BitmapSet, JoinForm, JoiningType};
+pub use dots::{Rounding, dot_of_point, dot_steps, multi_value_operand, unit_steps};
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
 pub use play::Player;
 pub use raster::{FillPattern, LineTexture};
-pub use surface::{Canvas, Rect, design_pixel};
+pub use surface::{Canvas, Rect, raster_dot, raster_shift};
 pub use teletext::{TELETEXT_SET_COUNT, TELETEXT_SETS};
 pub use terminal::{
     Animation, CharSet, Diagnostics, Event, Look, Object, ObjectKind, REFUSAL_KINDS, Refusal, Terminal, Validator,

@@ -10,7 +10,10 @@
     reason = "a test: fixed inputs within range, and failure is a panic"
 )]
 
-use naplps::limits::{MAX_LABEL_BYTES, MAX_OBJECTS, MAX_TITLE_BYTES, OBJECT_PICTURE_HEIGHT, OBJECT_PICTURE_WIDTH};
+use naplps::limits::{
+    DISPLAY_FIRST_LINE, DISPLAY_LINES, MAX_LABEL_BYTES, MAX_OBJECTS, MAX_TITLE_BYTES, RECEIVER_CANVAS_HEIGHT,
+    RECEIVER_CANVAS_WIDTH,
+};
 use naplps::{Animation, Canvas, Error, Object, ObjectKind, Terminal};
 
 const SO: u8 = 0x0E;
@@ -22,9 +25,11 @@ const SELECT_COLOUR: u8 = 0x3E;
 const RECT_FILLED: u8 = 0x31;
 /// POINT SET, absolute (section 5.3.3.1).
 const POINT_SET: u8 = 0x24;
-const WIDTH: u32 = OBJECT_PICTURE_WIDTH;
-const HEIGHT: u32 = OBJECT_PICTURE_HEIGHT;
-/// The object's rectangle: the bottom left 128 by 96 pixels of its macro's drawing.
+/// The receiver's canvas (DEC-6857).
+const WIDTH: u32 = RECEIVER_CANVAS_WIDTH;
+const HEIGHT: u32 = RECEIVER_CANVAS_HEIGHT;
+/// The object's rectangle: the bottom left 128 by 96 dots of its macro's drawing, whose foot is
+/// the display area's last raster line.
 const OBJECT_WIDTH: u16 = 128;
 const OBJECT_HEIGHT: u16 = 96;
 
@@ -67,7 +72,7 @@ fn macro_object(number: u16, code: u8, x: i16, y: i16, label: &str) -> Object {
         width: OBJECT_WIDTH,
         height: OBJECT_HEIGHT,
         origin_x: 0,
-        origin_y: (HEIGHT - u32::from(OBJECT_HEIGHT)) as i16,
+        origin_y: (DISPLAY_FIRST_LINE + DISPLAY_LINES - u32::from(OBJECT_HEIGHT)) as i16,
         cover: 0,
         hover: 0,
         pressed: 0,
@@ -159,9 +164,9 @@ fn replacing_one_object_redraws_it_and_leaves_the_others_and_their_state() {
     assert!(terminal.set_animation(1, Animation { position: Some((50, 50)), ..Animation::default() }));
     composed(&mut terminal, &background, &mut presented);
     let _ = terminal.take_damage();
-    // Ten pixels in from the bottom left of object 2's rectangle, where its macro's
-    // rectangle (80 pixels square at the screen's bottom left) lands.
-    let red = presented.pixel(410, 390).unwrap();
+    // Ten dots in and six lines up from the bottom left of object 2's rectangle (raster line
+    // 390, canvas row 370), where its macro's rectangle at the screen's bottom left lands.
+    let red = presented.pixel(410, 390 - DISPLAY_FIRST_LINE).unwrap();
     assert_ne!(red, 0, "object 2 draws");
 
     // Object 1 becomes the green macro at a new place, with a new label.
@@ -177,16 +182,18 @@ fn replacing_one_object_redraws_it_and_leaves_the_others_and_their_state() {
     assert!(expected.set_animation(2, Animation { position: Some((400, 300)), ..Animation::default() }));
     composed(&mut expected, &background, &mut whole);
     assert!(presented == whole, "the redefined picture is the picture of the new definitions");
-    assert_eq!(presented.pixel(410, 390), Some(red), "object 2 keeps its moved position");
-    let green = presented.pixel(210, 290).unwrap();
+    assert_eq!(presented.pixel(410, 390 - DISPLAY_FIRST_LINE), Some(red), "object 2 keeps its moved position");
+    let green = presented.pixel(210, 290 - DISPLAY_FIRST_LINE).unwrap();
     assert!(green != red && green != 0, "object 1 draws its new macro");
     // Object 1's animation state is forgotten; object 2's is kept.
     assert_eq!(terminal.animation(1), None);
     assert!(terminal.animation(2).is_some());
     assert_eq!(terminal.object(1).unwrap().label, "replaced");
-    // The damage covers where object 1 was (moved to 50, 50) and where it is now.
-    assert!(damage.contains(60, 140) && damage.contains(210, 290), "{damage:?}");
-    assert!(!damage.contains(410, 390), "object 2 is not repainted: {damage:?}");
+    // The damage, in canvas pixels, covers where object 1 was (moved to 50, 50) and where it is
+    // now.
+    let top = DISPLAY_FIRST_LINE;
+    assert!(damage.contains(60, 140 - top) && damage.contains(210, 290 - top), "{damage:?}");
+    assert!(!damage.contains(410, 390 - top), "object 2 is not repainted: {damage:?}");
 }
 
 #[test]

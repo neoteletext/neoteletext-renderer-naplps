@@ -1,28 +1,27 @@
 //! The fuzz target `naplps_objects` (neoteletext-common `docs/animation.md`, ANIM-23; REQ-6531):
 //! any stream, objects, single objects redefined, and animation states. It must never panic, every object's drawing must
-//! stay inside its rectangle, picking at a canvas pixel must equal picking at the design pixel
-//! its centre lies in (TODO-6826), and the picture composed by damage must equal the picture
+//! stay inside its rectangle, picking at a canvas pixel must equal picking at the raster dot
+//! its centre lies in (TODO-6826, `docs/naplps-raster.md` RAS-3), and the picture composed by damage must equal the picture
 //! composed whole, with no pixel changed outside the damage reported (ANIM-4, ANIM-11), while
 //! every composing stays within its pixel work allowance, which none may pass (TODO-6844). Each
-//! input runs on the design picture's own canvas and on the teletext raster's 480 by 462 one
-//! (DEC-6667, REQ-5819), where objects are placed by the design picture's pixels.
+//! input runs on the receiver's canvas of 480 by 460, on twice it and on PP3's 640 by 480, all
+//! showing the display area of raster lines 20 to 479, objects placed in raster dots (DEC-6853,
+//! DEC-6857, RAS-4).
 //!
 //! This file holds the target's body, `naplps_objects`, which takes the fuzzer's bytes.
 //! `crates/naplps-fuzz` runs it on its kept inputs and on inputs made by property testing
 //! (DEC-6607); an engine guided by coverage would call it unchanged.
 
-use naplps::limits::MAX_COMPOSE_WORK;
+use naplps::limits::{MAX_COMPOSE_WORK, RASTER_HEIGHT, RASTER_WIDTH, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH};
 use naplps::{Animation, Canvas, Look, Object, ObjectKind, Terminal};
 
-/// The picture objects are placed on (ANIM-11).
-const WIDTH: u32 = naplps::limits::OBJECT_PICTURE_WIDTH;
-/// See [`WIDTH`].
-const HEIGHT: u32 = naplps::limits::OBJECT_PICTURE_HEIGHT;
-/// The teletext raster's display area a NAPLPS page is drawn on (REQ-5819, DEC-6667): 40 cells
-/// of 12 dots across, lines 19 to 480 of the 500-line page down.
-const RASTER_WIDTH: u32 = 480;
-/// See [`RASTER_WIDTH`].
-const RASTER_HEIGHT: u32 = 462;
+/// The canvases each input runs on: the receiver's, `naplps-render --double`'s, and PP3's 640 by
+/// 480 (RAS-3).
+const CANVASES: [(u32, u32); 3] = [
+    (RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT),
+    (2 * RECEIVER_CANVAS_WIDTH, 2 * RECEIVER_CANVAS_HEIGHT),
+    (640, 480),
+];
 /// Bytes of one object's description in the input.
 const OBJECT_BYTES: usize = 12;
 /// The first macro code, 2/0; the input's macro codes are folded onto a few names from here so
@@ -141,8 +140,9 @@ fn differing(before: &Canvas, after: &Canvas) -> Vec<(u32, u32)> {
 /// When the composed picture differs from a whole composition, or a pixel changed outside the
 /// damage reported.
 pub fn naplps_objects(data: &[u8]) {
-    on_canvas(data, WIDTH, HEIGHT);
-    on_canvas(data, RASTER_WIDTH, RASTER_HEIGHT);
+    for (width, height) in CANVASES {
+        on_canvas(data, width, height);
+    }
 }
 
 /// Runs one input on a canvas of `width` by `height`.
@@ -187,16 +187,16 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
                 let _ = terminal.feed(&mut background, &stream);
             }
         }
-        // TODO-6826: an object owns exactly the canvas pixels whose centre lies in its design
-        // rectangle, so picking at a canvas pixel is picking at its centre's design pixel.
-        // The probe comes from the command byte, not a byte of its own, so that the kept inputs
-        // read as they always have; doubled, it reaches across the raster's canvas.
+        // TODO-6826, RAS-3: an object owns exactly the canvas pixels whose centre lies in its
+        // rectangle of dots, so picking at a canvas pixel is picking at its centre's dot. The
+        // probe comes from the command byte, not a byte of its own, so that the kept inputs read
+        // as they always have; doubled, it reaches across the receiver's canvas.
         let probe = (u32::from(command) * 2, u32::from(command.reverse_bits()) * 2);
-        let (across, down) = naplps::design_pixel(probe.0, probe.1, width, height);
+        let (across, down) = naplps::raster_dot(probe.0, probe.1, width, height);
         assert_eq!(
             terminal.objects_on_canvas(probe.0, probe.1, width, height),
             terminal.objects_at(across, down),
-            "picking at canvas pixel {probe:?} and at its centre's design pixel ({across}, {down})"
+            "picking at canvas pixel {probe:?} and at its centre's dot ({across}, {down})"
         );
         let composed = terminal.compose(&background, &mut presented);
         assert!(composed.is_ok(), "two canvases of one size compose");
@@ -210,10 +210,10 @@ fn on_canvas(data: &[u8], width: u32, height: u32) {
                 "pixel ({x}, {y}) changed outside the damage {damage:?}"
             );
         }
-        // ANIM-13: an object's bounds lie on the picture.
+        // ANIM-13, RAS-4: an object's bounds lie on the raster.
         for object in terminal.objects() {
             if let Some(bounds) = terminal.bounds(object.number) {
-                assert!(bounds.right() <= WIDTH && bounds.bottom() <= HEIGHT);
+                assert!(bounds.right() <= RASTER_WIDTH && bounds.bottom() <= RASTER_HEIGHT);
             }
         }
     }

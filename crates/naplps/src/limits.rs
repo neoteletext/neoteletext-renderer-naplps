@@ -35,12 +35,32 @@ pub const MAX_JOINING_HELD: usize = 16;
 /// `fonts/neoteletext.strokes`, is 8,971 bytes, and the specification gives 1,048,576 only for
 /// a crate that had no bound.
 pub const MAX_STROKE_FONT_BYTES: usize = 262_144;
-/// The width of the canvas a receiver draws a NAPLPS picture on: the teletext raster's 480 by
-/// 462 display area (REQ-5819, DEC-6667). A [`crate::Validator`] counts drawing work on a
+/// The width of NeoTeletext's teletext raster, every coordinate NeoTeletext defines on a NAPLPS
+/// page being one of its dots (DEC-6853 item 1, `docs/naplps-raster.md` RAS-1): 40 columns of 12
+/// dots, the engine's `PAGE_WIDTH`.
+pub const RASTER_WIDTH: u32 = 480;
+/// The height of the teletext raster: 25 rows of 20 lines, the engine's `PAGE_HEIGHT` (RAS-1).
+pub const RASTER_HEIGHT: u32 = 500;
+/// The lines of one teletext row on the raster: the Noto cell's height (DEC-6857 item 3).
+pub const RASTER_ROW_LINES: u32 = 20;
+/// The raster line a NAPLPS display area starts on: the top of teletext row 1 (DEC-6857 item 1,
+/// REQ-5819 version 2). Rows 0 and 24 are the teletext page's own, wholly outside the picture.
+pub const DISPLAY_FIRST_LINE: u32 = 20;
+/// The raster lines a NAPLPS display area takes, lines 20 to 479: teletext rows 1 to 23
+/// (DEC-6857 item 1). Every formula of the mapping is written in this and
+/// [`DISPLAY_FIRST_LINE`], so that a change of the display area is a change of these two alone.
+pub const DISPLAY_LINES: u32 = 460;
+const _: () = assert!(DISPLAY_FIRST_LINE + DISPLAY_LINES <= RASTER_HEIGHT);
+const _: () =
+    assert!(DISPLAY_FIRST_LINE.is_multiple_of(RASTER_ROW_LINES) && DISPLAY_LINES.is_multiple_of(RASTER_ROW_LINES));
+const _: () = assert!(RASTER_HEIGHT.is_multiple_of(RASTER_ROW_LINES));
+/// The width of the canvas a receiver draws a NAPLPS picture on: the display area's
+/// [`RASTER_WIDTH`] (REQ-5819, DEC-6857, RAS-1). A [`crate::Validator`] counts drawing work on a
 /// canvas of this size, so that it stops where the receiver's terminal stops (PAR-15).
-pub const RECEIVER_CANVAS_WIDTH: u32 = 480;
-/// See [`RECEIVER_CANVAS_WIDTH`].
-pub const RECEIVER_CANVAS_HEIGHT: u32 = 462;
+pub const RECEIVER_CANVAS_WIDTH: u32 = RASTER_WIDTH;
+/// The height of the receiver's canvas: the display area's [`DISPLAY_LINES`], placed at raster
+/// line [`DISPLAY_FIRST_LINE`].
+pub const RECEIVER_CANVAS_HEIGHT: u32 = DISPLAY_LINES;
 /// The pixels of [`RECEIVER_CANVAS_WIDTH`] by [`RECEIVER_CANVAS_HEIGHT`]: one whole-screen
 /// fill's work on the receiver's canvas.
 pub const RECEIVER_CANVAS_PIXELS: u64 = RECEIVER_CANVAS_WIDTH as u64 * RECEIVER_CANVAS_HEIGHT as u64;
@@ -94,17 +114,14 @@ pub const MAX_ANIMATED_OBJECTS: usize = 64;
 pub const MAX_CYCLING_OBJECTS: usize = 16;
 /// Frames of one object (ANIM-14).
 pub const MAX_OBJECT_FRAMES: usize = 16;
-/// Pixels repainted for animation in one tick: half of 640 by 480 (ANIM-16). The caller with
-/// the clock holds a page to it, by composing only when `Terminal::pending` is within it or a
-/// tick has passed with nothing painted.
-pub const MAX_ANIMATION_PIXELS_PER_TICK: u64 = 153_600;
+/// Pixels repainted for animation in one tick: half of the teletext raster, 120,000, the same as
+/// a teletext page's (ANIM-16, RAS-1). The caller with the clock holds a page to it, by
+/// composing only when `Terminal::pending` is within it or a tick has passed with nothing
+/// painted.
+pub const MAX_ANIMATION_PIXELS_PER_TICK: u64 = RASTER_WIDTH as u64 * RASTER_HEIGHT as u64 / 2;
 /// Bytes processed in drawing one object, macro expansion counted; past it the object's drawing
 /// stops (ANIM-11, ANIM-16).
 pub const MAX_OBJECT_BYTES: usize = 16_384;
-/// The width of the picture an object's position, size and rectangle are in (ANIM-11).
-pub const OBJECT_PICTURE_WIDTH: u32 = 640;
-/// The height of the picture an object's position, size and rectangle are in (ANIM-11).
-pub const OBJECT_PICTURE_HEIGHT: u32 = 480;
 /// The highest frame number the animation state holds (ANIM-6: 0 to 15).
 pub const MAX_FRAME_NUMBER: u8 = 15;
 /// Ticks of the presentation clock in a tenth of a second, the unit of WAIT and BLINK intervals
@@ -218,6 +235,7 @@ pub const MAX_HELD_BYTES: usize = size_of::<crate::Validator>()
 const _: () = assert!(MAX_BITMAP_WIDTH as u32 == u16::BITS);
 const _: () = assert!(MAX_FRAME_NUMBER as usize + 1 == MAX_OBJECT_FRAMES);
 const _: () = assert!(MAX_ANIMATED_OBJECTS >= MAX_OBJECTS);
-const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK * 2 == OBJECT_PICTURE_WIDTH as u64 * OBJECT_PICTURE_HEIGHT as u64);
+const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK == 120_000);
+const _: () = assert!(RECEIVER_CANVAS_PIXELS == 220_800);
 const _: () = assert!(size_of::<crate::Validator>() >= size_of::<crate::Terminal>());
 const _: () = assert!(MAX_ALL_MACRO_BYTES >= MAX_MACRO_BYTES);

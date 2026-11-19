@@ -8,7 +8,9 @@
     reason = "a test: fixed inputs within range, and failure is a panic"
 )]
 
-use naplps::limits::{MAX_ALL_MACRO_BYTES, MAX_MACRO_BYTES, MAX_PDI_BYTES};
+use naplps::limits::{
+    MAX_ALL_MACRO_BYTES, MAX_MACRO_BYTES, MAX_PDI_BYTES, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH,
+};
 use naplps::{Canvas, Event, Refusal, StrokeFont, Terminal, Validator};
 
 const ESC: u8 = 0x1B;
@@ -25,7 +27,7 @@ const MACROS_INTO_G2: [u8; 4] = [ESC, 0x2E, 0x20, 0x7A];
 fn terminal_reading(bytes: &[u8]) -> (Terminal, Vec<Event>) {
     let mut terminal = Terminal::new(4);
     terminal.set_font(StrokeFont::parse(include_str!("../../../fonts/neoteletext.strokes")).unwrap());
-    let mut canvas = Canvas::new(480, 462).unwrap();
+    let mut canvas = Canvas::new(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT).unwrap();
     let events = terminal.feed(&mut canvas, bytes);
     (terminal, events)
 }
@@ -112,7 +114,7 @@ fn finish_runs_a_pdi_still_collecting() {
     let mut bytes = vec![SO, 0x37];
     bytes.extend(std::iter::repeat_n(0x40, MAX_PDI_BYTES));
     let mut terminal = Terminal::new(4);
-    let mut canvas = Canvas::new(480, 462).unwrap();
+    let mut canvas = Canvas::new(RECEIVER_CANVAS_WIDTH, RECEIVER_CANVAS_HEIGHT).unwrap();
     terminal.feed(&mut canvas, &bytes);
     terminal.finish(&mut canvas);
     let mut validator = Validator::new();
