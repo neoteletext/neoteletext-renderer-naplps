@@ -5,6 +5,7 @@
 //! runs one still collecting at the end of a page.
 
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -189,9 +190,12 @@ enum Mode {
 )]
 pub struct Terminal {
     palette: Palette,
-    font: Option<StrokeFont>,
-    /// The glyphs of NeoTeletext's character sets the caller gave, by number (REQ-6668).
-    teletext_sets: Vec<Option<BitmapSet>>,
+    /// The stroke font the caller gave, shared with whatever else holds it: a server's many
+    /// validators hold one font between them (TODO-6895).
+    font: Option<Arc<StrokeFont>>,
+    /// The glyphs of NeoTeletext's character sets the caller gave, by number (REQ-6668), each
+    /// shared as the font is. Empty until the first is given, then [`TELETEXT_SET_COUNT`] slots.
+    teletext_sets: Vec<Option<Arc<BitmapSet>>>,
     /// The colour-map entry the display was last cleared to (CS, or RESET's clearing, Table
     /// 15): the page's background, which a caller paints around the display area (DEC-6667
     /// item 4). Nominal black at power-up, as the canvas starts.
@@ -216,7 +220,10 @@ pub struct Terminal {
     masks: Masks,
     text: TextState,
     field: Option<(Point, Point)>,
+    /// The macros by name 2/0 to 7/15: empty until the stream defines one, then [`CODES`] slots,
+    /// so that a reader of a page that defines none holds no table (TODO-6895).
     macros: Vec<Option<Vec<u8>>>,
+    /// The DRCS characters by code, held as `macros` is.
     drcs: Vec<Option<Mask>>,
     recording: Option<Recording>,
     last_drcs_code: Option<u8>,
@@ -266,6 +273,20 @@ pub struct Terminal {
     work: Work,
 }
 
+/// What a font or set given in an [`Arc`] holds, counted for a terminal that holds it alone:
+/// the shared allocation (the two reference counts and the structure) and `heap`'s figure for
+/// what the structure points to. One shared with anything else counts nothing here; its sharer
+/// counts it once (TODO-6895).
+fn held_alone<T>(shared: &Arc<T>, heap: fn(&T) -> usize) -> usize {
+    if Arc::strong_count(shared) > 1 {
+        return 0;
+    }
+    crate::limits::held_allocation(ARC_COUNT_BYTES.saturating_add(size_of::<T>())).saturating_add(heap(shared))
+}
+
+/// The two reference counts an [`Arc`]'s allocation holds before its value.
+const ARC_COUNT_BYTES: usize = 2 * size_of::<usize>();
+
 /// The intermediate bytes an escape sequence collects before its final byte (ISO 2022's
 /// designations take at most three).
 pub(crate) const MAX_ESCAPE_BYTES: usize = 3;
@@ -290,7 +311,7 @@ impl Terminal {
         Self {
             palette,
             font: None,
-            teletext_sets: vec![None; TELETEXT_SET_COUNT],
+            teletext_sets: Vec::new(),
             screen: 0,
             g_sets: [CharSet::Primary, CharSet::Pdi, CharSet::Supplementary, CharSet::Mosaic],
             gl: 0,
@@ -312,8 +333,8 @@ impl Terminal {
             masks: [None, None, None, None],
             text: TextState::default(),
             field: None,
-            macros: vec![None; CODES],
-            drcs: vec![None; CODES],
+            macros: Vec::new(),
+            drcs: Vec::new(),
             recording: None,
             last_drcs_code: None,
             last_spacing: None,
@@ -342,9 +363,11 @@ impl Terminal {
         }
     }
 
-    /// Uses `font` for the primary and supplementary sets (decision D5).
-    pub fn set_font(&mut self, font: StrokeFont) {
-        self.font = Some(font);
+    /// Uses `font` for the primary and supplementary sets (decision D5). A font given in an
+    /// [`Arc`] is shared, not copied: a caller with many terminals or validators gives each the
+    /// same one and counts it once ([`Terminal::held_bytes`]).
+    pub fn set_font(&mut self, font: impl Into<Arc<StrokeFont>>) {
+        self.font = Some(font.into());
         self.scene.definitions_changed = true;
     }
 
@@ -354,9 +377,15 @@ impl Terminal {
     /// # Errors
     ///
     /// [`Error::Bitmap`] when `number` is not below [`TELETEXT_SET_COUNT`].
-    pub fn set_teletext_set(&mut self, number: u8, set: BitmapSet) -> Result<(), Error> {
+    pub fn set_teletext_set(&mut self, number: u8, set: impl Into<Arc<BitmapSet>>) -> Result<(), Error> {
+        if usize::from(number) >= TELETEXT_SET_COUNT {
+            return Err(Error::Bitmap);
+        }
+        if self.teletext_sets.is_empty() {
+            self.teletext_sets = vec![None; TELETEXT_SET_COUNT];
+        }
         let slot = self.teletext_sets.get_mut(usize::from(number)).ok_or(Error::Bitmap)?;
-        *slot = Some(set);
+        *slot = Some(set.into());
         self.scene.definitions_changed = true;
         Ok(())
     }
@@ -570,7 +599,8 @@ impl Terminal {
     /// reading's own state (a PDI's operands, an escape sequence, word wrap's word, the joined
     /// letters held back, the title, the colour map); and the stroke font and the provided
     /// sets given to it, each as [`StrokeFont::held_bytes`] and [`BitmapSet::held_bytes`] count
-    /// it. Every allocation is counted at its capacity with the allocator's bookkeeping
+    /// it, when this terminal holds it alone: one shared with anything else (an [`Arc`] whose
+    /// count is more than one) is counted by whoever shares it, once (TODO-6895). Every allocation is counted at its capacity with the allocator's bookkeeping
     /// ([`crate::limits::ALLOCATION_OVERHEAD_BYTES`]). The canvas is the caller's and is not
     /// counted. Without the font and the provided sets it is never more than
     /// [`crate::limits::MAX_HELD_BYTES`]. A call holds more while it runs: a figure's points
@@ -591,12 +621,11 @@ impl Terminal {
         let macros = self.macros.iter().map(|body| optional(body.as_ref())).fold(0, usize::saturating_add);
         let masks = self.drcs.iter().chain(&self.masks).flatten().map(Mask::heap_bytes).fold(0, usize::saturating_add);
         let frames = self.frames.iter().map(|(body, _)| vector_bytes(body)).fold(0, usize::saturating_add);
-        let given = self
-            .teletext_sets
-            .iter()
-            .flatten()
-            .map(BitmapSet::heap_bytes)
-            .fold(self.font.as_ref().map_or(0, StrokeFont::heap_bytes), usize::saturating_add);
+        let given =
+            self.teletext_sets.iter().flatten().map(|set| held_alone(set, BitmapSet::heap_bytes)).fold(
+                self.font.as_ref().map_or(0, |font| held_alone(font, StrokeFont::heap_bytes)),
+                usize::saturating_add,
+            );
         let title = self.title.as_ref().map_or(0, |title| match title.capacity() {
             0 => 0,
             bytes => crate::limits::held_allocation(bytes),
@@ -1112,20 +1141,27 @@ impl Terminal {
                 if full && !transmit {
                     self.refuse(Refusal::MacrosFull, bytes.len());
                 }
+                let keep = !(transmit || bytes.is_empty() || full);
+                if keep && self.macros.is_empty() {
+                    self.macros = vec![None; CODES];
+                }
                 if let Some(slot) = self.macros.get_mut(index) {
                     // Kept at its length, so that the macros hold no more than their bytes
                     // (`MAX_DEFINITION_BYTES`, TODO-6854).
-                    *slot = if transmit || bytes.is_empty() || full {
-                        None
-                    } else {
+                    *slot = if keep {
                         let mut bytes = bytes;
                         bytes.shrink_to_fit();
                         Some(bytes)
+                    } else {
+                        None
                     };
                 }
                 None
             }
             Recording::Drcs { code, mask, .. } => {
+                if self.drcs.is_empty() {
+                    self.drcs = vec![None; CODES];
+                }
                 if let Some(slot) = self.drcs.get_mut(usize::from(code.wrapping_sub(FIRST_CODE))) {
                     *slot = Some(mask);
                 }
@@ -1428,10 +1464,10 @@ impl Terminal {
             self.scene.definitions_changed = true;
         }
         if second & 0b1_0000 != 0 {
-            self.macros.fill(None);
+            self.macros = Vec::new();
         }
         if second & 0b10_0000 != 0 {
-            self.drcs.fill(None);
+            self.drcs = Vec::new();
             self.drcs_cleared = true;
         }
     }
@@ -2045,7 +2081,7 @@ impl Terminal {
 
     /// Whether teletext set `number` was given joining data (PAR-14).
     fn is_joined(&self, number: u8) -> bool {
-        self.teletext_sets.get(usize::from(number)).and_then(Option::as_ref).is_some_and(BitmapSet::is_joined)
+        self.teletext_sets.get(usize::from(number)).and_then(Option::as_ref).is_some_and(|set| set.is_joined())
     }
 
     /// The joining type of `code` of teletext set `number`.

@@ -228,7 +228,7 @@ pub const MAX_READING_STATE_BYTES: usize = grown_vector_bytes(MAX_PDI_BYTES, 1)
 /// besides the stroke font and the provided sets its caller gives it, which
 /// [`crate::Terminal::held_bytes`] counts as given, and the canvas, which is the caller's: its
 /// own structure, [`MAX_DEFINITION_BYTES`], [`MAX_MACRO_CALL_BYTES`], [`MAX_OBJECT_STATE_BYTES`]
-/// and [`MAX_READING_STATE_BYTES`]: 1,971,344 bytes on a 64-bit target. A server counts each reader
+/// and [`MAX_READING_STATE_BYTES`]: 1,971,304 bytes on a 64-bit target. A server counts each reader
 /// at [`crate::Validator::held_bytes`], or at this figure without asking (TODO-6854).
 pub const MAX_HELD_BYTES: usize = size_of::<crate::Validator>()
     .saturating_add(MAX_DEFINITION_BYTES)

@@ -21,7 +21,7 @@
 //! zero is an empty feed, and what the lengths leave is fed as one last piece.
 //! `crates/naplps-fuzz` runs it.
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use naplps::limits::{MAX_HELD_BYTES, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH, WORK_CAP, WORK_PER_BYTE};
 use naplps::{BitmapSet, Canvas, JoinForm, JoiningType, StrokeFont, TELETEXT_SET_COUNT, Terminal, Validator};
@@ -60,9 +60,17 @@ fn one_row(row: usize) -> [u16; CELL_HEIGHT] {
 /// The real glyphs come from the engine's checkout, which this crate does not read; what the
 /// receiver's reading does with a set depends only on whether it is given and on its joining
 /// data, never on its pixels.
-fn provided_sets() -> &'static [Option<BitmapSet>] {
-    static SETS: OnceLock<Vec<Option<BitmapSet>>> = OnceLock::new();
-    SETS.get_or_init(|| (0..TELETEXT_SET_COUNT).map(provided_set).collect())
+/// They are shared, as a receiver's and a server's are (TODO-6895), so that what a terminal or
+/// validator counts is its own.
+fn provided_sets() -> &'static [Option<Arc<BitmapSet>>] {
+    static SETS: OnceLock<Vec<Option<Arc<BitmapSet>>>> = OnceLock::new();
+    SETS.get_or_init(|| (0..TELETEXT_SET_COUNT).map(|number| provided_set(number).map(Arc::new)).collect())
+}
+
+/// The receiver's stroke font, shared as the sets are.
+fn stroke_font() -> Option<Arc<StrokeFont>> {
+    static FONT: OnceLock<Option<Arc<StrokeFont>>> = OnceLock::new();
+    FONT.get_or_init(|| StrokeFont::parse(naplps_fonts::NEOTELETEXT).ok().map(Arc::new)).clone()
 }
 
 fn provided_set(number: usize) -> Option<BitmapSet> {
@@ -84,38 +92,24 @@ fn provided_set(number: usize) -> Option<BitmapSet> {
 /// A terminal as the receiver has it: the stroke font and every provided set.
 fn receiver() -> Terminal {
     let mut terminal = Terminal::new(PALETTE_BITS);
-    if let Ok(font) = StrokeFont::parse(naplps_fonts::NEOTELETEXT) {
+    if let Some(font) = stroke_font() {
         terminal.set_font(font);
     }
     for (number, set) in provided_sets().iter().enumerate() {
         if let (Ok(number), Some(set)) = (u8::try_from(number), set) {
-            let _ = terminal.set_teletext_set(number, set.clone());
+            let _ = terminal.set_teletext_set(number, Arc::clone(set));
         }
     }
     terminal
 }
 
-/// The memory the stroke font and the sets in `sets` hold beyond their structures: what a
-/// terminal or validator given them counts as given (TODO-6854).
-fn given_bytes(sets: impl Iterator<Item = usize>) -> usize {
-    let font = StrokeFont::parse(naplps_fonts::NEOTELETEXT)
-        .map_or(0, |font| font.held_bytes().saturating_sub(size_of::<StrokeFont>()));
-    sets.filter_map(|number| provided_sets().get(number).and_then(Option::as_ref))
-        .map(|set| set.held_bytes().saturating_sub(size_of::<BitmapSet>()))
-        .fold(font, usize::saturating_add)
-}
-
 /// What a terminal and a validator hold of their own, each without what it was given and the
 /// validator without its surface's structure, which must be equal (TODO-6854).
 fn own_held(terminal: &Terminal, validator: &Validator) -> (usize, usize) {
-    static GIVEN: OnceLock<(usize, usize)> = OnceLock::new();
-    let (terminal_given, validator_given) =
-        *GIVEN.get_or_init(|| (given_bytes(0..TELETEXT_SET_COUNT), given_bytes(JOINED_SETS)));
+    // The font and the sets are shared, so neither counts them (TODO-6895); but the terminal is
+    // given every set and the validator the joined ones, and both then hold the sets' slots.
     let surface = size_of::<Validator>().saturating_sub(size_of::<Terminal>());
-    (
-        terminal.held_bytes().saturating_sub(terminal_given),
-        validator.held_bytes().saturating_sub(surface).saturating_sub(validator_given),
-    )
+    (terminal.held_bytes(), validator.held_bytes().saturating_sub(surface))
 }
 
 /// Runs one input of the fuzzer's bytes. Panics when a property fails, as a fuzzing engine
@@ -156,12 +150,12 @@ pub fn naplps_validator_in_pieces(stream: &[u8], lengths: &[usize]) {
         let Ok(mut canvas) = Canvas::new(width, height) else { return };
         let mut terminal = receiver();
         let Ok(mut validator) = Validator::with_canvas(width, height) else { return };
-        if let Ok(font) = StrokeFont::parse(naplps_fonts::NEOTELETEXT) {
+        if let Some(font) = stroke_font() {
             validator.set_font(font);
         }
         for number in JOINED_SETS {
             if let (Ok(number), Some(Some(set))) = (u8::try_from(number), provided_sets().get(number)) {
-                let _ = validator.set_teletext_set(number, set.clone());
+                let _ = validator.set_teletext_set(number, Arc::clone(set));
             }
         }
         let mut fed = 0usize;

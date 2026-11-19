@@ -79,9 +79,10 @@ fn a_new_validator_holds_its_structure_and_its_colour_map() {
         size_of::<Validator>()
     );
     assert!(held >= size_of::<Validator>(), "{held}");
-    // Its structure, the colour map of 16 entries, the slots of the 96 macros, the 96 DRCS
-    // characters and the 55 provided sets, and nothing a stream defined.
-    assert!(held <= size_of::<Validator>() + 16 * 1024, "{held}");
+    // Its structure and the colour map of 16 entries: no table of macros, DRCS characters or
+    // provided sets until the stream or the caller fills one (TODO-6895), where a new
+    // validator held 12,360 bytes with the tables made at once.
+    assert!(held <= size_of::<Validator>() + 512, "{held}");
     assert_eq!(Validator::new().held_bytes(), held, "the figure depends on nothing but the state");
 }
 
@@ -131,22 +132,62 @@ fn a_definition_in_progress_and_an_open_pdi_raise_the_figure_by_at_least_their_b
     assert!(raised_by(&[], &pdi_open) >= 1000);
 }
 
+/// What a value shared in an `Arc` takes when one holder has it alone: the allocation of its
+/// two reference counts and its structure, with the allocator's bookkeeping.
+fn arc_allocation<T>() -> usize {
+    (2 * size_of::<usize>() + size_of::<T>()).next_multiple_of(ALLOCATION_OVERHEAD_BYTES) + ALLOCATION_OVERHEAD_BYTES
+}
+
 #[test]
-fn the_font_and_the_provided_sets_are_counted_as_given() {
+fn the_font_and_the_provided_sets_are_counted_as_given_when_held_alone() {
     let font = StrokeFont::parse(include_str!("../../../fonts/neoteletext.strokes")).unwrap();
     let font_heap = font.held_bytes() - size_of::<StrokeFont>();
     let mut validator = Validator::new();
     let held = validator.held_bytes();
     validator.set_font(font);
-    assert_eq!(validator.held_bytes() - held, font_heap);
+    let font_raised = validator.held_bytes() - held;
+    assert!(font_raised >= font_heap + size_of::<StrokeFont>(), "{font_raised}");
+    assert!(font_raised <= font_heap + arc_allocation::<StrokeFont>(), "{font_raised}");
     let mut set = BitmapSet::new(12, 20).unwrap();
     set.set_glyph(0x41, &[0xFFF; 20]).unwrap();
     let set_heap = set.held_bytes() - size_of::<BitmapSet>();
     assert!(set_heap >= 96 * 20 * size_of::<u16>(), "{set_heap}");
     let held = validator.held_bytes();
     validator.set_teletext_set(44, set).unwrap();
-    assert_eq!(validator.held_bytes() - held, set_heap);
+    let set_raised = validator.held_bytes() - held;
+    assert!(set_raised >= set_heap + size_of::<BitmapSet>(), "{set_raised}");
     println!("the stroke font holds {font_heap} bytes beyond its structure; a 12 by 20 set {set_heap}");
+}
+
+/// TODO-6895: a server's many validators share one stroke font and one copy of each provided
+/// set, each counted once by the server, not once in every validator (17 KB of a NAPLPS
+/// reader's 32,600 bytes was its own copy of the font).
+#[test]
+fn a_shared_font_and_shared_sets_are_counted_by_their_sharer_not_by_each_validator() {
+    let font = std::sync::Arc::new(StrokeFont::parse(include_str!("../../../fonts/neoteletext.strokes")).unwrap());
+    let set = std::sync::Arc::new(BitmapSet::new(12, 20).unwrap());
+    let alone = Validator::new().held_bytes();
+    let validators: Vec<Validator> = (0..3)
+        .map(|_| {
+            let mut validator = Validator::new();
+            validator.set_font(std::sync::Arc::clone(&font));
+            validator.set_teletext_set(44, std::sync::Arc::clone(&set)).unwrap();
+            validator
+        })
+        .collect();
+    // Each holds the slots of the provided sets and no copy of the font or the set.
+    for validator in &validators {
+        let held = validator.held_bytes();
+        assert!(held < alone + 1024, "{held} against {alone} with nothing given");
+    }
+    assert_eq!(std::sync::Arc::strong_count(&font), 4, "one font among them, not a copy each");
+    // A validator left holding them alone counts them.
+    drop(font);
+    drop(set);
+    let mut validators = validators;
+    let last = validators.pop().unwrap();
+    drop(validators);
+    assert!(last.held_bytes() > alone + 17_000, "{}", last.held_bytes());
 }
 
 #[test]

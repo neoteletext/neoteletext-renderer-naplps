@@ -1,6 +1,7 @@
 //! The receiver's reading of a stream without drawing it (renderer parity PAR-15, REQ-6765), for
 //! a server that checks every NAPLPS stream a program sends with the reader the receiver uses.
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use super::{CODES, Diagnostics, Event, Terminal};
@@ -67,15 +68,19 @@ impl Surface for Discard {
 /// validator holds is a fixed state and what the stream defines, each within its limit (the
 /// macros, the copies of one while they nest, the DRCS characters and textures, a PDI's
 /// operands), and [`Validator::held_bytes`] reports it after every call, from the allocations'
-/// real sizes; it is never more than [`crate::limits::MAX_HELD_BYTES`] (1,971,344 bytes on a
-/// 64-bit target) besides the font and sets given. Measured on 19 November 2026 on `x86_64`
-/// Linux (`tests/held.rs`, `tests/validator_memory.rs`): a validator is 1,040 bytes itself and a
-/// new one reports 12,360; so does the median page of the NAPLPS corpus, of the repository's
-/// samples and of the naplpsdemo channel's pictures, which define nothing; the heaviest stream
-/// the tests know (the macros filled, a macro nested 16 deep, all 96 DRCS characters and 4
-/// textures at the largest mask with every element drawn, and a polygon of the most operand
-/// bytes left open) reports 1,753,352, and 32 validators reading it grew the process's resident
-/// size by 56,139,776 bytes against 56,107,264 reported. For comparison, a terminal's canvas of
+/// real sizes; it is never more than [`crate::limits::MAX_HELD_BYTES`] (1,971,304 bytes on a
+/// 64-bit target) besides the font and sets given. The tables of macros, DRCS characters and
+/// provided sets are made only when the stream defines the first of each, or the caller gives
+/// the first set, and the font and the sets are shared with the caller ([`Arc`]), so that a
+/// server's many validators hold one font between them (TODO-6895). Measured on 19 November
+/// 2026 on `x86_64` Linux (`tests/held.rs`, `tests/validator_memory.rs`): a validator is 1,000
+/// bytes itself and a new one reports 1,128 (12,360 when the tables were made at once and each
+/// held its own copy of the font, 32,568 with the font and the joined sets a server gives); so
+/// does the median page of the NAPLPS corpus and of the repository's samples, which define
+/// nothing; the heaviest stream the tests know (the macros filled, a macro nested 16 deep, all
+/// 96 DRCS characters and 4 textures at the largest mask with every element drawn, and a
+/// polygon of the most operand bytes left open) reports 1,747,560, and 32 validators reading it
+/// grew the process's resident size by 55,914,496 bytes against 55,921,920 reported. For comparison, a terminal's canvas of
 /// the NeoTeletext raster, 480 by 500, is 240,000 bytes whatever the stream.
 pub struct Validator {
     terminal: Terminal,
@@ -122,8 +127,10 @@ impl Validator {
     /// stroke character's pixel work depends on its strokes, and where a proportionally spaced
     /// character lands on its font's widths, so a validator counts the receiver's work exactly
     /// only with the receiver's font: NeoTeletext's is `naplps-fonts`' `NEOTELETEXT`
-    /// (TODO-6844). Nothing else a validator reports depends on it.
-    pub fn set_font(&mut self, font: StrokeFont) {
+    /// (TODO-6844). Nothing else a validator reports depends on it. Given in an [`Arc`] that
+    /// the caller keeps, it is shared and not counted by [`Validator::held_bytes`]; the caller
+    /// counts it once (TODO-6895).
+    pub fn set_font(&mut self, font: impl Into<Arc<StrokeFont>>) {
         self.terminal.set_font(font);
     }
 
@@ -134,12 +141,12 @@ impl Validator {
     /// validator given the receiver's joined sets (44 to 51, the plain Arabic-script sets)
     /// counts the receiver's work after every call; without them it counts it at the stream's
     /// end, and may stop a stream that reaches the allowance a few letters from where the
-    /// receiver stops it (TODO-6844).
+    /// receiver stops it (TODO-6844). A set is shared as [`Validator::set_font`]'s font is.
     ///
     /// # Errors
     ///
     /// [`Error::Bitmap`] when `number` is not below [`crate::TELETEXT_SET_COUNT`].
-    pub fn set_teletext_set(&mut self, number: u8, set: BitmapSet) -> Result<(), Error> {
+    pub fn set_teletext_set(&mut self, number: u8, set: impl Into<Arc<BitmapSet>>) -> Result<(), Error> {
         self.terminal.set_teletext_set(number, set)
     }
 
@@ -174,9 +181,10 @@ impl Validator {
     /// The memory this validator holds between calls, in bytes, at most, as
     /// [`Terminal::held_bytes`] counts it, with its own structure: never more than
     /// [`crate::limits::MAX_HELD_BYTES`] without the stroke font and the provided sets given to
-    /// it. A new validator holds 12,360 bytes on a 64-bit target (`tests/held.rs` prints it); a
-    /// server keeping a validator for each picture or stream counts it at this figure after
-    /// every call (TODO-6854).
+    /// it, and without a font or set it shares with its caller, which the caller counts once
+    /// (TODO-6895). A new validator holds 1,128 bytes on a 64-bit target (`tests/held.rs`
+    /// prints it); a server keeping a validator for each picture or stream counts it at this
+    /// figure after every call (TODO-6854).
     #[must_use]
     pub fn held_bytes(&self) -> usize {
         // The surface keeps no pixels; only its structure is the validator's own.
