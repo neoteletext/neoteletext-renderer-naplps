@@ -1174,7 +1174,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 <tr>
 <td>Pixels repainted for animation in one tick</td>
-<td>153,600, half the picture, held by the caller with the clock</td>
+<td>120,000, half the raster, held by the caller with the clock</td>
 </tr>
 <tr>
 <td>WAITs played in one generation of a stream</td>
@@ -1192,8 +1192,10 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <pre><code>naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE]
               [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble]
               [--objects FILE]
-              [--frames TICKS [--frame-step K] [--script FILE]] PAGE OUT.ppm
+              [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE]
+              [--double] PAGE OUT.ppm
 </code></pre>
+<p>By default it draws the page as NeoTeletext shows it: the 480 by 500 teletext raster, the display area on its lines 20 to 479 (teletext rows 1 to 23, a canvas of 480 by 460), and rows 0 and 24 in the page's background colour (DEC-6857).</p>
 <table>
 <thead>
 <tr>
@@ -1204,7 +1206,11 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <tbody>
 <tr>
 <td><code>--width</code>, <code>--height</code></td>
-<td>The picture's size in pixels. Default 640 by 480.</td>
+<td>Draw a bare canvas of this size, showing the same display area, instead of the raster; the other side, if not given, is the receiver's (480 by 460). PP3's screen is 640 by 480.</td>
+</tr>
+<tr>
+<td><code>--double</code></td>
+<td>The raster at twice its size, 960 by 1,000, the canvas 960 by 920 at line 40. Not with <code>--width</code>, <code>--height</code> or <code>--border</code>.</td>
 </tr>
 <tr>
 <td><code>--palette-bits</code></td>
@@ -1224,7 +1230,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </tr>
 <tr>
 <td><code>--border</code></td>
-<td>Surround the picture with N pixels of the page's border colour.</td>
+<td>Draw a bare canvas surrounded by N pixels of the page's border colour.</td>
 </tr>
 <tr>
 <td><code>--objects</code></td>
@@ -1256,7 +1262,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <h3 id="naplps-render-check"><code>naplps-render check</code></h3>
 <pre><code>naplps-render check [--font FILE] [--objects FILE] [--title TEXT] PAGE
 </code></pre>
-<p>The authoring check: it draws the page on a 640 by 480 picture with the receiver's renderer and prints, a line each, the page's size; the rectangle of pixels it draws on and its share of the picture; its WAITs; its title; its objects, each with its kind, layer, order, rectangle, frames, detectability and label, and whether it lies wholly off the picture; the bytes passed over, with the offset of the first; and each kind of refusal with its count, then the offset of the first refusal. The last line is <code>result: clean</code> or <code>result: refused</code>.</p>
+<p>The authoring check: it draws the page on the receiver's 480 by 460 canvas with the receiver's renderer and prints, a line each, the page's size; the rectangle it draws on, in raster dots, and its share of the display area; its WAITs; its title; its objects, each with its kind, layer, order, rectangle, frames, detectability and label, and whether it lies wholly off the picture; the bytes passed over, with the offset of the first; and each kind of refusal with its count, then the offset of the first refusal. The last line is <code>result: clean</code> or <code>result: refused</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1367,11 +1373,11 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 </tr>
 <tr>
 <td>x, y, width, height</td>
-<td>its rectangle in pixels of the 640 by 480 picture, from the top left, y downward; width 1 to 640, height 1 to 480</td>
+<td>its rectangle in dots of the 480 by 500 teletext raster, from the top left, y downward, the rectangle being dots x to x + width − 1 and lines y to y + height − 1; width 1 to 480, height 1 to 500 (DEC-6853). The display area is lines 20 to 479; nothing is drawn on rows 0 and 24</td>
 </tr>
 <tr>
 <td>origin x, origin y</td>
-<td>a macro object: where the rectangle's top left corner lies in the macro's own drawing, in the same pixels</td>
+<td>a macro object: where the rectangle's top left corner lies in the macro's own drawing, in the same dots</td>
 </tr>
 <tr>
 <td>frames</td>
@@ -1391,7 +1397,7 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 </tr>
 </tbody>
 </table>
-<p><strong>A macro object</strong> is drawn by running its frame's macro as the page last defined it, in a fresh state: the power-up state, with the primary set in GL, so a macro that draws begins with SO. Everything it draws is moved by (x - origin x, y - origin y) and cut to the object's rectangle. So a macro that draws a figure in the bottom left 64 by 64 pixels of the screen, with origin (0, 416), appears with that corner of the screen at the object's (x, y).</p>
+<p><strong>A macro object</strong> is drawn by running its frame's macro as the page last defined it, in a fresh state: the power-up state, with the primary set in GL, so a macro that draws begins with SO. Everything it draws is moved by (x - origin x, y - origin y) and cut to the object's rectangle. So a macro that draws a figure in the bottom left 48 by 60 dots of the display area, with origin (0, 420), appears with that corner of the display at the object's (x, y).</p>
 <p>Inside an object's macro these do nothing: SET COLOR's change of a colour-map entry (in colour mode 0 the nearest existing entry is used), BLINK, BLINK START and STOP, WAIT, RESET, and DEF MACRO, DEFP MACRO, DEFT MACRO, DEF DRCS and DEF TEXTURE (a definition's bytes are read and dropped). Calling other macros, text, DRCS characters and fill patterns work as on the page. A scroll brings in blanks, because an object cannot read the picture. A macro that is not defined draws nothing. Drawing stops after 16,384 bytes processed.</p>
 <p><strong>A region</strong> shown changes nothing; hidden, its rectangle is filled with its cover. It makes part of an ordinary page something a pointer can pick and a channel can cover. A region with a look draws that look's macro while the look is in force, moved to the region's corner.</p>
 <h3 id="layers-and-order">Layers and order</h3>
@@ -1402,8 +1408,8 @@ let colours = terminal.palette().at(0);               // the colour map, blinks 
 <h3 id="the-library-s-calls">The library's calls</h3>
 <pre><code class="language-rust">use naplps::{Animation, Canvas, Object, ObjectKind, Player, Terminal};
 
-let mut page = Canvas::new(640, 480)?;       // the stream draws here: layer 0
-let mut shown = Canvas::new(640, 480)?;      // the picture presented
+let mut page = Canvas::new(480, 460)?;       // the stream draws here: layer 0, raster lines 20 to 479
+let mut shown = Canvas::new(480, 460)?;      // the picture presented
 let mut terminal = Terminal::new(4);
 let mut player = Player::new();
 player.push(&amp;mut terminal, &amp;mut page, &amp;bytes);      // draws up to the first WAIT
@@ -1453,11 +1459,11 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 </tr>
 <tr>
 <td><code>bounds(number)</code></td>
-<td>The object's rectangle as its state stands, cut to the picture; nothing while it is hidden, absent or wholly outside.</td>
+<td>The object's rectangle in raster dots as its state stands, cut to the raster of 480 by 500; nothing while it is hidden, absent or wholly outside.</td>
 </tr>
 <tr>
 <td><code>objects_at(x, y)</code></td>
-<td>The shown, detectable objects whose rectangle holds the pixel, in drawing order.</td>
+<td>The shown, detectable objects whose rectangle holds the raster dot, in drawing order. <code>objects_on_canvas(x, y, width, height)</code> is the same at the dot a canvas pixel's centre lies in (<code>raster_dot</code>).</td>
 </tr>
 <tr>
 <td><code>pending(&amp;shown)</code></td>

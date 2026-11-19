@@ -85,7 +85,7 @@ for page in sorted((all_dir / "pages").glob("*.nap")):
             "s320": uri(all_dir / "320x200" / f"{stem}.png"),
             "s512": uri(all_dir / "512x400" / f"{stem}.png"),
             "s480": uri(all_dir / "480x500" / f"{stem}.png"),
-            "s462": uri(all_dir / "480x462" / f"{stem}.png"),
+            "s460": uri(all_dir / "480x460" / f"{stem}.png"),
             "pp3": uri(all_dir / "pp3" / f"{stem}.png"),
             "ours": uri(all_dir / "ours-png" / f"{stem}.png"),
         }

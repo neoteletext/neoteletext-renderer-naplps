@@ -198,7 +198,7 @@ The 110 designed pages of `samples/` (REQ-5821) went through the same comparison
 - One page agrees at displacement 1 and six at displacement 2. Taking the larger of a page's two unexplained counts as a share of its 307,200 pixels, the median page has 1.2 % unexplained; 43 pages have under 1 %, 69 under 2 % and 90 under 5 %.
 - Most of what remains is the weight of text strokes at sizes other than the default (TODO-5803). The largest differences, `029-libra` (94 %), `059-alder-arms` (70 %) and `041-green-fingers` (43 %), are not yet explained (TODO-5825).
 - Three pages that blink never settled and were captured at the ceiling (TODO-5762).
-- Stroke text is damaged at 256 x 200 and 320 x 200 and clean from 480 x 462 upward (TODO-5827).
+- Stroke text is damaged at 256 x 200 and 320 x 200 and clean from 480 x 462 upward (TODO-5827). 480 x 462 was then the display area on the teletext raster; it is 480 x 460 since 19 November 2026 (DEC-6857), which this comparison has not been run at.
 
 ## 8. Running it
 

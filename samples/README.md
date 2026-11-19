@@ -18,6 +18,6 @@ In each directory:
 - `pages/*.py` generate the pages with the set's own `encoder/` (Python 3, standard library only). Each set was made independently and extended its own copy of the encoder, so the copies differ (DEC-5828). The helper scripts beside them (`render.py`, `validate.py`) name the renderer and font by the absolute paths of the machine they were written on.
 - `DESIGN.md` has a paragraph on each page and what its designer noticed about the renderer.
 
-`samples/pipeline.sh` renders every page at 256 x 200, 320 x 200, 512 x 400, 640 x 480, 480 x 500, 480 x 462 and 600 x 576, captures each in PP3 and compares the renderer with PP3; see its header. The results of 13 November 2026 are in `docs/verification.md`.
+`samples/pipeline.sh` renders every page at 256 x 200, 320 x 200, 512 x 400, 640 x 480, 480 x 500, 480 x 460 (the display area on the teletext raster, DEC-6857) and 600 x 576, captures each in PP3 and compares the renderer with PP3; see its header. The results of 13 November 2026 are in `docs/verification.md`.
 
 `samples/gallery/build_gallery.py` then builds one HTML page of every rendering and each page's PP3 comparison (REQ-5821).

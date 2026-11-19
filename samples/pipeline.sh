@@ -22,7 +22,7 @@ collect)
     ;;
 render)
     cargo build --quiet --release -p naplps-render -p naplps-oracle
-    for size in 256x200 320x200 512x400 640x480 480x500 480x462 600x576; do
+    for size in 256x200 320x200 512x400 640x480 480x500 480x460 600x576; do
         mkdir -p "$all/$size"
         for page in "$all"/pages/*.nap; do
             name=$(basename "$page" .nap)

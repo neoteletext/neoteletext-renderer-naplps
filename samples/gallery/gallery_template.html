@@ -83,7 +83,7 @@ h3 { font: 500 .72rem var(--mono); letter-spacing: .08em; text-transform: upperc
   </div>
   <div class="bar">
     <span><span class="label">Resolution</span><span class="seg" id="size">
-      <button data-v="s256" aria-pressed="false">256×200</button><button data-v="s320" aria-pressed="true">320×200</button><button data-v="s512" aria-pressed="false">512×400</button><button data-v="s480" aria-pressed="false">480×500</button><button data-v="s462" aria-pressed="false">480×462</button></span></span>
+      <button data-v="s256" aria-pressed="false">256×200</button><button data-v="s320" aria-pressed="true">320×200</button><button data-v="s512" aria-pressed="false">512×400</button><button data-v="s480" aria-pressed="false">480×500</button><button data-v="s460" aria-pressed="false">480×460</button></span></span>
     <span><span class="label">Shape</span><span class="seg" id="shape">
       <button data-v="fit" aria-pressed="true">As displayed</button><button data-v="raw" aria-pressed="false">Square pixels</button></span></span>
     <span><span class="label">Show</span><span class="seg" id="filter">
@@ -116,7 +116,7 @@ function draw() {
   shown = PAGES.filter(p => (state.filter === "all" || status(p) === state.filter) &&
     (!q || (p.title + " " + p.purpose + " " + p.style).toLowerCase().includes(q)));
   grid.innerHTML = shown.map((p, i) => `<button class="card" data-i="${i}">
-    <div class="screen ${state.shape !== "fit" ? "" : state.size === "s480" ? "fitTT" : state.size === "s462" ? "fitLB" : "fit43"}"><img loading="lazy" alt="${esc(p.title)}" src="${p[state.size]}"></div>
+    <div class="screen ${state.shape !== "fit" ? "" : state.size === "s480" ? "fitTT" : state.size === "s460" ? "fitLB" : "fit43"}"><img loading="lazy" alt="${esc(p.title)}" src="${p[state.size]}"></div>
     <div class="meta"><span class="num">${p.n}</span><span class="title">${esc(p.title)}</span><span class="dot s-${status(p)}" title="${WORD[status(p)]}"></span></div>
     <div class="purpose">${esc(p.purpose)}</div></button>`).join("");
   document.getElementById("count").textContent = shown.length + " of " + PAGES.length;
@@ -132,7 +132,7 @@ function bench(i) {
       <figure class="native"><img src="${p.s512}" width="512" height="400" alt=""><figcaption>512×400, shown at 1×</figcaption></figure></div>
     <h3>At NeoTeletext's 480×500</h3>
     <div class="row"><figure class="native"><img src="${p.s480}" width="591" height="500" alt="" style="image-rendering:auto"><figcaption>480×500, filling the raster: about 8% too tall</figcaption></figure>
-      <figure class="native"><div class="tt"><img src="${p.s462}" width="591" height="462" alt="" style="image-rendering:auto"></div><figcaption>480×462 inside the 480×500 raster, 19 border lines above and below: correct shape</figcaption></figure>
+      <figure class="native"><div class="tt"><img src="${p.s460}" width="589" height="460" alt="" style="image-rendering:auto"></div><figcaption>480×460 on lines 20 to 479 of the 480×500 raster, rows 0 and 24 above and below: correct shape</figcaption></figure>
       <figure class="native"><img src="${p.s480}" width="480" height="500" alt=""><figcaption>480×500, raw pixels</figcaption></figure></div>
     <h3>Verification against PP3 at 640×480</h3>
     <div class="verdict"><span class="pill p-${s}">${WORD[s]}</span>${p.captured ? `<span>${p.share}% of pixels unexplained within one pixel and one colour step.${p.exact ? " Also matches with exact colours." : ""}${!p.close && p.close2 ? " Matches within two pixels." : ""}</span>` : "<span>PP3 produced no frame for this page.</span>"}</div>

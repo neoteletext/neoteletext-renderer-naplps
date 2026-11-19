@@ -238,7 +238,8 @@ fn object(line: &str) -> Result<Object, String> {
 }
 
 /// Reads an objects file: one object a line, with the fields of the `NAPLPS_OBJECTS` record
-/// (ANIM-11) as text; blank lines and lines beginning `#` are skipped.
+/// (ANIM-11) as text; blank lines and lines beginning `#` are skipped. Places and sizes are
+/// raster dots, 480 by 500 (DEC-6853, `docs/naplps-raster.md` RAS-4), on every canvas drawn.
 ///
 /// ```text
 /// macro  <number> <layer> <order> <x> <y> <width> <height> <origin x> <origin y> <frames> [options]
@@ -453,8 +454,8 @@ mod tests {
 
     #[test]
     fn an_objects_file_reads_both_kinds() {
-        let text = "macro 1 2 0 300 200 64 64 0 416 20,21 detectable hover=22\n\
-                    region 2 1 -1 0 440 640 40 9 hidden\n";
+        let text = "macro 1 2 0 300 200 48 64 0 416 20,21 detectable hover=22\n\
+                    region 2 1 -1 0 460 480 40 9 hidden\n";
         let objects = objects(text).unwrap();
         assert_eq!(objects.len(), 2);
         let first = objects.first().unwrap();

@@ -78,7 +78,7 @@ img { max-width: 100%; height: auto; image-rendering: pixelated; border: 1px sol
 target/release/naplps-render --font ~/devel/teletext-reference/NAPLPS/fonts-extracted/data/microstar.strokes tmp/pages/01-hello.nap tmp/hello.ppm
 ffmpeg -loglevel error -y -i tmp/hello.ppm tmp/hello.png
 </code></pre>
-<p><code>naplps-render</code> writes a PPM picture, 640 by 480 unless you pass <code>--width</code> and <code>--height</code>. <code>docs/examples/build.sh</code> does all of this for every example and writes <code>docs/images/</code>.</p>
+<p><code>naplps-render</code> writes a PPM picture of the page as NeoTeletext shows it: the 480 by 500 teletext raster, the page's display area on its lines 20 to 479. With <code>--width</code> and <code>--height</code> it draws a bare picture of that size instead; the examples here are drawn at 640 by 480, PP3's screen. <code>docs/examples/build.sh</code> does all of this for every example and writes <code>docs/images/</code>.</p>
 <p>The helper is not a framework. Each of its functions returns <code>bytes</code>, and a page is those bytes added together, so you can always see and count what you are sending:</p>
 <pre><code class="language-python">from naplps_page import *
 
@@ -459,7 +459,7 @@ page += select(ink) + pdi(TEXT, fixed(0b110000, 0), xy(1 / 14, 1 / 9)) + text_at
 <p><strong>Run the check.</strong> <code>naplps-render check page.nap</code> draws the page with the receiver's own renderer and says how much of the picture it draws on, which bytes the renderer passed over (they have no effect by the standard's rules: a control of another layer, a byte of a set the page designated wrongly, PDI operands with no command) and which it refused at one of its limits (a macro or a PDI too long, too many points, macros nested too deep, too much work in one go). It exits 1 if anything was refused, so a page can be checked before it is published. With <code>--objects FILE</code> and <code>--title TEXT</code> it checks the page's objects and title as the receiver would take them, and lists the objects.</p>
 <pre><code>$ naplps-render check --title "Harbour webcam" page.nap
 page: 25 bytes
-drawn: x 0 to 160, y 402 to 479 of 640 by 480 (4 % of the picture)
+drawn: x 0 to 120, y 405 to 479 of the display area, 480 by 460 dots from line 20 (4 % of it)
 title: "Harbour webcam"
 result: clean
 </code></pre>
