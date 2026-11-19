@@ -69,31 +69,35 @@ pub const RECEIVER_CANVAS_PIXELS: u64 = RECEIVER_CANVAS_WIDTH as u64 * RECEIVER_
 /// by a fill's row, one step of a line: see [`crate::Terminal::work_spent`]. Earning lets a stream
 /// that is appended to for a long time, a page typed on or clicked on, go on drawing; it is
 /// kept small so that the allowance, not a stream's length, bounds what one drawing costs.
-/// Measured on 19 November 2026 on the receiver's canvas, whole pages of the NAPLPS corpus
-/// average at most 553 units a byte, so their drawing is paid for mostly from [`WORK_CAP`].
+/// Measured on 19 November 2026 on the receiver's canvas of the time, 480 by 462, whole pages of
+/// the NAPLPS corpus average at most 553 units a byte, so their drawing is paid for mostly from
+/// [`WORK_CAP`].
 pub const WORK_PER_BYTE: u64 = 16;
 /// Work units a stream may save up, and its allowance at the start (TODO-6844, DEC-6851): 128
-/// whole-screen fills of the receiver's canvas, 28,385,280 units. Measured on 19 November 2026
-/// (the ignored test `the_corpus_draws_within_the_work_allowance` of `tests/work.rs`) over 680 pages: the
-/// NAPLPS corpus of `~/devel/teletext-reference/NAPLPS` (484 files), the repository's 120
-/// sample pages and the 76 pictures of the naplpsdemo channel. The heaviest, Telidon's
-/// `girl.nap` (20,438 bytes), needs an allowance of 8,672,322 units at this earning, 39.1
-/// screens, so the bound is 3.27 times the heaviest page of the corpus; the heaviest sample page
-/// needs 6.3 screens and the heaviest picture of the channel 4.2 (a margin of 30). A stream of
-/// 1 MiB may spend this and 16,777,216 units more; the costliest the tests know, whole-screen
-/// fills and a macro of them called again and again, stop at this allowance after 354
-/// milliseconds in a release build on `x86_64` Linux (`tests/work.rs`), where they drew for
-/// about five minutes and twenty minutes before. A canvas larger than the receiver's spends more for
-/// the same figures and reaches the allowance sooner: the margin covers the 960 by 1,000 canvas
-/// `naplps-render --neoteletext --double` draws on (4.3 times the pixels) for every page of the
-/// corpus but `girl.nap`, which stops there (measured on 19 November 2026).
+/// whole-screen fills of the receiver's canvas of 480 by 460, 28,262,400 units. Measured again
+/// on that canvas on 19 November 2026 (DEC-6857; the ignored test
+/// `the_corpus_draws_within_the_work_allowance` of `tests/work.rs`, release build) over the same
+/// 680 pages: the NAPLPS corpus of `~/devel/teletext-reference/NAPLPS` (484 files), the
+/// repository's 120 sample pages and the 76 pictures of the naplpsdemo channel at its
+/// `livedevelopment` b0086ed. The heaviest, Telidon's `girl.nap` (20,438 bytes), needs an
+/// allowance of 8,633,862 units at this earning, 39.1 screens, so the bound is 3.27 times the
+/// heaviest page of the corpus; the heaviest sample page needs 6.3 screens and the heaviest
+/// picture of the channel 4.2 (margins of 20 and 30). A stream of 1 MiB may spend this and
+/// 16,777,216 units more; the costliest the tests know, whole-screen fills and a macro of them
+/// called again and again, stop at this allowance after 345 milliseconds in a release build on
+/// `x86_64` Linux (`tests/work.rs`), where they drew for about five minutes and twenty minutes
+/// before. A canvas larger than the receiver's spends more for the same figures and reaches the
+/// allowance sooner: the margin covers the 960 by 920 canvas `naplps-render --double` draws on
+/// (4 times the pixels) for every page of the 680 but `girl.nap`, which stops there (measured on
+/// 19 November 2026).
 pub const WORK_CAP: u64 = 128 * RECEIVER_CANVAS_PIXELS;
 /// Work units one [`crate::Terminal::compose`] may spend drawing its objects' macros and
 /// covers, all together (TODO-6844, DEC-6851): 16 whole-screen fills of the receiver's
-/// canvas, 3,548,160 units; 64 objects that each fill the screen 512 times compose in about 50
-/// milliseconds in a release build (`tests/work.rs`). A whole repaint of the picture is one screen; this leaves
-/// each of [`MAX_OBJECTS`] objects a quarter of a screen besides, while 64 objects whose macros
-/// each fill the screen many times over can no longer make one composing take seconds.
+/// canvas, 3,532,800 units; 64 objects that each fill the screen 512 times compose in about 51
+/// milliseconds in a release build on 480 by 460 (`tests/work.rs`, 19 November 2026). A whole
+/// repaint of the picture is one screen; this leaves each of [`MAX_OBJECTS`] objects a quarter
+/// of a screen besides, while 64 objects whose macros each fill the screen many times over can
+/// no longer make one composing take seconds.
 pub const MAX_COMPOSE_WORK: u64 = 16 * RECEIVER_CANVAS_PIXELS;
 /// Blink processes at once (Dillon, BLINK: at least 16).
 pub const MAX_BLINKS: usize = 32;
