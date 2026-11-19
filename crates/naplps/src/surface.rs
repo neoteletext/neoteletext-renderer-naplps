@@ -170,8 +170,8 @@ fn ceiling(value: i64, divisor: i64) -> i64 {
 }
 
 /// The pixel of the design picture (ANIM-11) the centre of pixel (`x`, `y`) of a canvas of
-/// `width` by `height` lies in, rounded as [`pixel_of`] rounds a point: where a point given on
-/// the canvas lies in the design picture. On a 640 by 480 canvas it is (`x`, `y`). It may lie
+/// `width` by `height` lies in, rounded half up as the drawing routines round a point to a
+/// canvas pixel: where a point given on the canvas lies in the design picture. On a 640 by 480 canvas it is (`x`, `y`). It may lie
 /// past the design picture's right or bottom edge, where no object is. [`Rect::on_canvas`] is
 /// exactly the canvas pixels whose design pixel this gives lies in the rectangle, so picking
 /// at this design pixel ([`crate::Terminal::objects_at`]) and at the canvas pixel
