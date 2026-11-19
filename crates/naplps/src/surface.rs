@@ -25,6 +25,8 @@ pub const DISPLAY_HEIGHT_DENOMINATOR: i64 = 32;
 pub struct Canvas {
     width: u32,
     height: u32,
+    /// Canvas pixels across and down one raster dot: [`dot_scale`] of the canvas's size.
+    dot: u32,
     pixels: Vec<u8>,
     /// The rectangle holding every pixel whose value changed since [`Canvas::take_written`]
     /// (animation.md ANIM-4): what `Terminal::take_damage` reports.
@@ -131,8 +133,9 @@ impl Rect {
     /// This rectangle of raster dots (DEC-6853: the 480 by 500 teletext raster, the origin at
     /// its top left, y down) on a canvas of `width` by `height` showing the NAPLPS display area,
     /// raster lines [`DISPLAY_FIRST_LINE`] onwards for [`DISPLAY_LINES`] lines (DEC-6857,
-    /// `docs/naplps-raster.md` RAS-3): every canvas pixel whose centre lies in one of its dots,
-    /// as [`raster_dot`] places a centre, cut to the canvas. The unit screen spans the display
+    /// `docs/naplps-raster.md` RAS-3): every canvas pixel whose [`raster_dot`] is one of its
+    /// dots, cut to the canvas; on a whole multiple k of the receiver's canvas ([`dot_scale`]),
+    /// the k by k pixels of each dot. The unit screen spans the display
     /// area and the canvas alike, so the canvas pixels of adjacent rectangles neither overlap
     /// nor leave a gap: an object's clip never reaches a canvas pixel that belongs to the next
     /// row's or column's cells (TODO-6826), and every canvas pixel whose centre lies inside the
@@ -145,6 +148,21 @@ impl Rect {
     /// canvas pixel's centre lies in it, as for a rectangle wholly on teletext rows 0 or 24.
     #[must_use]
     pub fn on_canvas(&self, width: u32, height: u32) -> Option<Self> {
+        let dot = i64::from(dot_scale(width, height));
+        if dot > 1 {
+            // A whole multiple of the receiver's canvas: each dot is its k by k pixels.
+            let first_line = i64::from(DISPLAY_FIRST_LINE);
+            let (left, top) = (i64::from(self.x), i64::from(self.y).saturating_sub(first_line));
+            let (right, bottom) = (i64::from(self.right()), i64::from(self.bottom()).saturating_sub(first_line));
+            return Self::cut(
+                left.saturating_mul(dot),
+                top.saturating_mul(dot),
+                right.saturating_mul(dot),
+                bottom.saturating_mul(dot),
+                width,
+                height,
+            );
+        }
         let (raster_width, display_lines) = (i64::from(RASTER_WIDTH), i64::from(DISPLAY_LINES));
         let first_line = i64::from(DISPLAY_FIRST_LINE);
         let (canvas_width, canvas_height) = (i64::from(width), i64::from(height));
@@ -174,16 +192,23 @@ fn ceiling(value: i64, divisor: i64) -> i64 {
     scale(value.saturating_neg(), 1, divisor).saturating_neg()
 }
 
-/// The raster dot (DEC-6853) the centre of pixel (`x`, `y`) of a canvas of `width` by `height`
-/// lies in, the canvas showing the NAPLPS display area (DEC-6857), rounded half up as the
-/// drawing routines round a point to a canvas pixel: where a point given on the canvas lies on
-/// the teletext raster (`docs/naplps-raster.md` RAS-3). On the receiver's canvas of 480 by 460
-/// it is (`x`, `y` + 20); on twice that, (floor((`x` + 1) / 2), 20 + floor(`y` / 2)).
+/// The raster dot (DEC-6853) pixel (`x`, `y`) of a canvas of `width` by `height` belongs to,
+/// the canvas showing the NAPLPS display area (DEC-6857; `docs/naplps-raster.md` RAS-3). On a
+/// whole multiple k of the receiver's 480 by 460 ([`dot_scale`]) it is (floor(`x` / k), 20 +
+/// floor(`y` / k)), so every pixel belongs to exactly one dot: (`x`, `y` + 20) on the
+/// receiver's canvas. On any other canvas it is the dot the pixel's centre lies in, rounded
+/// half up as the drawing routines round a point to a canvas pixel.
 /// [`Rect::on_canvas`] is exactly the canvas pixels whose dot this gives lies in the rectangle,
 /// so picking at this dot ([`crate::Terminal::objects_at`]) and at the canvas pixel
 /// ([`crate::Terminal::objects_on_canvas`]) agree.
 #[must_use]
 pub fn raster_dot(x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
+    let dot = dot_scale(width, height);
+    if dot > 1 {
+        // A whole multiple of the receiver's canvas: dot (X, Y) is the k by k pixels from
+        // (k X, k (Y - F)).
+        return (x.checked_div(dot).unwrap_or(x), y.checked_div(dot).unwrap_or(y).saturating_add(DISPLAY_FIRST_LINE));
+    }
     let (raster_width, display_lines) = (i64::from(RASTER_WIDTH), i64::from(DISPLAY_LINES));
     let (width, height) = (i64::from(width.max(1)), i64::from(height.max(1)));
     // Across: x 480 / W rounded half up, floor((2 x 480 + W) / 2W).
@@ -212,10 +237,32 @@ pub fn raster_dot(x: u32, y: u32, width: u32, height: u32) -> (u32, u32) {
 /// the drawing lies inside the object's rectangle ([`Rect::on_canvas`]) on every canvas.
 #[must_use]
 pub fn raster_shift(across: i64, down: i64, width: u32, height: u32) -> (i64, i64) {
+    // On a whole multiple of the receiver's canvas the drawing is made on the receiver's own
+    // geometry and each of its pixels written as a dot of k by k (`dot_scale`).
+    let dot = dot_scale(width, height);
+    let (width, height) = (width.checked_div(dot).unwrap_or(width), height.checked_div(dot).unwrap_or(height));
     (
         scale(across, i64::from(width).saturating_mul(SUBPIXELS), i64::from(RASTER_WIDTH)),
         scale(down, i64::from(height).saturating_mul(SUBPIXELS), i64::from(DISPLAY_LINES)),
     )
+}
+
+/// Canvas pixels across and down one raster dot on a canvas of `width` by `height`: k when the
+/// canvas is k times the receiver's canvas of 480 by 460 each way (k = 1, 2, 3 and so on), and
+/// 1 for a canvas of any other size, such as PP3's 640 by 480 (`docs/naplps-raster.md` RAS-3).
+/// On a whole multiple the renderer draws the receiver's picture, raster dot by raster dot, and
+/// writes each dot as k by k pixels, as a teletext page is shown at a whole multiple: so every
+/// canvas pixel belongs to exactly one dot, and whatever covers a dot covers all its pixels.
+/// ANSI X3.110-1983 section 5.3.2.2.6 leaves the display's resolution to the implementation and
+/// maps the logical pel to at least one physical picture element; NeoTeletext's picture
+/// element is the raster dot (DEC-6853), which a magnified display shows as k by k pixels.
+#[must_use]
+pub fn dot_scale(width: u32, height: u32) -> u32 {
+    let across = width.checked_div(RASTER_WIDTH).unwrap_or(0);
+    let multiple = across >= 1
+        && across.checked_mul(RASTER_WIDTH) == Some(width)
+        && across.checked_mul(DISPLAY_LINES) == Some(height);
+    if multiple { across } else { 1 }
 }
 
 /// The union of two rectangles either of which may be absent.
@@ -238,7 +285,7 @@ impl Canvas {
         }
         let count =
             usize::try_from(u64::from(width).saturating_mul(u64::from(height))).map_err(|_| Error::CanvasSize)?;
-        Ok(Self { width, height, pixels: vec![0; count], written: None })
+        Ok(Self { width, height, dot: dot_scale(width, height), pixels: vec![0; count], written: None })
     }
 
     /// Width in pixels.
@@ -438,8 +485,10 @@ impl Surface for Window<'_> {
     }
     fn put(&mut self, x: i32, y: i32, entry: u8) {
         let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else { return };
-        if self.clip.contains(x, y) {
-            self.canvas.set(x, y, entry);
+        for (column, row) in self.canvas.dot_pixels(x, y) {
+            if self.clip.contains(column, row) {
+                self.canvas.set(column, row, entry);
+            }
         }
     }
     fn get(&self, _x: i32, _y: i32) -> Option<u8> {
@@ -456,25 +505,46 @@ impl Surface for Window<'_> {
     }
 }
 
+impl Canvas {
+    /// The canvas pixels of the drawing's pixel (`x`, `y`): itself, or on a whole multiple of
+    /// the receiver's canvas the k by k pixels of that raster dot ([`dot_scale`]).
+    fn dot_pixels(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> + use<> {
+        let dot = self.dot;
+        let (left, top) = (x.saturating_mul(dot), y.saturating_mul(dot));
+        (0..dot)
+            .flat_map(move |down| (0..dot).map(move |across| (left.saturating_add(across), top.saturating_add(down))))
+    }
+}
+
+/// The renderer draws on a canvas in the drawing's pixels: the canvas's own, or on a whole
+/// multiple of the receiver's canvas the raster's dots, each written as k by k pixels
+/// ([`dot_scale`], `docs/naplps-raster.md` RAS-3).
 impl Surface for Canvas {
     fn width(&self) -> i32 {
-        i32::try_from(self.width).unwrap_or(i32::MAX)
+        i32::try_from(self.width.checked_div(self.dot).unwrap_or(self.width)).unwrap_or(i32::MAX)
     }
     fn height(&self) -> i32 {
-        i32::try_from(self.height).unwrap_or(i32::MAX)
+        i32::try_from(self.height.checked_div(self.dot).unwrap_or(self.height)).unwrap_or(i32::MAX)
     }
     fn scale_x(&self) -> (i64, i64) {
-        (i64::from(self.width), 1)
+        (i64::from(Surface::width(self)), 1)
     }
     fn scale_y(&self) -> (i64, i64) {
-        (i64::from(self.height).saturating_mul(DISPLAY_HEIGHT_DENOMINATOR), DISPLAY_HEIGHT_NUMERATOR)
+        (i64::from(Surface::height(self)).saturating_mul(DISPLAY_HEIGHT_DENOMINATOR), DISPLAY_HEIGHT_NUMERATOR)
     }
     fn put(&mut self, x: i32, y: i32, entry: u8) {
         let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else { return };
-        self.set(x, y, entry);
+        if self.dot == 1 {
+            self.set(x, y, entry);
+            return;
+        }
+        for (column, row) in self.dot_pixels(x, y) {
+            self.set(column, row, entry);
+        }
     }
     fn get(&self, x: i32, y: i32) -> Option<u8> {
-        self.pixel(u32::try_from(x).ok()?, u32::try_from(y).ok()?)
+        let (x, y) = (u32::try_from(x).ok()?, u32::try_from(y).ok()?);
+        self.pixel(x.saturating_mul(self.dot), y.saturating_mul(self.dot))
     }
 }
 

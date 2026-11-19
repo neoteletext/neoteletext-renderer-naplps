@@ -86,10 +86,10 @@ pub const WORK_PER_BYTE: u64 = 16;
 /// 16,777,216 units more; the costliest the tests know, whole-screen fills and a macro of them
 /// called again and again, stop at this allowance after 345 milliseconds in a release build on
 /// `x86_64` Linux (`tests/work.rs`), where they drew for about five minutes and twenty minutes
-/// before. A canvas larger than the receiver's spends more for the same figures and reaches the
-/// allowance sooner: the margin covers the 960 by 920 canvas `naplps-render --double` draws on
-/// (4 times the pixels) for every page of the 680 but `girl.nap`, which stops there (measured on
-/// 19 November 2026).
+/// before. A whole multiple of the receiver's canvas, such as the 960 by 920 `naplps-render
+/// --double` draws on, is drawn on the receiver's dots and spends exactly what the receiver's
+/// canvas spends ([`crate::dot_scale`]); a canvas of another size larger than the receiver's
+/// spends more for the same figures and reaches the allowance sooner.
 pub const WORK_CAP: u64 = 128 * RECEIVER_CANVAS_PIXELS;
 /// Work units one [`crate::Terminal::compose`] may spend drawing its objects' macros and
 /// covers, all together (TODO-6844, DEC-6851): 16 whole-screen fills of the receiver's

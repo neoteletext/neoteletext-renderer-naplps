@@ -111,6 +111,10 @@ impl Validator {
         if !(1..=MAX_CANVAS_SIDE).contains(&width) || !(1..=MAX_CANVAS_SIDE).contains(&height) {
             return Err(Error::CanvasSize);
         }
+        // On a whole multiple of the receiver's canvas a terminal draws on the raster's dots
+        // and writes each as k by k pixels (`dot_scale`), so it pays for the dots.
+        let dot = crate::dot_scale(width, height);
+        let (width, height) = (width.checked_div(dot).unwrap_or(width), height.checked_div(dot).unwrap_or(height));
         Ok(Self { terminal: Terminal::new(PALETTE_BITS), surface: Discard { width, height } })
     }
 

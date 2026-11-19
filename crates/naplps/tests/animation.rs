@@ -13,7 +13,7 @@ use naplps::limits::{
     DISPLAY_FIRST_LINE, DISPLAY_LINES, MAX_OBJECT_FRAMES, MAX_OBJECTS, RASTER_HEIGHT, RASTER_WIDTH,
     RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH,
 };
-use naplps::{Animation, Canvas, Error, Look, Object, ObjectKind, Rect, Terminal, raster_dot};
+use naplps::{Animation, Canvas, Error, Look, Object, ObjectKind, Rect, Terminal, dot_scale, raster_dot};
 
 const SO: u8 = 0x0E;
 const ESC: u8 = 0x1B;
@@ -734,13 +734,12 @@ fn on_receiver(rect: Rect) -> Option<Rect> {
 fn an_object_is_clipped_to_its_rectangle_on_every_canvas() {
     // ANIM-11, RAS-3: a macro drawing far more than its object is cut to the object's rectangle
     // of dots as it lies on the canvas. The rectangle is the cells of row 7, columns 12 to 15:
-    // on the receiver's canvas exactly those dots 20 lines up; on twice it, twice them, a pixel
-    // to the left (a canvas pixel's centre is a dot's when even and half a dot on when odd,
-    // rounded half up, RAS-3); on 640 by 480, scaled.
+    // on the receiver's canvas exactly those dots 20 lines up; on twice it, each dot its 2 by 2
+    // pixels (RAS-3); on 640 by 480, scaled.
     let dots = cells(7, 12, 4);
     let expected = [
         Rect { x: 144, y: 120, width: 48, height: 20 },
-        Rect { x: 287, y: 240, width: 96, height: 40 },
+        Rect { x: 288, y: 240, width: 96, height: 40 },
         Rect { x: 192, y: 125, width: 64, height: 21 },
     ];
     for ((width, height), expected) in CANVASES.into_iter().zip(expected) {
@@ -772,11 +771,18 @@ fn an_object_at_two_positions_is_moved_by_the_same_dots_and_twice_on_the_double_
 #[test]
 fn a_hidden_region_of_the_whole_raster_covers_the_whole_canvas() {
     // RAS-4's verification: a region of (0, 0, 480, 500) hidden covers every pixel of the
-    // receiver's canvas; shown, its bounds are the whole raster and dot (0, 0), on row 0, picks
-    // it. A hidden object has no bounds (ANIM-13), so the bounds are read shown.
-    let mut page = Page::new(&[]);
+    // receiver's canvas, and of every whole multiple of it, its last column and line included
+    // (TODO-6873); shown, its bounds are the whole raster and dot (0, 0), on row 0, picks it. A
+    // hidden object has no bounds (ANIM-13), so the bounds are read shown.
     let mut whole = region(1, 0, 0, RASTER_WIDTH as u16, RASTER_HEIGHT as u16, 9);
     whole.shown = false;
+    for scale in 2..=3 {
+        let mut page = Page::sized(&[], scale * WIDTH, scale * HEIGHT);
+        page.terminal.set_objects(&[whole.clone()]).unwrap();
+        page.compose();
+        assert_eq!(count(&page.presented, 9), (scale * scale * WIDTH * HEIGHT) as usize, "{scale} times: every pixel");
+    }
+    let mut page = Page::new(&[]);
     page.terminal.set_objects(&[whole]).unwrap();
     page.compose();
     assert_eq!(count(&page.presented, 9), (WIDTH * HEIGHT) as usize, "every pixel is the cover");
@@ -843,15 +849,17 @@ fn an_object_draws_on_every_canvas_whatever_its_macro_draws_inside_its_rectangle
             // The same move with a rectangle reaching to the raster's right and bottom edges.
             let unclipped = object_pixels(Rect { x, y, width: RASTER_WIDTH - x, height: RASTER_HEIGHT - y });
             assert_eq!(object, inside(&unclipped), "{width} by {height} at ({x}, {y}): nothing inside cut");
-            // The whole rectangle on the receiver's canvas and on coarser ones. On a canvas finer
-            // than the raster (twice it, or PP3's 640 across) a dot is more than one pixel, and a
-            // fill from the rectangle's first dot and line starts at their centre, so the
-            // pixels of the first dot column and first line before it may be left undrawn, as
-            // the stream's own drawing leaves them: those and no others.
+            // The whole rectangle, every pixel of every dot, on the receiver's canvas and on a
+            // whole multiple of it (TODO-6873: twice it, where each dot is drawn as its 2 by 2
+            // pixels). On PP3's 640 by 480, which is no multiple and shows the display area
+            // scaled, a dot is a pixel and a third, and a fill from the rectangle's first dot
+            // starts at that dot's centre, so the pixels of the first dot column and first line
+            // before it may be left undrawn, as the stream's own drawing leaves them: those and
+            // no others.
             let all = pixels_in(on_canvas);
             assert!(object.iter().all(|pixel| all.contains(pixel)), "{width} by {height} at ({x}, {y}): inside it");
             let undrawn: Vec<(u32, u32)> = all.iter().copied().filter(|pixel| !object.contains(pixel)).collect();
-            if (width, height) == (WIDTH, HEIGHT) {
+            if (width, height) == (WIDTH, HEIGHT) || dot_scale(width, height) > 1 {
                 assert_eq!(undrawn, [], "{width} by {height} at ({x}, {y}): the whole rectangle");
             }
             for &(column, row) in &undrawn {
@@ -932,8 +940,8 @@ fn a_pointer_picks_an_object_exactly_where_it_is_drawn() {
 fn raster_rectangles_share_out_every_canvas_and_are_the_dots_on_the_receivers() {
     // RAS-3: adjacent rectangles of dots share no canvas pixel and leave none out: every canvas
     // column whose centre is on the raster and every canvas row belongs to exactly one of them
-    // (TODO-6826), a column whose centre lies past the raster's right edge (half a dot, on a
-    // canvas twice as wide) to none; and on the receiver's canvas every pixel is its dot 20
+    // (TODO-6826), on a whole multiple of the receiver's canvas every column, the last
+    // included (TODO-6873); and on the receiver's canvas every pixel is its dot 20
     // lines down and every rectangle its dots 20 lines up. A rectangle narrower than a canvas
     // pixel may hold no canvas pixel's centre and so have none.
     for y in 0..HEIGHT {
@@ -943,10 +951,18 @@ fn raster_rectangles_share_out_every_canvas_and_are_the_dots_on_the_receivers() 
     }
     for y in 0..2 * HEIGHT {
         for x in 0..2 * WIDTH {
-            assert_eq!(raster_dot(x, y, 2 * WIDTH, 2 * HEIGHT), (x.div_ceil(2), TOP + y / 2), "({x}, {y})");
+            assert_eq!(raster_dot(x, y, 2 * WIDTH, 2 * HEIGHT), (x / 2, TOP + y / 2), "({x}, {y})");
         }
     }
-    for (width, height) in [CANVASES[0], CANVASES[1], CANVASES[2], (320, 240), (800, 600), (1280, 960)] {
+    for (width, height) in
+        [CANVASES[0], CANVASES[1], CANVASES[2], (3 * WIDTH, 3 * HEIGHT), (320, 240), (800, 600), (1280, 960)]
+    {
+        if dot_scale(width, height) > 1 {
+            assert!(
+                (0..width).all(|x| raster_dot(x, 0, width, height).0 < RASTER_WIDTH),
+                "{width}: every column a dot"
+            );
+        }
         for side in [1, 5, 12, 16, 20] {
             let columns: Vec<Rect> = (0..RASTER_WIDTH.div_ceil(side))
                 .filter_map(|column| {
