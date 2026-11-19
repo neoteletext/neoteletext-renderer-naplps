@@ -173,6 +173,25 @@ impl Default for Scene {
 }
 
 impl Scene {
+    /// The memory the objects, their frames and labels, animation states and pointer looks hold
+    /// beyond the structure (TODO-6854).
+    pub(super) fn heap_bytes(&self) -> usize {
+        let objects = self
+            .objects
+            .iter()
+            .map(|object| {
+                crate::limits::vector_bytes(&object.frames).saturating_add(match object.label.capacity() {
+                    0 => 0,
+                    bytes => crate::limits::held_allocation(bytes),
+                })
+            })
+            .fold(0, usize::saturating_add);
+        crate::limits::vector_bytes(&self.objects)
+            .saturating_add(objects)
+            .saturating_add(crate::limits::vector_bytes(&self.animations))
+            .saturating_add(crate::limits::vector_bytes(&self.pointer))
+    }
+
     /// The stream changed these pixels of its canvas.
     pub(super) fn wrote(&mut self, rect: Option<Rect>) {
         self.stream_damage = join(self.stream_damage, rect);
@@ -275,10 +294,14 @@ impl Terminal {
     /// [`Error::Object`] with index 0 when `object` is not one the `NAPLPS_OBJECTS` record
     /// allows; [`Error::TooManyObjects`] when it would be a new object beyond [`MAX_OBJECTS`].
     /// Nothing is changed then.
-    pub fn replace_object(&mut self, object: Object) -> Result<(), Error> {
+    pub fn replace_object(&mut self, mut object: Object) -> Result<(), Error> {
         if !is_valid(&object) {
             return Err(Error::Object(0));
         }
+        // The caller's frames and label may have room past their bounds; what is kept holds
+        // only their bytes (`MAX_OBJECT_STATE_BYTES`, TODO-6854).
+        object.frames.shrink_to_fit();
+        object.label.shrink_to_fit();
         let number = object.number;
         let before = self.placed_by_number(number);
         let count = self.scene.objects.len();

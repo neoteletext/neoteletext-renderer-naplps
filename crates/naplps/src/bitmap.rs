@@ -115,6 +115,23 @@ pub struct BitmapSet {
 }
 
 impl BitmapSet {
+    /// The memory this set holds, in bytes, at most: its structure, its glyphs' rows and the
+    /// joining data and forms given, each allocation with the allocator's bookkeeping
+    /// ([`crate::limits::ALLOCATION_OVERHEAD_BYTES`]). A terminal or validator given the set
+    /// holds this much more, less the structure's size, which its own counts (TODO-6854).
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        size_of::<Self>().saturating_add(self.heap_bytes())
+    }
+
+    /// [`BitmapSet::held_bytes`] without the structure.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        crate::limits::vector_bytes(&self.rows)
+            .saturating_add(crate::limits::vector_bytes(&self.joining))
+            .saturating_add(crate::limits::vector_bytes(&self.forms))
+            .saturating_add(crate::limits::vector_bytes(&self.forms_given))
+    }
+
     /// A set of blank glyphs.
     ///
     /// # Errors

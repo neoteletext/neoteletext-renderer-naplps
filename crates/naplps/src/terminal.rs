@@ -232,7 +232,7 @@ pub struct Terminal {
     /// A non-spacing accent waiting for the letter it goes over.
     pending_accent: Option<u8>,
     /// Word wrap's buffered word (section 6.2.7.11), each character with the form it is drawn in.
-    word: Vec<(CharSet, u8, JoinForm)>,
+    word: Vec<WordEntry>,
     /// The joined letters being held back (PAR-14).
     joining: JoiningRun,
     /// An APB moved the cursor back and no character, other control or PDI has come since: the
@@ -266,12 +266,18 @@ pub struct Terminal {
     work: Work,
 }
 
+/// The intermediate bytes an escape sequence collects before its final byte (ISO 2022's
+/// designations take at most three).
+pub(crate) const MAX_ESCAPE_BYTES: usize = 3;
+/// One character of word wrap's buffered word, with the form it is drawn in.
+pub(crate) type WordEntry = (CharSet, u8, JoinForm);
+
 /// Most events kept from one call.
-const MAX_EVENTS: usize = 4096;
+pub(crate) const MAX_EVENTS: usize = 4096;
 /// The WAIT command's fixed-format byte (section 5.3.2.8.2: 1011100 in bits 7 to 1).
 const WAIT_FORMAT: u8 = 0x5C;
 /// Macro and DRCS codes run from 2/0 to 7/15.
-const CODES: usize = 96;
+pub(crate) const CODES: usize = crate::limits::DEFINABLE_CODES;
 /// The first macro or DRCS code.
 const FIRST_CODE: u8 = 0x20;
 
@@ -555,6 +561,64 @@ impl Terminal {
     #[must_use]
     pub fn diagnostics(&self) -> Diagnostics {
         self.diagnostics
+    }
+
+    /// The memory this terminal holds between calls, in bytes, at most (TODO-6854): its own
+    /// structure; what the stream has defined (the macro bodies, the DRCS characters and the
+    /// textures, and a definition in progress); the copies of the macros being expanded when a
+    /// call stopped inside one; the objects with their frames, labels and animation state; the
+    /// reading's own state (a PDI's operands, an escape sequence, word wrap's word, the joined
+    /// letters held back, the title, the colour map); and the stroke font and the provided
+    /// sets given to it, each as [`StrokeFont::held_bytes`] and [`BitmapSet::held_bytes`] count
+    /// it. Every allocation is counted at its capacity with the allocator's bookkeeping
+    /// ([`crate::limits::ALLOCATION_OVERHEAD_BYTES`]). The canvas is the caller's and is not
+    /// counted. Without the font and the provided sets it is never more than
+    /// [`crate::limits::MAX_HELD_BYTES`]. A call holds more while it runs: a figure's points
+    /// (at most [`crate::limits::MAX_VERTICES`] of 8 bytes) and the scratch of one drawing.
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        use crate::limits::vector_bytes;
+        let optional = |vector: Option<&Vec<u8>>| vector.map_or(0, vector_bytes);
+        let pending = match &self.pending {
+            Pending::Escape(collected) => vector_bytes(collected),
+            _ => 0,
+        };
+        let recording = match &self.recording {
+            Some(Recording::Macro { bytes, .. }) => vector_bytes(bytes),
+            Some(Recording::Drcs { mask, .. } | Recording::Texture { mask, .. }) => mask.heap_bytes(),
+            None => 0,
+        };
+        let macros = self.macros.iter().map(|body| optional(body.as_ref())).fold(0, usize::saturating_add);
+        let masks = self.drcs.iter().chain(&self.masks).flatten().map(Mask::heap_bytes).fold(0, usize::saturating_add);
+        let frames = self.frames.iter().map(|(body, _)| vector_bytes(body)).fold(0, usize::saturating_add);
+        let given = self
+            .teletext_sets
+            .iter()
+            .flatten()
+            .map(BitmapSet::heap_bytes)
+            .fold(self.font.as_ref().map_or(0, StrokeFont::heap_bytes), usize::saturating_add);
+        let title = self.title.as_ref().map_or(0, |title| match title.capacity() {
+            0 => 0,
+            bytes => crate::limits::held_allocation(bytes),
+        });
+        size_of::<Self>()
+            .saturating_add(self.palette.heap_bytes())
+            .saturating_add(vector_bytes(&self.teletext_sets))
+            .saturating_add(pending)
+            .saturating_add(optional(self.pdi.as_ref().map(|(_, data)| data)))
+            .saturating_add(vector_bytes(&self.macros))
+            .saturating_add(macros)
+            .saturating_add(vector_bytes(&self.drcs))
+            .saturating_add(masks)
+            .saturating_add(recording)
+            .saturating_add(vector_bytes(&self.events))
+            .saturating_add(vector_bytes(&self.word))
+            .saturating_add(vector_bytes(&self.joining.held))
+            .saturating_add(vector_bytes(&self.frames))
+            .saturating_add(frames)
+            .saturating_add(self.scene.heap_bytes())
+            .saturating_add(title)
+            .saturating_add(given)
     }
 
     /// For each macro name 2/0 to 7/15 in turn, whether the stream has defined it (by DEF MACRO
@@ -853,7 +917,7 @@ impl Terminal {
             }
             return None;
         }
-        if (0x20..=0x2F).contains(&byte) && collected.len() < 3 {
+        if (0x20..=0x2F).contains(&byte) && collected.len() < MAX_ESCAPE_BYTES {
             collected.push(byte);
             self.pending = Pending::Escape(core::mem::take(collected));
             return None;
@@ -1049,7 +1113,15 @@ impl Terminal {
                     self.refuse(Refusal::MacrosFull, bytes.len());
                 }
                 if let Some(slot) = self.macros.get_mut(index) {
-                    *slot = if transmit || bytes.is_empty() || full { None } else { Some(bytes) };
+                    // Kept at its length, so that the macros hold no more than their bytes
+                    // (`MAX_DEFINITION_BYTES`, TODO-6854).
+                    *slot = if transmit || bytes.is_empty() || full {
+                        None
+                    } else {
+                        let mut bytes = bytes;
+                        bytes.shrink_to_fit();
+                        Some(bytes)
+                    };
                 }
                 None
             }
@@ -2348,7 +2420,7 @@ const DELETE: u8 = 0x7F;
 /// The longest word word wrap buffers: a word as long as the longest possible line (section
 /// 6.2.7.11: a character that makes a word as long as a line ends it). 80 columns of SMALL TEXT
 /// at proportional spacing's narrowest step (two eighths of a field) is 320 characters.
-const MAX_WORD: usize = 320;
+pub(crate) const MAX_WORD: usize = 320;
 
 /// Whether a character is a non-spacing accent: the supplementary set's 4/0 to 4/15 (section 5.2).
 /// The slot a designating intermediate names, and whether it designates a 96-character set

@@ -65,6 +65,30 @@ impl Default for StrokeFont {
 }
 
 impl StrokeFont {
+    /// The memory this font holds, in bytes, at most: its structure, its glyph tables and every
+    /// glyph's segments, each allocation with the allocator's bookkeeping
+    /// ([`crate::limits::ALLOCATION_OVERHEAD_BYTES`]). A terminal or validator given the font
+    /// holds this much more, less the structure's size, which its own counts (TODO-6854).
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        size_of::<Self>().saturating_add(self.heap_bytes())
+    }
+
+    /// [`StrokeFont::held_bytes`] without the structure.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        let segments = |table: &Vec<Option<Glyph>>| -> usize {
+            table
+                .iter()
+                .flatten()
+                .map(|glyph| crate::limits::vector_bytes(&glyph.segments))
+                .fold(0, usize::saturating_add)
+        };
+        crate::limits::vector_bytes(&self.primary)
+            .saturating_add(crate::limits::vector_bytes(&self.supplementary))
+            .saturating_add(segments(&self.primary))
+            .saturating_add(segments(&self.supplementary))
+    }
+
     /// The glyph for a code of a set, if the font has one.
     #[must_use]
     pub fn glyph(&self, set: FontSet, code: u8) -> Option<&Glyph> {

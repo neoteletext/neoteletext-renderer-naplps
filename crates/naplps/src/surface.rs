@@ -318,6 +318,11 @@ pub(crate) struct Mask {
 }
 
 impl Mask {
+    /// The memory the bitmap holds beyond the structure (TODO-6854).
+    pub(crate) fn heap_bytes(&self) -> usize {
+        crate::limits::vector_bytes(&self.bits)
+    }
+
     /// An empty mask; sides are at least one pixel.
     pub(crate) fn new(width: u32, height: u32) -> Self {
         let width = width.clamp(1, MAX_CANVAS_SIDE);

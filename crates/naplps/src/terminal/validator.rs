@@ -63,23 +63,20 @@ impl Surface for Discard {
 /// tests know take a validator about 8 milliseconds in a release build, against about 350 for a
 /// terminal.
 ///
-/// **Memory.** No canvas is held, and no font or character set unless one is given. What a validator holds is a
-/// fixed state and what the stream defines, each within its limit: the macros at most
-/// [`crate::limits::MAX_ALL_MACRO_BYTES`] (65,536) bytes, and while macros expand at most
-/// [`crate::limits::MAX_MACRO_DEPTH`] (16) copies of a definition of at most
-/// [`crate::limits::MAX_MACRO_BYTES`] (4,096); the 96 DRCS characters and 4 texture masks, and
-/// one being defined, each a bitmap of at most [`crate::limits::MASK_SIDE`] squared (16,384)
-/// one-byte elements, at most 1,654,784 bytes together; a PDI's operands at most
-/// [`crate::limits::MAX_PDI_BYTES`] (32,768) bytes, with at most
-/// [`crate::limits::MAX_VERTICES`] (4,096) points of 8 bytes while it runs: 1,851,392 bytes
-/// at most for what a stream defines and sends, besides the fixed state. Measured on 19
-/// November 2026 by `tests/validator_memory.rs` on `x86_64` Linux: a validator is 936 bytes
-/// itself, and a new one reading the heaviest stream the test knows (the macros filled, a macro
-/// nested 16 deep, all 96 DRCS characters and 4 textures at the largest mask with every
-/// element drawn, and a polygon of the most operand bytes) grew the process's peak resident
-/// size by 1,761,280 bytes in a release build and 1,822,720 in a debug build. For comparison, a
-/// terminal's canvas of the NeoTeletext raster, 480 by 500, is 240,000 bytes whatever the
-/// stream; a validator's memory beyond its fixed state grows only with what the stream defines.
+/// **Memory.** No canvas is held, and no font or character set unless one is given. What a
+/// validator holds is a fixed state and what the stream defines, each within its limit (the
+/// macros, the copies of one while they nest, the DRCS characters and textures, a PDI's
+/// operands), and [`Validator::held_bytes`] reports it after every call, from the allocations'
+/// real sizes; it is never more than [`crate::limits::MAX_HELD_BYTES`] (1,971,344 bytes on a
+/// 64-bit target) besides the font and sets given. Measured on 19 November 2026 on `x86_64`
+/// Linux (`tests/held.rs`, `tests/validator_memory.rs`): a validator is 1,040 bytes itself and a
+/// new one reports 12,360; so does the median page of the NAPLPS corpus, of the repository's
+/// samples and of the naplpsdemo channel's pictures, which define nothing; the heaviest stream
+/// the tests know (the macros filled, a macro nested 16 deep, all 96 DRCS characters and 4
+/// textures at the largest mask with every element drawn, and a polygon of the most operand
+/// bytes left open) reports 1,753,352, and 32 validators reading it grew the process's resident
+/// size by 56,139,776 bytes against 56,107,264 reported. For comparison, a terminal's canvas of
+/// the NeoTeletext raster, 480 by 500, is 240,000 bytes whatever the stream.
 pub struct Validator {
     terminal: Terminal,
     surface: Discard,
@@ -168,6 +165,18 @@ impl Validator {
     #[must_use]
     pub fn work_spent(&self) -> u64 {
         self.terminal.work_spent()
+    }
+
+    /// The memory this validator holds between calls, in bytes, at most, as
+    /// [`Terminal::held_bytes`] counts it, with its own structure: never more than
+    /// [`crate::limits::MAX_HELD_BYTES`] without the stroke font and the provided sets given to
+    /// it. A new validator holds 12,360 bytes on a 64-bit target (`tests/held.rs` prints it); a
+    /// server keeping a validator for each picture or stream counts it at this figure after
+    /// every call (TODO-6854).
+    #[must_use]
+    pub fn held_bytes(&self) -> usize {
+        // The surface keeps no pixels; only its structure is the validator's own.
+        size_of::<Self>().saturating_sub(size_of::<Terminal>()).saturating_add(self.terminal.held_bytes())
     }
 
     /// For each macro name 2/0 to 7/15 in turn, whether the stream has defined it (by DEF MACRO

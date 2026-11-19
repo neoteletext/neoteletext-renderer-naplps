@@ -59,7 +59,7 @@ pub(crate) struct Style {
 }
 
 /// The four programmable masks.
-pub(crate) type Masks = [Option<Mask>; 4];
+pub(crate) type Masks = [Option<Mask>; crate::limits::TEXTURE_MASKS];
 
 /// Pel width and height in pixels: rounded up, at least one (section 5.3.2.2.6).
 fn pel_pixels(surface: &dyn Surface, pel: Point) -> (i32, i32) {

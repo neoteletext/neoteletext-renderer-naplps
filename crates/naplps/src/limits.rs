@@ -127,7 +127,97 @@ pub const MAX_LABEL_BYTES: usize = 64;
 /// one short line of plain text.
 pub const MAX_TITLE_BYTES: usize = 64;
 
+// ----- What a terminal or a validator holds (TODO-6854) ---------------------------------------
+
+/// What the allocator adds to one allocation, at most, beyond the bytes asked for: glibc's
+/// malloc keeps an 8-byte header and rounds a chunk up to 16 bytes (up to 23 more), and macOS's
+/// rounds to 16; 32 covers both. The figure the `regis` renderer counts by (DEC-6850).
+pub const ALLOCATION_OVERHEAD_BYTES: usize = 32;
+/// The fewest elements a vector makes room for when it first grows: the standard library's
+/// least non-zero capacity is 8 for one-byte elements, 4 up to 1 KiB and 1 beyond.
+const LEAST_VECTOR_CAPACITY: usize = 8;
+
+/// The memory one allocation of `bytes` holds, at most.
+pub(crate) const fn held_allocation(bytes: usize) -> usize {
+    bytes.saturating_add(ALLOCATION_OVERHEAD_BYTES)
+}
+
+/// The memory a vector's allocation holds, from its capacity: none until it has room.
+pub(crate) fn vector_bytes<T>(vector: &alloc::vec::Vec<T>) -> usize {
+    match vector.capacity().saturating_mul(size_of::<T>()) {
+        0 => 0,
+        bytes => held_allocation(bytes),
+    }
+}
+
+/// The memory a vector of `element`-byte elements holds, at most, when it is pushed to at most
+/// `limit` elements: growing by doubling leaves it room for less than twice its length, and
+/// never less than [`LEAST_VECTOR_CAPACITY`].
+const fn grown_vector_bytes(limit: usize, element: usize) -> usize {
+    let room =
+        if limit.saturating_mul(2) > LEAST_VECTOR_CAPACITY { limit.saturating_mul(2) } else { LEAST_VECTOR_CAPACITY };
+    held_allocation(room.saturating_mul(element))
+}
+
+/// Macro names and DRCS characters a stream can define: 2/0 to 7/15 (ANSI X3.110-1983 sections
+/// 6.2.2 and 6.2.3).
+pub const DEFINABLE_CODES: usize = 96;
+/// Texture masks a stream can define: patterns A to D (section 6.2.4).
+pub const TEXTURE_MASKS: usize = 4;
+/// The memory one DRCS character or texture mask holds, at most: a one-byte element for each
+/// pixel of a bitmap of [`MASK_SIDE`] on its longer side.
+pub const MASK_BYTES: usize = held_allocation((MASK_SIDE as usize).saturating_mul(MASK_SIDE as usize));
+/// The memory a stream's definitions hold, at most: every macro byte [`MAX_ALL_MACRO_BYTES`]
+/// allows, each macro's body kept at its length; a macro being defined, grown up to
+/// [`MAX_MACRO_BYTES`]; the [`DEFINABLE_CODES`] DRCS characters and [`TEXTURE_MASKS`] textures and
+/// one bitmap being defined, each [`MASK_BYTES`]; and the slots that name them.
+pub const MAX_DEFINITION_BYTES: usize = MAX_ALL_MACRO_BYTES
+    .saturating_add(DEFINABLE_CODES * ALLOCATION_OVERHEAD_BYTES)
+    .saturating_add(grown_vector_bytes(MAX_MACRO_BYTES, 1))
+    .saturating_add((DEFINABLE_CODES + TEXTURE_MASKS + 1) * MASK_BYTES)
+    .saturating_add(held_allocation(DEFINABLE_CODES * size_of::<Option<alloc::vec::Vec<u8>>>()))
+    .saturating_add(held_allocation(DEFINABLE_CODES * size_of::<Option<crate::surface::Mask>>()));
+/// The memory the macros being expanded hold between calls, at most (a stream stopped at a WAIT
+/// inside a macro): a copy of a macro's body for each of [`MAX_MACRO_DEPTH`] levels.
+pub const MAX_MACRO_CALL_BYTES: usize = (MAX_MACRO_DEPTH * held_allocation(MAX_MACRO_BYTES))
+    .saturating_add(grown_vector_bytes(MAX_MACRO_DEPTH, size_of::<(alloc::vec::Vec<u8>, usize)>()));
+/// The memory a terminal's objects and their state hold, at most (ANIM-6, ANIM-11): up to
+/// [`MAX_OBJECTS`] objects, each with up to [`MAX_OBJECT_FRAMES`] frames and a label of up to
+/// [`MAX_LABEL_BYTES`], with their animation states and pointer looks. A validator has none.
+pub const MAX_OBJECT_STATE_BYTES: usize = grown_vector_bytes(MAX_OBJECTS, size_of::<crate::Object>())
+    .saturating_add(MAX_OBJECTS * (held_allocation(MAX_OBJECT_FRAMES) + held_allocation(MAX_LABEL_BYTES)))
+    .saturating_add(grown_vector_bytes(MAX_ANIMATED_OBJECTS, size_of::<(u16, crate::Animation)>()))
+    .saturating_add(grown_vector_bytes(MAX_OBJECTS, size_of::<(u16, crate::Look)>()));
+/// The memory the reading of a stream holds between calls besides its definitions, at most: a
+/// PDI's operands up to [`MAX_PDI_BYTES`], an escape sequence's bytes, word wrap's word,
+/// the joined letters held back up to [`MAX_JOINING_HELD`], a call's events, the title, the
+/// colour map at its largest with its blink processes up to [`MAX_BLINKS`], and the slots of the
+/// provided sets.
+pub const MAX_READING_STATE_BYTES: usize = grown_vector_bytes(MAX_PDI_BYTES, 1)
+    .saturating_add(grown_vector_bytes(crate::terminal::MAX_ESCAPE_BYTES, 1))
+    .saturating_add(grown_vector_bytes(crate::terminal::MAX_WORD, size_of::<crate::terminal::WordEntry>()))
+    .saturating_add(grown_vector_bytes(MAX_JOINING_HELD, 1))
+    .saturating_add(grown_vector_bytes(crate::terminal::MAX_EVENTS, size_of::<crate::Event>()))
+    .saturating_add(held_allocation(MAX_TITLE_BYTES))
+    .saturating_add(held_allocation((1 << crate::palette::MAX_BITS) * size_of::<crate::Rgb>()))
+    .saturating_add(held_allocation((1 << crate::palette::MAX_BITS) * size_of::<bool>()))
+    .saturating_add(grown_vector_bytes(MAX_BLINKS, size_of::<crate::Blink>()))
+    .saturating_add(held_allocation(crate::TELETEXT_SET_COUNT * size_of::<Option<crate::BitmapSet>>()));
+/// The memory a [`crate::Terminal`] or a [`crate::Validator`] holds between calls, at most,
+/// besides the stroke font and the provided sets its caller gives it, which
+/// [`crate::Terminal::held_bytes`] counts as given, and the canvas, which is the caller's: its
+/// own structure, [`MAX_DEFINITION_BYTES`], [`MAX_MACRO_CALL_BYTES`], [`MAX_OBJECT_STATE_BYTES`]
+/// and [`MAX_READING_STATE_BYTES`]: 1,971,344 bytes on a 64-bit target. A server counts each reader
+/// at [`crate::Validator::held_bytes`], or at this figure without asking (TODO-6854).
+pub const MAX_HELD_BYTES: usize = size_of::<crate::Validator>()
+    .saturating_add(MAX_DEFINITION_BYTES)
+    .saturating_add(MAX_MACRO_CALL_BYTES)
+    .saturating_add(MAX_OBJECT_STATE_BYTES)
+    .saturating_add(MAX_READING_STATE_BYTES);
+
 const _: () = assert!(MAX_BITMAP_WIDTH as u32 == u16::BITS);
 const _: () = assert!(MAX_FRAME_NUMBER as usize + 1 == MAX_OBJECT_FRAMES);
 const _: () = assert!(MAX_ANIMATED_OBJECTS >= MAX_OBJECTS);
 const _: () = assert!(MAX_ANIMATION_PIXELS_PER_TICK * 2 == OBJECT_PICTURE_WIDTH as u64 * OBJECT_PICTURE_HEIGHT as u64);
+const _: () = assert!(size_of::<crate::Validator>() >= size_of::<crate::Terminal>());
+const _: () = assert!(MAX_ALL_MACRO_BYTES >= MAX_MACRO_BYTES);

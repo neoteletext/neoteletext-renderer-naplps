@@ -54,6 +54,14 @@ pub struct Palette {
 }
 
 impl Palette {
+    /// The memory the colour map's entries and blink processes hold beyond its structure
+    /// (TODO-6854).
+    pub(crate) fn heap_bytes(&self) -> usize {
+        crate::limits::vector_bytes(&self.entries)
+            .saturating_add(crate::limits::vector_bytes(&self.used))
+            .saturating_add(crate::limits::vector_bytes(&self.blinks))
+    }
+
     /// The default colour map of 2^`bits` entries, `bits` clamped to 2 to 8.
     #[must_use]
     pub fn new(bits: u32) -> Self {
