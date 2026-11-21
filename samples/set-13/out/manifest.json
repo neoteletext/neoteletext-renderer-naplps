@@ -1,0 +1,166 @@
+[
+  {
+    "number": 177,
+    "file": "177-good-morning-hartley-avenue.nap",
+    "bytes": 1372,
+    "title": "Good Morning, Hartley Avenue",
+    "purpose": "A household reads the morning page of its neighbourhood service: weather, mail and the bus",
+    "style": "Sunrise in banded arcs over a flat-colour street, with a paper menu panel",
+    "techniques": [
+      "16-entry colour map",
+      "filled discs as sunrise bands",
+      "filled polygons",
+      "proportional text",
+      "BLINK on a new-mail badge",
+      "WAIT between reveal steps"
+    ],
+    "animated": true
+  },
+  {
+    "number": 178,
+    "file": "178-a-card-for-grandma.nap",
+    "bytes": 3961,
+    "title": "A Card for Grandma",
+    "purpose": "An electronic greeting card for a seventieth birthday, billed to the sender account",
+    "style": "Cream card on plum, rounded tulips opening in turn and a greeting set along an arc",
+    "techniques": [
+      "16-entry colour map",
+      "filled polygons with curved cups",
+      "discs for the frame and rosettes",
+      "characters placed along an arc",
+      "proportional text",
+      "WAIT between opening steps"
+    ],
+    "animated": true
+  },
+  {
+    "number": 179,
+    "file": "179-the-family-message-board.nap",
+    "bytes": 5463,
+    "title": "The Family Message Board",
+    "purpose": "A household corkboard of messages between parents and children, the newest pin blinking",
+    "style": "Warm cork ground with a dot pattern, tilted sticky notes with pins and drop shadows",
+    "techniques": [
+      "16-entry colour map",
+      "filled discs as a dot pattern",
+      "rotated filled polygons",
+      "proportional text",
+      "BLINK on a new pin",
+      "WAIT between notes"
+    ],
+    "animated": true
+  },
+  {
+    "number": 180,
+    "file": "180-supper-tonight.nap",
+    "bytes": 2345,
+    "title": "Supper Tonight",
+    "purpose": "A recipe page for a noodle bake: ingredients, method and a kitchen timer",
+    "style": "Recipe card in cream and tomato, a cutaway casserole and a segmented timer",
+    "techniques": [
+      "16-entry colour map",
+      "filled polygons",
+      "segmented timer by colour-map entries",
+      "proportional text",
+      "WAIT between the title, the dish and the timer"
+    ],
+    "animated": true
+  },
+  {
+    "number": 181,
+    "file": "181-the-wired-living-room.nap",
+    "bytes": 2095,
+    "title": "The Wired Living Room",
+    "purpose": "A scene of a family in 1983 with the television as its window on the new services",
+    "style": "Flat-colour poster of a sitting room, wood cabinet, bright television menu and a sleeping cat",
+    "techniques": [
+      "16-entry colour map",
+      "filled polygons",
+      "discs for heads",
+      "proportional text on the television",
+      "WAIT between scene layers"
+    ],
+    "animated": true
+  },
+  {
+    "number": 182,
+    "file": "182-neighbourhood-calendar.nap",
+    "bytes": 2181,
+    "title": "Neighbourhood Calendar, Maple Ridge Estates",
+    "purpose": "A month grid of a residential estate: bake sale, league games, the block party and a garage sale",
+    "style": "Flat month grid on navy, with coloured event blocks, a legend and a blinking today marker",
+    "techniques": [
+      "16-entry colour map",
+      "filled rectangles",
+      "proportional text",
+      "BLINK on the day marker",
+      "WAIT between weeks"
+    ],
+    "animated": true
+  },
+  {
+    "number": 183,
+    "file": "183-the-house-that-orders-its-own-paper-towels.nap",
+    "bytes": 1484,
+    "title": "The House That Orders Its Own Paper Towels",
+    "purpose": "A cutaway house whose pantry shelves report low stock and place a standing order",
+    "style": "Cutaway house in flat colour, a pantry with stocked shelves and a paper order form",
+    "techniques": [
+      "16-entry colour map",
+      "filled polygons and rectangles",
+      "proportional text",
+      "BLINK from red to green for the low-stock flag",
+      "WAIT between rooms and the van"
+    ],
+    "animated": true
+  },
+  {
+    "number": 184,
+    "file": "184-home-watch.nap",
+    "bytes": 1227,
+    "title": "Home Watch",
+    "purpose": "A home-control page for a bungalow: heat, lights, the porch lamp and the smoke detector",
+    "style": "Floor plan with each room in its own flat fill, and a status panel beside it",
+    "techniques": [
+      "16-entry colour map",
+      "filled rectangles as rooms",
+      "concentric discs for the detector",
+      "proportional text",
+      "BLINK to switch the porch lamp"
+    ],
+    "animated": true
+  },
+  {
+    "number": 185,
+    "file": "185-tonights-horoscope.nap",
+    "bytes": 2082,
+    "title": "Tonight's Horoscope",
+    "purpose": "A daily horoscope page: a zodiac wheel, the reader's sign blinking and a short reading",
+    "style": "Twelve-segment wheel in the full palette on deep violet, with a reading panel",
+    "techniques": [
+      "16-entry colour map",
+      "filled ring segments",
+      "discs for planet marks",
+      "proportional text",
+      "BLINK on the reader's sign",
+      "WAIT between wheel and reading"
+    ],
+    "animated": true
+  },
+  {
+    "number": 186,
+    "file": "186-school-bus-is-late.nap",
+    "bytes": 1533,
+    "title": "School Bus Is Late",
+    "purpose": "A district bulletin that tells parents a route is twenty minutes late in the snow",
+    "style": "Winter bulletin: a yellow bus in rectangles and discs behind a white snowbank, snowflakes as programmable characters",
+    "techniques": [
+      "16-entry colour map",
+      "filled polygons and discs",
+      "programmable characters for snowflakes",
+      "proportional text in large type",
+      "BLINK on the alert line"
+    ],
+    "animated": false
+  }
+]

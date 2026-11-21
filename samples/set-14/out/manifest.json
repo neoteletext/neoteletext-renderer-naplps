@@ -1,0 +1,192 @@
+[
+  {
+    "number": 187,
+    "file": "187-electronic-catalogue.nap",
+    "bytes": 3345,
+    "title": "The Electronic Catalogue",
+    "purpose": "A department store shows three goods and takes an order with one key press.",
+    "style": "Saturated primaries on navy, bold flat product drawings with price tags",
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "hatch fill",
+      "user-defined fill pattern",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 188,
+    "file": "188-your-balance-mrs-okafor.nap",
+    "bytes": 26769,
+    "title": "Your Balance, Mrs Okafor",
+    "purpose": "A home bank swings its vault door open on a customer's balances and paid bills.",
+    "style": "Wheat gold and prairie green, foreshortened steel vault door",
+    "techniques": [
+      "native circles",
+      "filled polygons",
+      "clipped sunburst",
+      "DRCS",
+      "WAIT",
+      "BLINK",
+      "hatch fill",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 189,
+    "file": "189-build-your-credit.nap",
+    "bytes": 38583,
+    "title": "Build Your Credit",
+    "purpose": "A savings and loan advertisement that stacks coins into a staircase, climbs it and only then says its slogan.",
+    "style": "Royal blue sky, gold coin stacks, a flat figure climbing",
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "WAIT",
+      "BLINK",
+      "sequenced drawing",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 190,
+    "file": "190-showhome-cedar-crescent.nap",
+    "bytes": 2303,
+    "title": "The Showhome on Cedar Crescent",
+    "purpose": "A realty listing that lets a buyer see a house, its floor plan and its mortgage without leaving home.",
+    "style": "Brick and cream listing sheet with a house elevation and a labelled plan",
+    "techniques": [
+      "filled polygons",
+      "rectangles",
+      "native circles",
+      "hatch fill",
+      "dotted line texture",
+      "colour-map change",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 191,
+    "file": "191-classifieds-bicycles.nap",
+    "bytes": 5151,
+    "title": "Classifieds: Bicycles",
+    "purpose": "A neighbourhood classified column on screen, with a drawn ten-speed on top and one advertisement flagged for the reader.",
+    "style": "Slate board with an orange masthead, a bright ten-speed and a blinking cyan ad",
+    "techniques": [
+      "native circles",
+      "wide pels",
+      "linework",
+      "DRCS",
+      "dashed line texture",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 192,
+    "file": "192-going-once-going-twice.nap",
+    "bytes": 3522,
+    "title": "Going Once, Going Twice",
+    "purpose": "A live electronic auction counts a rising bid on seven-segment digits while the lot, an antique clock, waits.",
+    "style": "Burgundy salesroom, brass clock in arcs, amber seven-segment bid counter",
+    "techniques": [
+      "colour-map digits",
+      "native circles",
+      "native arcs",
+      "filled polygons",
+      "DRCS",
+      "hatch fill",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 193,
+    "file": "193-grocery-order.nap",
+    "bytes": 5527,
+    "title": "Grocery Order, Week of June 3",
+    "purpose": "A corner grocer takes a weekly order: each item drops into a wire cart and the running total follows.",
+    "style": "Fresh mint, cream and grocer green with flat-colour packages in a wire cart",
+    "techniques": [
+      "macros",
+      "DRCS",
+      "native circles",
+      "hatch fill",
+      "filled polygons",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 194,
+    "file": "194-theatre-tickets.nap",
+    "bytes": 7198,
+    "title": "Theatre Tickets",
+    "purpose": "A box office opens its curtain, shows the hall with sold and free seats, and holds the reader's chosen pair.",
+    "style": "Red velvet and brass on black, a pleated curtain that opens, a seat plan in small squares",
+    "techniques": [
+      "macros",
+      "hatch fill",
+      "filled polygons",
+      "redrawn animation",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 195,
+    "file": "195-mall-directory.nap",
+    "bytes": 4583,
+    "title": "The Mall Directory",
+    "purpose": "A shopping-centre kiosk page: two floor plans in pastel, numbered stores, a blinking YOU ARE HERE and a column of touch targets.",
+    "style": "Navy kiosk with pastel store blocks and bevelled touch keys",
+    "techniques": [
+      "rectangles",
+      "bevelled keys",
+      "DRCS",
+      "hatch fill",
+      "dotted line texture",
+      "native circles",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 196,
+    "file": "196-todays-special.nap",
+    "bytes": 3200,
+    "title": "Today's Special at the Hardware Store",
+    "purpose": "A late-videotex page whose advertising band at the foot opens into a full-screen advertisement with a SALE starburst that cycles colour.",
+    "style": "Hazard yellow and charcoal, a large cordless drill, a three-layer starburst chasing through the colour map",
+    "techniques": [
+      "native circles",
+      "filled polygons",
+      "clipped sunburst",
+      "DRCS",
+      "dotted line texture",
+      "WAIT",
+      "BLINK chase",
+      "bevelled keys",
+      "proportional text"
+    ],
+    "animated": true
+  }
+]
