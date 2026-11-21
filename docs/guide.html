@@ -424,6 +424,7 @@ page += select(9) + pdi(BLINK, fixed(8 &lt;&lt; 2, 5, 5, 0))
 <p>To see time in this renderer:</p>
 <ul>
 <li>the library has no clock: it reports each WAIT as an event, and a caller with a clock holds back what follows for six ticks of a sixtieth of a second for each tenth. <code>naplps-render</code> draws the whole page, pauses passed over, unless you ask it to play the page: <code>--frames 120 --frame-step 6</code> writes the page as it stands every tenth of a second for two seconds, WAITs and blinks played (<a href="reference.html#naplps-render">reference</a>);</li>
+<li>to watch a page paint as it did over a telephone line, add a pace: <code>--frames 600 --frame-step 6 --pace 1200/600</code> gives the renderer the page at 1,200 bits a second, two bytes a tick, and each WAIT adds its time to the line's. A NeoTeletext page asks for this by stating a line speed beside the picture, never in its bytes;</li>
 <li><code>naplps-render --tenths N</code> shows the colour map as BLINK has it N tenths of a second after the first BLINK began. Render at several values to see each state.</li>
 </ul>
 <h2 id="14-a-whole-page">14. A whole page</h2>
