@@ -1,0 +1,213 @@
+[
+  {
+    "number": 217,
+    "file": "217-chess-by-wire.nap",
+    "title": "Chess by Wire",
+    "purpose": "A subscriber plays chess against another household across the province, one move a night",
+    "style": "Felt-green and parchment board with programmable-character pieces beside a navy score panel",
+    "bytes": 5606,
+    "techniques": [
+      "DRCS chess pieces with outline passes",
+      "a DRCS knight as the service mark",
+      "an envelope macro played twice",
+      "day pips",
+      "rectangle rows for the board",
+      "BLINK on the last move",
+      "the move shown arriving by WAIT",
+      "captured pieces as small DRCS",
+      "BLINK cursor",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 218,
+    "file": "218-the-maze.nap",
+    "title": "The Maze",
+    "purpose": "A subscriber walks a dungeon adventure one step at a time, choosing a direction by number",
+    "style": "Stone corridor in graded perspective trapezoids, torchlit, with a glowing door and a mosaic map",
+    "bytes": 2538,
+    "techniques": [
+      "perspective trapezoids in graded colour-map entries",
+      "converging tile and mortar lines",
+      "DEF TEXTURE dithered light",
+      "arched ribs",
+      "compass rose",
+      "a shield and a cobweb",
+      "one DRCS arrow turned by TEXT rotation",
+      "eyes in the dark by BLINK",
+      "mosaic mini-map",
+      "BLINK torch flame",
+      "BLINK glint on a key",
+      "WAIT between depths"
+    ],
+    "animated": true
+  },
+  {
+    "number": 219,
+    "file": "219-quiz-night.nap",
+    "title": "Quiz Night",
+    "purpose": "A household plays the evening quiz against the clock and the rest of the city",
+    "style": "Game-show panels in four saturated answer colours on deep violet",
+    "bytes": 2483,
+    "techniques": [
+      "WAIT countdown dial overdrawn slice by slice",
+      "drawn globe",
+      "question badge",
+      "progress pips",
+      "drop-shadowed answer buttons",
+      "colour-map reveal dimming the wrong answers",
+      "BLINK on the right answer",
+      "star sparks after the reveal",
+      "filled arcs",
+      "fixed and proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 220,
+    "file": "220-harbour-at-dusk.nap",
+    "title": "Gallery Page: Harbour at Dusk",
+    "purpose": "The service's gallery shows a videotex artist's harbour, built layer by layer as the viewer watches",
+    "style": "Layered flat-colour landscape in a garish sunset palette, after the period videotex painters",
+    "bytes": 5307,
+    "techniques": [
+      "elliptical sky bands round the sun",
+      "hundreds of overlapping polygons",
+      "colour-map dusk in three WAIT steps",
+      "windows, stars, quay lamps and portholes lit by one SET COLOR",
+      "smoke curls in arcs",
+      "two lighthouse beams sweeping by staggered BLINK",
+      "rigging and pennants in single lines",
+      "swell in incremental lines"
+    ],
+    "animated": true
+  },
+  {
+    "number": 221,
+    "file": "221-the-lace-picture.nap",
+    "title": "The Lace Picture",
+    "purpose": "A decorative gallery piece: geometry, the thing the new terminals drew best, made into lace",
+    "style": "Cream and gold lace on midnight blue with ground-colour cut-outs",
+    "bytes": 6748,
+    "techniques": [
+      "twelvefold rotated polygons",
+      "filled arcs as scallops",
+      "ground-colour cut-outs",
+      "radial thread bars",
+      "DEF TEXTURE basket weave",
+      "dotted line texture for running stitches",
+      "one colour-map entry per ring",
+      "staggered BLINK chase outward",
+      "WAIT between rings"
+    ],
+    "animated": true
+  },
+  {
+    "number": 222,
+    "file": "222-story-time-the-garden.nap",
+    "title": "Story Time: The Garden",
+    "purpose": "A children's story page whose picture draws itself as an animation while the line of text waits below",
+    "style": "Picture-book flat colour: a soil cross-section, a kneeling child and a flower that opens",
+    "bytes": 4332,
+    "techniques": [
+      "WAIT growth stages",
+      "petals hidden in sky colour then revealed by SET COLOR",
+      "filled arcs and rotated petal polygons",
+      "soil cross-section in layered polygons",
+      "a bee arriving in the last stage",
+      "page dots",
+      "a picket fence, cottage and clouds for setting",
+      "drop capital",
+      "grass tufts and a snail",
+      "proportional story text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 223,
+    "file": "223-the-chat-line.nap",
+    "title": "The Chat Line",
+    "purpose": "Subscribers talk in a late-night chat room; the service listens and the screen scrolls",
+    "style": "Night-blue room with a colour-coded member list, programmable-character badges and a blinking heart",
+    "bytes": 3119,
+    "techniques": [
+      "DRCS badges for each member, in the list and before each line",
+      "speech-balloon mark",
+      "DRCS heart with BLINK",
+      "a private message panel",
+      "DRCS musical notes blinking",
+      "night window with curtains in the member column",
+      "proportional text in colour per speaker",
+      "a time on every line",
+      "BLINK cursor",
+      "WAIT between arriving lines"
+    ],
+    "animated": true
+  },
+  {
+    "number": 224,
+    "file": "224-the-face-maker.nap",
+    "title": "The Face Maker",
+    "purpose": "A family builds a cartoon face from numbered parts and sends it on as a card",
+    "style": "Big flat-colour cartoon face in a photo-booth frame beside a numbered parts menu",
+    "bytes": 3434,
+    "techniques": [
+      "WAIT between face parts",
+      "BLINK on the part being changed",
+      "filled arcs for smile and cheeks",
+      "a rounded nose and inner ears",
+      "many small discs for curls",
+      "pleated curtains with a scalloped valance",
+      "an envelope for the card",
+      "DEF TEXTURE polka-dot wallpaper",
+      "a speech balloon",
+      "thumbnail choices in boxes",
+      "DRCS part icons in the menu",
+      "fixed-pitch menu text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 225,
+    "file": "225-download-tonights-program.nap",
+    "title": "Download Tonight's Program",
+    "purpose": "The service sends a program to the home computer, frame by frame, while the family waits",
+    "style": "Navy night with a broadcast mast, a stream of digits, a beige home computer, a floppy and a cassette",
+    "bytes": 2464,
+    "techniques": [
+      "mosaic progress bar filled frame by frame with WAIT",
+      "digits set along an arc one WAIT apart",
+      "a town of aerials under the signal",
+      "BLINK receiving lamp",
+      "outlined and filled rectangles",
+      "filled arcs",
+      "a desk and a mug for the room",
+      "a transmitter hut",
+      "the program listing on the screen"
+    ],
+    "animated": true
+  },
+  {
+    "number": 226,
+    "file": "226-new-years-eve-1990.nap",
+    "title": "New Year's Eve 1990",
+    "purpose": "The city service greets a new decade: a countdown, then fireworks over the skyline",
+    "style": "Midnight skyline and river under multicoloured bursts, a greeting set along an arc",
+    "bytes": 7062,
+    "techniques": [
+      "bursts of lines, one colour-map entry each",
+      "BLINK colour cycling with staggered delays",
+      "WAIT countdown then reveal",
+      "a greeting on a ribbon",
+      "firework reflections in the river",
+      "lit windows and river reflections",
+      "a bridge of filled-arc arches",
+      "a crowd in silhouette",
+      "a drop-shadowed year",
+      "a tower clock at midnight",
+      "twinkling stars by BLINK"
+    ],
+    "animated": true
+  }
+]
