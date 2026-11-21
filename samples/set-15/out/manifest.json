@@ -1,0 +1,193 @@
+[
+  {
+    "number": 197,
+    "file": "197-the-electronic-front-page.nap",
+    "title": "The Electronic Front Page",
+    "purpose": "The morning newspaper arrives on the television: an invented city daily's videotext front page, three stories with drawn icons and the page number to key for each.",
+    "style": "Broadsheet masthead in red and cream over ruled story rows, poster-flat icons",
+    "bytes": 2706,
+    "techniques": [
+      "WAIT between stories",
+      "BLINK late-news tag",
+      "WAIT, then the planned bridge in dashed arc and line",
+      "offset shadow nameplate",
+      "native circles",
+      "filled polygons",
+      "proportional and fixed-pitch stroke text",
+      "keycap index of other departments",
+      "a picture repainted after a WAIT so the rocket lifts off"
+    ],
+    "animated": true
+  },
+  {
+    "number": 198,
+    "file": "198-weather-map-of-the-westmark.nap",
+    "title": "Weather Map of the Westmark",
+    "purpose": "The afternoon forecast map of an invented prairie region: town symbols, temperatures, and a cold front that arrives last.",
+    "style": "Flat green land on a deep blue sea, symbols as programmable characters, cream temperature tags",
+    "bytes": 2357,
+    "techniques": [
+      "DRCS weather symbols overlaid in two colours",
+      "WAIT before the fronts",
+      "the same DRCS symbols reused small in the outlook",
+      "dashed and dotted line textures",
+      "wind arrow",
+      "BLINK storm bolt and rain",
+      "rain area in a defined texture of drops, shimmering with the rain entry",
+      "native hatching",
+      "filled polygons"
+    ],
+    "animated": true
+  },
+  {
+    "number": 199,
+    "file": "199-storm-warning.nap",
+    "title": "Storm Warning",
+    "purpose": "A severe-weather bulletin pushed to every set in two counties: the sky over the farms, a flashing bolt and the watch in red.",
+    "style": "Bruised green storm sky over black farm silhouettes, alarm-red bulletin panel",
+    "bytes": 1699,
+    "techniques": [
+      "BLINK lightning hidden in the sky colour",
+      "BLINK sky flash on the same beat",
+      "BLINK warning text",
+      "WAIT reveal",
+      "banded sky with scud and shelf cloud",
+      "debris cloud of native circles",
+      "BLINK bands that turn the funnel",
+      "defined texture of slanting rain",
+      "inset county map in cross-hatching",
+      "filled polygons and arcs",
+      "large stroke text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 200,
+    "file": "200-market-close.nap",
+    "title": "Market Close",
+    "purpose": "A stockbroker's quotation page at the close: the day's index climbing hour by hour, then ten invented shares with their moves.",
+    "style": "Green-screen trading terminal: amber headings, phosphor-green chart over a dark grid",
+    "bytes": 3229,
+    "techniques": [
+      "WAIT reveal of the index hour by hour",
+      "headline figure repainted at each hour",
+      "DRCS up and down arrows",
+      "native vertical hatching under the line",
+      "BLINK closing marker and ringing bell",
+      "BLINK pulsing the most active row",
+      "fixed-pitch figures",
+      "hatching over a solid fill for two-tone shading",
+      "dotted reference line"
+    ],
+    "animated": true
+  },
+  {
+    "number": 201,
+    "file": "201-last-nights-scores.nap",
+    "title": "Last Night's Scores",
+    "purpose": "The morning sports page: last night's extra-inning game told by pennants, a ballpark and a ten-inning line score, with the other results below.",
+    "style": "Night ballpark in grass green and infield tan, wooden scoreboard with yellow figures",
+    "bytes": 2095,
+    "techniques": [
+      "two defined dot textures for the crowd",
+      "a third texture of unlit bulbs on the board",
+      "filled polygons and native circles",
+      "native hatching for mown grass",
+      "fixed-pitch scoreboard figures",
+      "BLINK lights the tenth-inning column",
+      "WAIT replays the line score inning by inning"
+    ],
+    "animated": true
+  },
+  {
+    "number": 202,
+    "file": "202-the-community-almanac.nap",
+    "title": "The Community Almanac",
+    "purpose": "A provincial statistics bureau puts its census on the television: towns by population as rising bars, and the region's farms by type as a hatched pie.",
+    "style": "Government report on cream paper: teal band, blue bars, period hatching in the pie",
+    "bytes": 2678,
+    "techniques": [
+      "WAIT as each row is counted",
+      "isotype rows of a DRCS figure drawn with REPEAT",
+      "exploded pie wedge",
+      "native vertical, horizontal and cross hatching over solid fills",
+      "polygon pie wedges"
+    ],
+    "animated": true
+  },
+  {
+    "number": 203,
+    "file": "203-ask-the-encyclopedia-volcanoes.nap",
+    "title": "Ask the Encyclopedia: Volcanoes",
+    "purpose": "A home encyclopedia on the television: a volcano cut open, layer by layer, then the eruption, with every part named on a leader line.",
+    "style": "Textbook cross-section in earth browns and lava reds under a dusk sky",
+    "bytes": 2044,
+    "techniques": [
+      "nested polygons for strata",
+      "defined fill texture for rock",
+      "WAIT before the eruption",
+      "magma rising up the vent in WAIT steps",
+      "BLINK lava glow",
+      "dotted arcs for the bombs' paths",
+      "scale bar",
+      "labels on leader lines"
+    ],
+    "animated": true
+  },
+  {
+    "number": 204,
+    "file": "204-city-directory-hotels.nap",
+    "title": "City Directory: Hotels",
+    "purpose": "The electronic city directory a visitor consults before booking: downtown hotels with addresses, telephone numbers, stars and tonight's free rooms.",
+    "style": "Dusk skyline whose windows light up, over a cream directory card with coloured availability dots",
+    "bytes": 2715,
+    "techniques": [
+      "colour-map change after WAIT lights every window and its reflection at once",
+      "DRCS star and bed characters",
+      "BLINK beacon, sign and last-room dot",
+      "text on a downward path",
+      "rows of rectangles",
+      "WAIT between directory rows",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 205,
+    "file": "205-your-own-newspaper.nap",
+    "title": "Your Own Newspaper",
+    "purpose": "The newspaper the futurists promised: only the topics one reader chose, gathered each morning into coloured folders with her name on the masthead.",
+    "style": "Plum desk with four pastel file folders, each with a coloured tab and a flat drawing",
+    "bytes": 2769,
+    "techniques": [
+      "WAIT as each folder is filed",
+      "DRCS frost crystal at two sizes",
+      "BLINK new-item marker",
+      "native circles and arcs",
+      "filled polygons",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 206,
+    "file": "206-the-night-sky-tonight.nap",
+    "title": "The Night Sky Tonight",
+    "purpose": "An almanac page for a hobby club: tonight's sky as a dome over the rooftops, with the planets named, the Moon's phase and the times to go out and look.",
+    "style": "Deep blue dome in concentric bands over a black roofline, twinkling stars, gold labels",
+    "bytes": 3186,
+    "techniques": [
+      "dusk turned to night by four colour-map changes after a WAIT",
+      "DRCS stars",
+      "Milky Way in two defined speckle textures",
+      "silhouetted stargazer at a telescope",
+      "three BLINKs with staggered delays for twinkling",
+      "concentric arcs",
+      "Moon phase from two arcs and a halo ring",
+      "Jupiter with its four moons",
+      "WAIT before the labels",
+      "entry 0 freed and recoloured for a meteor that BLINK flashes"
+    ],
+    "animated": true
+  }
+]
