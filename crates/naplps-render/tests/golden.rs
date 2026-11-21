@@ -62,6 +62,8 @@ struct Sequence<'a> {
     font: Option<&'a Path>,
     frames: u32,
     step: u32,
+    /// `--pace BYTES/TICKS`, if any (DEC-7031 item 3).
+    pace: Option<&'a str>,
 }
 
 /// Plays a sequence into a new folder and returns its pictures by tick.
@@ -82,6 +84,9 @@ fn play(sequence: &Sequence<'_>) -> BTreeMap<u32, Vec<u8>> {
     }
     if let Some(font) = sequence.font {
         command.arg("--font").arg(font);
+    }
+    if let Some(pace) = sequence.pace {
+        command.args(["--pace", pace]);
     }
     let output = command.arg(sequence.page).arg(folder.join("picture.ppm")).output().unwrap();
     let report = String::from_utf8_lossy(&output.stderr);
@@ -192,6 +197,7 @@ fn the_same_objects_in_each_layer_and_order_are_the_golden_images() {
         font: None,
         frames: 16,
         step: 1,
+        pace: None,
     };
     let pictures = held_to_golden(&sequence);
     assert_eq!(pictures.len(), 16);
@@ -228,6 +234,7 @@ fn a_four_frame_cycle_is_the_golden_sequence() {
         font: None,
         frames: 15,
         step: 1,
+        pace: None,
     };
     let pictures = held_to_golden(&cycle);
     // Frame 0 until the cycle starts at tick 1, then three ticks a frame.
@@ -265,8 +272,16 @@ fn an_animated_page_of_waits_and_blinks_is_the_golden_sequence() {
     page.extend(wait(4));
     page.extend(rectangle(4, 192, 100, 48, 48));
     let page = written("animated", &page);
-    let sequence =
-        Sequence { name: "animated", page: &page, objects: None, script: None, font: None, frames: 73, step: 6 };
+    let sequence = Sequence {
+        name: "animated",
+        page: &page,
+        objects: None,
+        script: None,
+        font: None,
+        frames: 73,
+        step: 6,
+        pace: None,
+    };
     let pictures = held_to_golden(&sequence);
     assert_eq!(pictures.keys().copied().collect::<Vec<_>>(), [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72]);
     let black = colour(&pictures[&0], 639, 0);
@@ -283,6 +298,64 @@ fn an_animated_page_of_waits_and_blinks_is_the_golden_sequence() {
     assert_ne!(blinking(24), blinking(30));
     assert_eq!(blinking(30), blinking(54));
     assert_eq!(blinking(60), blinking(0));
+}
+
+/// DEC-7031 item 3, REQ-7024: a sample page of the repository's, with WAITs, played at 1,200
+/// bytes in 120 ticks (ten bytes a tick, 12,000 bits a second at ten bits a byte) until it is
+/// painted whole.
+#[test]
+fn a_sample_page_painted_at_a_line_pace_is_the_golden_sequence() {
+    let page = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../samples/set-6/out/122-the-lure.nap");
+    let font = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fonts/neoteletext.strokes");
+    let stream = fs::read(&page).unwrap();
+    // The ticks the line takes, ceil(bytes x 120 / 1,200), and the WAITs' (6 ticks a tenth),
+    // as the stream's terminal reports them.
+    let mut canvas = naplps::Canvas::new(640, 480).unwrap();
+    let waits: u32 = naplps::Terminal::new(4)
+        .feed(&mut canvas, &stream)
+        .iter()
+        .filter_map(|event| if let naplps::Event::Wait(tenths) = event { Some(tenths * 6) } else { None })
+        .sum();
+    assert!(waits > 0, "the page has WAITs");
+    let painted = u32::try_from(stream.len()).unwrap().div_ceil(10) + waits;
+    let sequence = Sequence {
+        name: "paced-lure",
+        page: &page,
+        objects: None,
+        script: None,
+        font: Some(&font),
+        frames: painted + 1,
+        step: 10,
+        pace: Some("1200/120"),
+    };
+    let pictures = held_to_golden(&sequence);
+    let ticks: Vec<u32> = pictures.keys().copied().collect();
+    assert_eq!(
+        ticks,
+        (0..=painted).step_by(10).chain((!painted.is_multiple_of(10)).then_some(painted)).collect::<Vec<_>>()
+    );
+    // Tick 0: nothing has arrived, so the picture is the empty page's.
+    let empty = written("paced-empty", &[]);
+    let still = |page: &Path, name: &str| {
+        let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("golden-{name}.ppm"));
+        let output = Command::new(env!("CARGO_BIN_EXE_naplps-render"))
+            .args(["--width", "640", "--height", "480", "--font"])
+            .arg(&font)
+            .arg(page)
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        fs::read(out).unwrap()
+    };
+    assert!(pictures[&0] == still(&empty, "paced-empty"), "tick 0 is the empty page");
+    // The last is the page painted at once; the pictures before it are not.
+    let whole = still(&page, "paced-whole");
+    assert!(pictures[&painted] == whole, "painted whole at tick {painted}");
+    let before: Vec<u32> = ticks.iter().copied().filter(|&tick| tick < painted && pictures[&tick] == whole).collect();
+    assert_eq!(before, Vec::<u32>::new(), "no picture before the last is the whole page");
+    let distinct: std::collections::BTreeSet<&Vec<u8>> = pictures.values().collect();
+    assert!(distinct.len() >= 6, "only {} different pictures", distinct.len());
 }
 
 /// Where the reference pages are: `NAPLPS_REFERENCE_DIR`, or under the home directory.
@@ -326,6 +399,7 @@ fn a_historical_animated_page_is_the_golden_sequence() {
         font: Some(&font),
         frames: 3601,
         step: 180,
+        pace: None,
     };
     let pictures = held_to_golden(&sequence);
     assert_eq!(pictures.len(), 21);
