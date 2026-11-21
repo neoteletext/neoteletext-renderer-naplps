@@ -1,0 +1,200 @@
+[
+  {
+    "number": 207,
+    "file": "207-grain-prices-at-the-elevator.nap",
+    "title": "Grain Prices at the Elevator",
+    "purpose": "A farm information service shows the closing prices paid at the local elevator.",
+    "style": "Banded prairie sunset over a dark price board",
+    "bytes": 3403,
+    "techniques": [
+      "banded fills",
+      "filled polygons",
+      "native circles",
+      "DRCS grain and logo characters",
+      "defined stubble pattern",
+      "macro hopper cars",
+      "trend polylines",
+      "colour-map sunset",
+      "proportional text",
+      "keypad key tops",
+      "WAIT reveal",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 208,
+    "file": "208-spraying-weather.nap",
+    "title": "Spraying Weather",
+    "purpose": "A farm forecast gives wind and rain by the hour and names the hours fit for spraying.",
+    "style": "Striped field under an hourly wind and rain board",
+    "bytes": 3277,
+    "techniques": [
+      "two defined fill patterns",
+      "DRCS logo character",
+      "filled polygons",
+      "native circles",
+      "rotated arrows",
+      "proportional text",
+      "keypad key tops",
+      "WAIT reveal",
+      "picture redrawn in stages",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 209,
+    "file": "209-the-farm-kitchen.nap",
+    "title": "The Farm Kitchen",
+    "purpose": "A scene of the promise made to the countryside: the markets on the kitchen television at dawn.",
+    "style": "Lamp-lit interior in ochre and enamel with a glowing green screen",
+    "bytes": 4714,
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "arcs",
+      "perspective tiling",
+      "page 207 in miniature",
+      "colour-map dawn",
+      "WAIT",
+      "BLINK",
+      "proportional text"
+    ],
+    "animated": true
+  },
+  {
+    "number": 210,
+    "file": "210-flight-briefing.nap",
+    "title": "Flight Briefing",
+    "purpose": "An airport terminal for pilots maps cloud ceilings at the region's airfields and lists the notices.",
+    "style": "Dark chart of lakes and uplands with signal-coloured airfields",
+    "bytes": 2665,
+    "techniques": [
+      "filled polygons",
+      "defined fill pattern",
+      "cross-hatching",
+      "dotted line texture",
+      "native circles",
+      "wind barbs",
+      "runways on their headings",
+      "WAIT-drawn route",
+      "proportional text",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 211,
+    "file": "211-lesson-four-fractions.nap",
+    "title": "Lesson Four: Fractions",
+    "purpose": "A programmed-learning lesson asks what fraction of a pie is orange and marks the answer.",
+    "style": "Chalk on a green blackboard in a wooden frame",
+    "bytes": 2945,
+    "techniques": [
+      "pie wedges",
+      "native circles",
+      "outlined arcs",
+      "proportional text",
+      "WAIT",
+      "colour-map answer reveal",
+      "counted reveal",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 212,
+    "file": "212-the-classroom-terminal.nap",
+    "title": "The Classroom Terminal",
+    "purpose": "A scene of the school that was promised: a class gathered at one terminal, the world on its screen.",
+    "style": "Flat-colour classroom with bright sweaters and a glowing map",
+    "bytes": 2954,
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "arcs",
+      "dotted line texture",
+      "proportional text",
+      "WAIT-drawn map",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 213,
+    "file": "213-book-your-holiday.nap",
+    "title": "Book Your Holiday",
+    "purpose": "A travel service sells a week on an island: the beach, the flights, the price, and one key to book.",
+    "style": "Travel-poster beach in bands over a booking panel",
+    "bytes": 4240,
+    "techniques": [
+      "banded fills",
+      "defined wave pattern",
+      "DRCS logo character",
+      "filled polygons",
+      "native circles",
+      "proportional text",
+      "keypad key tops",
+      "WAIT",
+      "BLINK shimmer"
+    ],
+    "animated": true
+  },
+  {
+    "number": 214,
+    "file": "214-vote-on-the-new-library.nap",
+    "title": "Vote on the New Library",
+    "purpose": "A township puts a question to its households on the television and shows the count as it comes in.",
+    "style": "Civic notice: a stone facade over ballot keys and a tally bar",
+    "bytes": 2853,
+    "techniques": [
+      "filled polygons",
+      "DRCS crest character",
+      "inset street plan",
+      "repeated rectangles",
+      "native circles",
+      "proportional text",
+      "WAIT tally",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 215,
+    "file": "215-working-from-home.nap",
+    "title": "Working from Home",
+    "purpose": "A scene of the work the futurists moved into the home: a terminal on a bedroom desk, a child on the rug.",
+    "style": "Striped-wallpaper interior with a suburban window and a green chart",
+    "bytes": 3389,
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "arcs",
+      "repeated rectangles",
+      "WAIT-drawn chart",
+      "proportional text",
+      "BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 216,
+    "file": "216-the-community-health-page.nap",
+    "title": "The Community Health Page",
+    "purpose": "A community clinic gives its hours, a timeline of a child's vaccinations and a nurse's telephone line.",
+    "style": "Friendly public-service page in teal with a coloured dose timeline",
+    "bytes": 2487,
+    "techniques": [
+      "filled polygons",
+      "native circles",
+      "arcs",
+      "repeated rectangles",
+      "proportional text",
+      "keypad key tops",
+      "WAIT reveal and booking",
+      "BLINK"
+    ],
+    "animated": true
+  }
+]
