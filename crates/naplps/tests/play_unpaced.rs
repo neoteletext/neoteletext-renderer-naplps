@@ -6,7 +6,9 @@
 //! the next thing due and to the next blink, the WAIT's ticks left, the bytes held, the ticks
 //! waited and the tick. The sums were taken from the player at livedevelopment 96307fd, the
 //! commit before the pace, by running this file there unchanged (it uses only what that player
-//! had), on 21 November 2026.
+//! had), on 21 November 2026. The first page's were taken again on 22 November 2026 from the
+//! player at d613621, the last commit before the pace was merged, because that page's sample
+//! was redrawn in between (3f78114).
 #![allow(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -35,10 +37,10 @@ const PAGES: [&str; 6] = [
     "docs/examples/pages/12-postcard.nap",
 ];
 
-/// The sums of [`PAGES`] played by [`play`], taken at 96307fd; the second of each pair is with
+/// The sums of [`PAGES`] played by [`play`] before the pace; the second of each pair is with
 /// delays off.
-const AT_96307FD: [(u64, u64); 6] = [
-    (0x3AEC_A102_B42F_01A0, 0xE233_11B5_0FC1_165F),
+const BEFORE_THE_PACE: [(u64, u64); 6] = [
+    (0x33FF_F044_E36A_218C, 0x1EBA_20F6_5191_3281),
     (0xE173_763F_EE0B_3AA5, 0xD19D_E2AF_5B8A_0084),
     (0xC564_5386_4574_9BB0, 0x5C85_91A4_A9C8_BD43),
     (0xC58D_52AA_EEBC_FDD0, 0x85EE_A592_C9FD_C449),
@@ -99,5 +101,5 @@ fn a_player_with_no_pace_reports_what_the_player_before_the_pace_reported() {
         let stream = std::fs::read(&full).unwrap_or_else(|error| panic!("{full}: {error}"));
         sums.push((play(&stream, true), play(&stream, false)));
     }
-    assert_eq!(sums, AT_96307FD);
+    assert_eq!(sums, BEFORE_THE_PACE);
 }
