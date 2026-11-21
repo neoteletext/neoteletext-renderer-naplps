@@ -20,7 +20,8 @@
 //! rectangle of pixels that changed; [`Terminal::set_objects`], [`Terminal::set_animation`] and
 //! [`Terminal::compose`] draw numbered objects over the stream's picture into a second canvas,
 //! repainting only what changed; and [`Player`] plays WAIT and BLINK on ticks of one sixtieth of
-//! a second that its caller says have passed.
+//! a second that its caller says have passed, and with a [`Pace`] gives the stream to the
+//! terminal at a serial line's speed (DEC-7031 item 3).
 //!
 //! Every place NeoTeletext defines on a NAPLPS page is a dot of the 480 by 500 teletext raster,
 //! and the receiver draws the display area on a canvas of [`limits::RECEIVER_CANVAS_WIDTH`] by
@@ -72,7 +73,7 @@ pub use bitmap::{BitmapSet, JoinForm, JoiningType};
 pub use dots::{Rounding, dot_of_point, dot_steps, multi_value_operand, unit_steps};
 pub use font::{FontSet, Glyph, StrokeFont};
 pub use palette::{Blink, Palette, Rgb};
-pub use play::Player;
+pub use play::{Pace, Player};
 pub use raster::{FillPattern, LineTexture};
 pub use surface::{Canvas, Rect, dot_scale, raster_dot, raster_shift};
 pub use teletext::{TELETEXT_SET_COUNT, TELETEXT_SETS};

@@ -154,3 +154,80 @@ fn options_that_do_not_go_together_are_refused() {
         assert_eq!(code, Some(2), "{arguments:?}: {message}");
     }
 }
+
+/// `--pace` (DEC-7031 item 3): without `--frames`, and any value but two whole numbers of at
+/// least 1 about a slash, is refused with exit status 2 and draws nothing.
+#[test]
+fn a_pace_without_frames_or_not_two_whole_numbers_of_at_least_1_is_refused() {
+    let page = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/examples/pages/02-shapes.nap");
+    let out = concat!(env!("CARGO_TARGET_TMPDIR"), "/pace-refused.ppm");
+    let shown = concat!(env!("CARGO_TARGET_TMPDIR"), "/pace-refused-00000.ppm");
+    let run = |arguments: &[&str]| {
+        let _ = fs::remove_file(out);
+        let _ = fs::remove_file(shown);
+        let output = Command::new(env!("CARGO_BIN_EXE_naplps-render")).args(arguments).output().unwrap();
+        let wrote = Path::new(out).exists() || Path::new(shown).exists();
+        (output.status.code(), wrote, String::from_utf8_lossy(&output.stderr).into_owned())
+    };
+    let (code, wrote, message) = run(&["--pace", "1200/600", page, out]);
+    assert_eq!((code, wrote), (Some(2), false), "{message}");
+    assert_eq!(message, "naplps-render: --script, --frame-step and --pace need --frames\n");
+    for value in ["5", "0/5", "5/0", "a/b", "0/0", "/5", "5/", "-1/5", "5/6/7", "4294967296/1", ""] {
+        let (code, wrote, message) = run(&["--frames", "5", "--pace", value, page, out]);
+        assert_eq!((code, wrote), (Some(2), false), "--pace {value:?}: {message}");
+        assert_eq!(
+            message,
+            format!("naplps-render: --pace is BYTES/TICKS, each at least 1, such as 1200/600; {value:?} is not\n"),
+            "--pace {value:?}"
+        );
+    }
+    let (code, _, message) = run(&["--frames", "5", "--pace", page, out]);
+    assert_eq!(code, Some(2), "a missing value: {message}");
+    // The largest whole number is taken: the whole page on the first tick.
+    let (code, wrote, message) = run(&["--frames", "2", "--pace", "4294967295/1", page, out]);
+    let wrote = wrote || Path::new(concat!(env!("CARGO_TARGET_TMPDIR"), "/pace-refused-00001.ppm")).exists();
+    assert_eq!((code, wrote, message.as_str()), (Some(0), true, ""));
+}
+
+/// `--pace` too slow for the ticks asked for says so on standard error, with the bytes still
+/// held, and still writes its pictures; fast enough, it says nothing.
+#[test]
+fn a_page_not_painted_whole_in_the_frames_asked_for_is_reported() {
+    let page = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/examples/pages/02-shapes.nap");
+    let length = fs::metadata(page).unwrap().len();
+    let directory = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("pace-short");
+    let _ = fs::remove_dir_all(&directory);
+    fs::create_dir_all(&directory).unwrap();
+    let out = directory.join("frame.ppm");
+    let run = |frames: &str, pace: &str| {
+        Command::new(env!("CARGO_BIN_EXE_naplps-render"))
+            .args(["--frames", frames, "--pace", pace, page])
+            .arg(&out)
+            .output()
+            .unwrap()
+    };
+    // Five frames are ticks 0 to 4: four ticks of 3 bytes in 2, 6 bytes given.
+    let output = run("5", "3/2");
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        format!(
+            "naplps-render: the page is not painted whole in 5 ticks at --pace: {} bytes are still held\n",
+            length - 6
+        )
+    );
+    assert!(directory.join("frame-00004.ppm").exists());
+    // Two bytes in a tick: painted whole on tick ceil(length / 2).
+    let enough = length.div_ceil(2) + 1;
+    let output = run(&enough.to_string(), "2/1");
+    assert_eq!((output.status.code(), String::from_utf8_lossy(&output.stderr).into_owned()), (Some(0), String::new()));
+    let output = run(&(enough - 1).to_string(), "2/1");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        format!(
+            "naplps-render: the page is not painted whole in {} ticks at --pace: {} bytes are still held\n",
+            enough - 1,
+            length - 2 * (enough - 2)
+        )
+    );
+}

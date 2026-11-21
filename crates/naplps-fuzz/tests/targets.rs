@@ -17,6 +17,8 @@
 
 #[path = "../../../fuzz/fuzz_targets/naplps_objects.rs"]
 mod objects;
+#[path = "../../../fuzz/fuzz_targets/naplps_paced.rs"]
+mod paced;
 #[path = "../../../fuzz/fuzz_targets/naplps_stream.rs"]
 mod stream;
 #[path = "../../../fuzz/fuzz_targets/naplps_validator.rs"]
@@ -276,4 +278,80 @@ fn naplps_validator_holds_on_generated_inputs() {
 #[ignore = "the long run of the full gate: scripts/check.sh full"]
 fn naplps_validator_holds_on_generated_inputs_at_length() {
     search_validator(VALIDATOR_LONG);
+}
+
+// ----- naplps_paced --------------------------------------------------------------------------
+
+/// The random values of one operation of `naplps_paced`: its kind, a count, two pace parts each
+/// with its selector, and a piece of a stream.
+type PacedOperation = (u8, u8, (u8, u32, u8, u32), Vec<(u8, u8)>);
+
+/// One operation of `naplps_paced` from random values: a push of a piece of [`biased`] bytes, an
+/// advance, a pace of two parts (each small, or whole when its selector says), the pace removed,
+/// or delays turned off or on. The operation byte is the target's remainder by 5.
+fn paced_operation((kind, count, parts, piece): &PacedOperation) -> Vec<u8> {
+    let part = |selector: u8, whole: u32| {
+        if selector.is_multiple_of(4) {
+            let mut bytes = vec![0xF0];
+            bytes.extend_from_slice(&whole.to_be_bytes());
+            bytes
+        } else {
+            vec![selector % 0xF0]
+        }
+    };
+    match kind % 8 {
+        0..=2 => {
+            let mut bytes = vec![0, u8::try_from(piece.len()).unwrap()];
+            bytes.extend(piece.iter().copied().map(biased));
+            bytes
+        }
+        3 | 4 => vec![1, *count],
+        5 => {
+            let mut bytes = vec![2];
+            bytes.extend(part(parts.0, parts.1));
+            bytes.extend(part(parts.2, parts.3));
+            bytes
+        }
+        6 => vec![3],
+        _ => vec![4, *count],
+    }
+}
+
+/// An input of `naplps_paced`: its operations, one after another.
+fn paced_input((operations,): &(Vec<PacedOperation>,)) -> Vec<u8> {
+    operations.iter().flat_map(paced_operation).collect()
+}
+
+/// The inputs of a run of the push gate, and the most operations of each.
+const PACED_QUICK: (u32, usize) = (48, 40);
+/// The inputs of a run of the full gate, and the most operations of each.
+const PACED_LONG: (u32, usize) = (1500, 120);
+/// The longest piece pushed by one operation.
+const PACED_PIECE: usize = 64;
+
+fn search_paced((cases, length): (u32, usize)) {
+    let operation = (
+        any::<u8>(),
+        any::<u8>(),
+        (any::<u8>(), any::<u32>(), any::<u8>(), any::<u32>()),
+        vec((any::<u8>(), any::<u8>()), 0..=PACED_PIECE),
+    );
+    search("naplps_paced", paced::naplps_paced, &(vec(operation, 0..=length),), paced_input, cases);
+}
+
+#[test]
+fn naplps_paced_holds_on_every_kept_input_and_on_the_empty_one() {
+    replay("naplps_paced", paced::naplps_paced);
+    paced::naplps_paced(&[]);
+}
+
+#[test]
+fn naplps_paced_holds_on_generated_inputs() {
+    search_paced(PACED_QUICK);
+}
+
+#[test]
+#[ignore = "the long run of the full gate: scripts/check.sh full"]
+fn naplps_paced_holds_on_generated_inputs_at_length() {
+    search_paced(PACED_LONG);
 }

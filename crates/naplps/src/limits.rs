@@ -134,7 +134,8 @@ pub const TENTH_TICKS: u32 = 6;
 /// Ticks for which a stream's WAITs together are played in one generation, one minute; after
 /// that each WAIT passes without delay (ANIM-20).
 pub const WAIT_BUDGET_TICKS: u32 = 3_600;
-/// Bytes held while a WAIT is played; when more arrive the wait ends at once (ANIM-20).
+/// Bytes held while a WAIT is played or a pace holds a stream back; when more arrive the wait
+/// and the pace end at once (ANIM-20; DEC-7031 item 3, which gives the pace no bound of its own).
 pub const MAX_WAIT_HELD_BYTES: usize = 262_144;
 
 // ----- Text a picture carries and never draws (DEC-6638 items 3 and 6) ---------------------------

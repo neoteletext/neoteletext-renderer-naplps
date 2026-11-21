@@ -870,7 +870,7 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 </table>
 <p>"Next entry" is the standard's reversed counting: for a 16-entry map starting from 0, the order is 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15. To load consecutive entries, select each one.</p>
 <h3 id="wait-3d">WAIT <code>3D</code></h3>
-<p>A fixed byte <code>5C</code>, then interval bytes, each 0 to 63 tenths of a second, added together. Without the <code>5C</code> the command is ignored. <strong>Here:</strong> the library has no clock. <code>Terminal::feed</code> reports <code>Event::Wait(tenths)</code> and continues; <code>Terminal::feed_until_wait</code> stops at the WAIT, and <code>Player</code> plays it when told how many ticks of one sixtieth of a second have passed: a tenth is six ticks. See <a href="#objects-and-animation">Objects and animation</a>.</p>
+<p>A fixed byte <code>5C</code>, then interval bytes, each 0 to 63 tenths of a second, added together. Without the <code>5C</code> the command is ignored. <strong>Here:</strong> the library has no clock. <code>Terminal::feed</code> reports <code>Event::Wait(tenths)</code> and continues; <code>Terminal::feed_until_wait</code> stops at the WAIT, and <code>Player</code> plays it when told how many ticks of one sixtieth of a second have passed: a tenth is six ticks. When the player gives the stream at a line's pace (<code>Player::set_pace</code>), a WAIT's time is added to the line's: no byte falls due while it is played. See <a href="#objects-and-animation">Objects and animation</a>.</p>
 <h3 id="select-color-3e">SELECT COLOR <code>3E</code></h3>
 <table>
 <thead>
@@ -1192,8 +1192,8 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <pre><code>naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE]
               [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble]
               [--objects FILE]
-              [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE]
-              [--double] PAGE OUT.ppm
+              [--frames TICKS [--frame-step K] [--script FILE] [--pace BYTES/TICKS]]
+              [--teletext ENGINE] [--double] PAGE OUT.ppm
 </code></pre>
 <p>By default it draws the page as NeoTeletext shows it: the 480 by 500 teletext raster, the display area on its lines 20 to 479 (teletext rows 1 to 23, a canvas of 480 by 460), and rows 0 and 24 in the page's background colour (DEC-6857).</p>
 <table>
@@ -1247,6 +1247,10 @@ byte 3: G0 R1 B0 G0 R1 B0 = 010010 -&gt; 52
 <tr>
 <td><code>--script</code></td>
 <td>With <code>--frames</code>: a text file of timed operations on the objects, one a line, in ascending tick; <code>-</code> reads standard input.</td>
+</tr>
+<tr>
+<td><code>--pace</code></td>
+<td>With <code>--frames</code>: give the page to the renderer at BYTES bytes in every TICKS ticks, each at least 1, as a serial line would deliver it, so the pictures show the page painting. A line of s bits a second, at ten bits a byte, is <code>--pace s/600</code>: <code>--pace 1200/600</code> is 1,200 bits a second, two bytes a tick. After n ticks n x BYTES / TICKS bytes, rounded down, have been drawn, and none at tick 0; each WAIT's ticks are added. If the page is not painted whole in the ticks asked for, it says how many bytes were left.</td>
 </tr>
 <tr>
 <td><code>--dac-bits</code></td>
@@ -1412,6 +1416,7 @@ let mut page = Canvas::new(480, 460)?;       // the stream draws here: layer 0, 
 let mut shown = Canvas::new(480, 460)?;      // the picture presented
 let mut terminal = Terminal::new(4);
 let mut player = Player::new();
+// player.set_pace(Some(Pace { bytes: 1200, ticks: 600 }));  // paint at 1,200 bits a second
 player.push(&amp;mut terminal, &amp;mut page, &amp;bytes);      // draws up to the first WAIT
 terminal.set_objects(&amp;objects)?;                     // refused whole if any is not valid
 terminal.set_animation(1, Animation { position: Some((120, 80)), ..Animation::default() });
@@ -1487,15 +1492,23 @@ let colours = player.colours(&amp;terminal);             // the colour map, blin
 </tr>
 <tr>
 <td><code>Player::push</code>, <code>end</code>, <code>advance(ticks)</code></td>
-<td>Take more of the stream, say it is complete, and let ticks pass. A WAIT of w tenths holds what follows for 6 x w ticks.</td>
+<td>Take more of the stream, say it is complete, and let ticks pass. A WAIT of w tenths holds what follows for 6 x w ticks. Passing ticks in one call or one at a time draws the same at every tick.</td>
 </tr>
 <tr>
 <td><code>Player::colours</code>, <code>ticks_to_next</code></td>
-<td>The colour map at the tick reached, and how many ticks until a WAIT ends or a blink changes.</td>
+<td>The colour map at the tick reached, and how many ticks until a WAIT ends, a blink changes or, at a pace, the next byte is due.</td>
 </tr>
 <tr>
 <td><code>Player::set_delays(false)</code></td>
-<td>Every WAIT passes at once.</td>
+<td>Every WAIT passes at once, and a pace is removed and none taken until delays are on again: what is held is drawn whole by the next <code>push</code>, <code>end</code> or <code>advance</code> (of 0 ticks, if none are to pass).</td>
+</tr>
+<tr>
+<td><code>Player::set_pace(Some(Pace { bytes, ticks }))</code>, <code>pace()</code></td>
+<td>Paint the stream as a serial line would deliver it: the terminal is given <code>bytes</code> bytes in every <code>ticks</code> ticks (a 0 in either is taken as 1). A line of s bits a second, ten bits a byte on 60 ticks a second, is s bytes in 600 ticks; the caller does that sum, and the library knows only bytes and ticks. Bytes pushed are held and drawn as <code>advance</code> passes ticks: after n paced ticks of a run, n x bytes / ticks of them, rounded down. A run begins when bytes arrive while nothing is held and ends when all held are drawn, and what it had earned is then forgotten, so bytes that arrive later are not drawn in a burst. Only ticks that pass while bytes are held and no WAIT is played count, so each WAIT adds its time. More than 262,144 bytes held ends the pace, as it ends a WAIT, and all is drawn at once. The finished picture is the picture drawn at once. <code>set_pace(None)</code> removes the pace.</td>
+</tr>
+<tr>
+<td><code>Player::idle()</code></td>
+<td>Whether nothing is held and no WAIT is being played: at a pace, the picture is painted whole. Blinking goes on regardless.</td>
 </tr>
 </tbody>
 </table>

@@ -4,8 +4,8 @@
 //! ```text
 //! naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N]
 //!               [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE]
-//!               [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE]
-//!               [--double] PAGE OUT.ppm
+//!               [--frames TICKS [--frame-step K] [--script FILE] [--pace BYTES/TICKS]]
+//!               [--teletext ENGINE] [--double] PAGE OUT.ppm
 //! ```
 //!
 //! `--font` loads a stroke font in the library's text form (without one, text moves the cursor
@@ -40,7 +40,10 @@
 //! due (ANIM-20), and `--script FILE` (`-` for standard input) applies ANIM-6's operations to the
 //! objects at their ticks. A picture is written every `--frame-step` ticks (default 1) and
 //! always for the last tick, each named with `-NNNNN`, its tick, before the extension. The
-//! pictures of a run are the same on every machine and every run.
+//! pictures of a run are the same on every machine and every run. `--pace BYTES/TICKS` gives the
+//! page to the renderer at that many bytes in that many ticks, as a serial line would deliver it
+//! (DEC-7031 item 3, REQ-7024): 1,200 bits a second, at ten bits a byte, is `--pace 1200/600`.
+//! Each WAIT's time is added to the line's.
 //!
 //! `naplps-render check [--font FILE] [--objects FILE] [--title TEXT] PAGE` checks a page for
 //! its author instead of drawing it to a file ([`check`]).
@@ -63,7 +66,7 @@ use std::process::ExitCode;
 use naplps::limits::{
     DISPLAY_FIRST_LINE, DISPLAY_LINES, RASTER_HEIGHT, RASTER_WIDTH, RECEIVER_CANVAS_HEIGHT, RECEIVER_CANVAS_WIDTH,
 };
-use naplps::{Canvas, Event, Player, Rgb, StrokeFont, Terminal};
+use naplps::{Canvas, Event, Pace, Player, Rgb, StrokeFont, Terminal};
 
 mod check;
 mod play;
@@ -116,7 +119,7 @@ fn main() -> ExitCode {
 }
 
 /// The usage line.
-const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE]] [--teletext ENGINE] [--double] PAGE OUT.ppm";
+const USAGE: &str = "usage: naplps-render [--width N] [--height N] [--palette-bits N] [--font FILE] [--tenths N] [--stage N] [--border N] [--dac-bits N] [--preamble] [--objects FILE] [--frames TICKS [--frame-step K] [--script FILE] [--pace BYTES/TICKS]] [--teletext ENGINE] [--double] PAGE OUT.ppm";
 
 /// How a picture is written: the border's width, the display's colour registers, and the
 /// raster's lines above and below the display area, rows 0 and 24, in the page's background
@@ -145,6 +148,7 @@ fn run() -> Result<(), String> {
     let mut script_path = None;
     let mut frames = None;
     let mut frame_step = None;
+    let mut line_pace = None;
     let mut operands = Vec::new();
     let mut arguments = std::env::args().skip(1);
     while let Some(argument) = arguments.next() {
@@ -165,6 +169,7 @@ fn run() -> Result<(), String> {
             "--script" => script_path = Some(value("--script")?),
             "--frames" => frames = Some(number(&value("--frames")?)?),
             "--frame-step" => frame_step = Some(number(&value("--frame-step")?)?),
+            "--pace" => line_pace = Some(parse_pace(&value("--pace")?)?),
             other if other.starts_with("--") => return Err(format!("unknown option {other}")),
             other => operands.push(other.to_owned()),
         }
@@ -223,10 +228,11 @@ fn run() -> Result<(), String> {
             Some(path) => play::script(&play::read_text(path)?).map_err(|error| format!("{path}: {error}"))?,
             None => Vec::new(),
         };
-        events.extend(play_page(&mut terminal, &mut canvas, &page, &steps, (frames, frame_step), out_path, display)?);
+        let timing = Timing { frames, frame_step, pace: line_pace };
+        events.extend(play_page(&mut terminal, &mut canvas, &page, &steps, timing, out_path, display)?);
     } else {
-        if script_path.is_some() || frame_step.is_some() {
-            return Err("--script and --frame-step need --frames".to_owned());
+        if script_path.is_some() || frame_step.is_some() || line_pace.is_some() {
+            return Err("--script, --frame-step and --pace need --frames".to_owned());
         }
         events.extend(draw_page(&mut terminal, &mut canvas, &page, stage.unwrap_or(0), page_path));
         let colours = terminal.palette().at(tenths.unwrap_or(0));
@@ -281,21 +287,42 @@ fn draw_page(terminal: &mut Terminal, canvas: &mut Canvas, page: &[u8], stage: u
     events
 }
 
+/// `--pace`'s value, `BYTES/TICKS`, each a whole number of at least 1 (DEC-7031 item 3). The
+/// library takes a 0 as 1; here a 0 is refused, since nobody means it.
+fn parse_pace(text: &str) -> Result<Pace, String> {
+    let malformed = || format!("--pace is BYTES/TICKS, each at least 1, such as 1200/600; {text:?} is not");
+    let (bytes, ticks) = text.split_once('/').ok_or_else(malformed)?;
+    match (bytes.parse(), ticks.parse()) {
+        (Ok(bytes), Ok(ticks)) if bytes > 0 && ticks > 0 => Ok(Pace { bytes, ticks }),
+        _ => Err(malformed()),
+    }
+}
+
+/// How a page is played: for how many ticks, how often a picture is written, and the pace at
+/// which the page's bytes reach the renderer, if any.
+#[derive(Clone, Copy)]
+struct Timing {
+    frames: u32,
+    frame_step: u32,
+    pace: Option<Pace>,
+}
+
 /// Plays the page for `frames` ticks from tick 0, writing a picture every `frame_step` ticks
 /// and for the last tick (ANIM-18). The picture of a tick shows the stream as far as its WAITs
-/// let it come by that tick, the script's operations of that tick and of every tick before, the
+/// and the pace let it come by that tick, the script's operations of that tick and of every tick before, the
 /// cycles' frames at that tick, and the colour map BLINK gives at that tick.
 fn play_page(
     terminal: &mut Terminal,
     canvas: &mut Canvas,
     page: &[u8],
     steps: &[play::Step],
-    (frames, frame_step): (u32, u32),
+    Timing { frames, frame_step, pace }: Timing,
     out_path: &str,
     display: Display,
 ) -> Result<Vec<Event>, String> {
     let mut presented = Canvas::new(canvas.width(), canvas.height()).map_err(|error| error.to_string())?;
     let mut player = Player::new();
+    player.set_pace(pace);
     let mut animator = play::Animator::default();
     let mut events = player.push(terminal, canvas, page);
     events.extend(player.end(terminal, canvas));
@@ -319,6 +346,14 @@ fn play_page(
                 display,
             )?;
         }
+    }
+    if pace.is_some() && !player.idle() {
+        // Said, since a pace too slow for the ticks asked for leaves the last picture short of
+        // the whole page, which a reader of the pictures cannot tell from a short page.
+        eprintln!(
+            "naplps-render: the page is not painted whole in {frames} ticks at --pace: {} bytes are still held",
+            player.held_bytes()
+        );
     }
     let late = steps.count();
     if late > 0 {
