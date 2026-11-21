@@ -323,11 +323,13 @@ fn within_the_allowance(folders: &[PathBuf], share: u64) {
     assert!(heaviest * share <= WORK_CAP, "{} needs more than 1/{share} of WORK_CAP", path.display());
 }
 
-/// TODO-6844: the repository's 120 sample pages draw well within the allowance, each needing
-/// less than a tenth of it.
+/// TODO-6844: the repository's sample pages draw within the allowance, each needing less than a
+/// third of it, the same margin the corpus is held to (DEC-6851). The samples have no size limit of
+/// their own (the owner, 21 November 2026), so they are held to the renderer's real margin, not a
+/// stricter one; the heaviest prints, so a page nearing it is seen.
 #[test]
 fn the_sample_pages_draw_within_the_work_allowance() {
-    within_the_allowance(&[PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../samples"))], 10);
+    within_the_allowance(&[PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../samples"))], 3);
 }
 
 /// The measurement [`WORK_CAP`] was chosen by (TODO-6844, DEC-6851): every page of the NAPLPS
