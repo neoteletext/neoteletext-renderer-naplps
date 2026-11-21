@@ -8,36 +8,37 @@ from math import cos, pi, sin
 from encoder import Page, oval, save
 
 META = dict(title='Quarter Turn', purpose='Poster for a rotating print installation',
-            style='Acid lime and orchid on a black reading circuit with corner registers',
+            style='Acid lime and orchid on a black reading circuit with four edge indexes',
             techniques=['rotated TEXT on four paths', 'DRCS numerals', 'graduated dial'],
             animated=False)
 
 
 def build():
     p = Page('1d1722 dfff75 ebadf0 786480 48354e')
-    for x, dx in ((71, 1), (569, -1)):
-        for y, dy in ((37, 1), (443, -1)):
-            p.line([(x, y + 79*dy), (x, y), (x + 58*dx, y)], 3, 2)
-            p.rect(x-3, y-3, 6, 6, 2)
-    for y in (37, 443):
-        p.rect(129, y-1, 382, 2, 4)
-    for x in (71, 569):
-        p.rect(x-1, 120, 2, 240, 4)
+    for x, y, dx, dy in ((320, 37, 70, 0), (320, 443, 70, 0),
+                         (71, 240, 0, 70), (569, 240, 0, 70)):
+        p.line([(x-dx, y-dy), (x+dx, y+dy)], 3, 2)
+        p.rect(x-3, y-3, 6, 6, 2)
 
     def polar(radius, angle):
         return 320 + radius*cos(angle), 239 + radius*sin(angle)
 
-    p.line([polar(116, i*pi/64) for i in range(129)], 3, 2)
-    for tick in range(24):
-        angle = tick*pi/12
-        cardinal = tick % 6 == 0
-        inner = 93 if cardinal else 106
+    start, finish = -pi/2, 0
+    p.polygon([polar(117, start+i*pi/128) for i in range(65)]
+              + [(320, 239)], 4)
+    p.line([polar(116, i*pi/96) for i in range(193)], 3, 2)
+    for tick in range(48):
+        angle = tick*pi/24
+        major = tick % 12 == 0
+        middle = tick % 6 == 0
+        active = tick >= 36 or tick == 0
+        inner = 92 if major else 98 if middle else 109
         p.line([polar(inner, angle), polar(116, angle)],
-               1 if cardinal else 3, 3 if cardinal else 2)
-    p.line([polar(130, -i*pi/64) for i in range(32)], 2, 4)
-    p.polygon([polar(130, -pi/2), polar(124, -1.45), polar(136, -1.45)], 2)
-    p.line([polar(r, 0) for r in (117, 130)], 2, 2)
-    p.circle(*polar(130, 0), 4, 2, fill=True)
+               1 if major else 2 if active else 3, 3 if major else 2)
+    arc = [polar(132, start+i*pi/128) for i in range(60)]
+    p.line(arc, 2, 4)
+    p.circle(*arc[0], 4, 2, fill=True)
+    p.polygon([polar(132, finish), polar(124, -.11), polar(140, -.11)], 2)
     p.glyph('9', (1, oval(47, 31, 39, 29, 32)),
             (1, [(65, 29), (86, 30), (80, 64), (65, 85), (42, 96), (22, 96),
                  (22, 79), (40, 78), (55, 68), (64, 53)]),

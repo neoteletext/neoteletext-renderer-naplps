@@ -80,3 +80,82 @@ Priorities: Integrate the lighting into a two-circuit marquee and give the face 
 The set encoder now snaps polygon vertices to the coordinate grid before calculating relative offsets. This prevents long contours from accumulating rounding error, which showed up at the left edge of Low Water during the rebuild. The stream generators and validator already had no byte-size limit. Byte counts remain descriptive.
 
 All ten rebuilt pages were reviewed at both sizes. The validator regenerated the streams, previews, contact sheet and manifest and passed the 7-bit, reset, palette, determinism and renderer checks, including the change of BLINK phase on page 165.
+
+## Review of the current renders
+
+This pass starts from the completed round-four outputs above. Each pair was inspected side by side at native size. The text readings below refer to 480 × 460.
+
+### 156 · Silt
+
+Cream against rust gives the display excellent contrast, and the custom bevels make the capitals feel cut from the section. SILT, “Sediment in relief,” “Exhibition in layers,” BED 01 and BED 02 all read. The I and L nearly bunch together while L–T opens a hole. At both sizes the thin layers are mechanically parallel, and the lower fault reads as a short diagonal scratch. The typographic cutaway is original and a good use of DRCS over native polygons, but the geology still looks like a stack of ribbons.
+
+**Priorities.** Fit the visible letter edges. Vary bed thicknesses and carry a displaced marker seam through the fault so its movement reads.
+
+### 157 · Quarter Turn
+
+Lime and orchid are crisp against the black-violet field. Both QUARTERs, both TURNs and 90° read in their intended orientations. Native rotation gives the installation poster an original reason to be read from the edges. The flattened weight of the small ticks is particularly visible on the channel oval. The arrow points against the clockwise reading order, and the frame's patchy joins look like leftover crop marks.
+
+**Priorities.** Make the selected quadrant and direction agree with the reading order. Clarify the graduations and reduce the frame to four clean edge indexes.
+
+### 158 · The Quireline
+
+The masthead, Issue 04, COVER STORY, “Inside the,” “paper fold,” “A journal of” and “folded matter” are legible. The cream and pink are convincing editorial colors. The nearly equal rules in the story column give each line the same emphasis. The Q's counter revealing the crease is an original use of a clear DRCS mask. At 640 the Q overhangs the book like a separate badge, while the repeated bottom edges turn into a dark comb at 480.
+
+**Priorities.** Build the folded sheet and Q around the same axis. Group the story title as one unit and give the journal descriptor its own alignment.
+
+### 159 · Ink and Air
+
+INK, AIR, Printed B, Counterforms and both pairs of 1 and 2 read. The mint reversal and reuse of identical clear and solid counter masks make this one of the clearest and most original specimens. The numbers sit at opposing edges, so the eye has to infer which measurements match. The dashed lines disappear into the filled letter on the left and resume from the opposite side on the right. At 640 the outer outline's thin waist also looks fragile.
+
+**Priorities.** Put a single pair of indices on the split and branch each guide toward the matching forms. Give the parent outline a cleaner waist and balance the caption margins.
+
+### 160 · Low Water
+
+“Low water,” “The tide takes,” “its blue back,” “one syllable” and “at a time.” all read. The pale-to-teal reversal makes the original concrete poem work as type, with native text and filled geometry sharing the composition. The first three lines look more center-stacked than receding. The shore comes uncomfortably close to “syllable” at 480, and the lower parallel tracks look like a second set of unrelated waves at 640.
+
+**Priorities.** Pace the verse with a more pronounced horizontal stagger and clear the shore from the third line. Build the tidal traces from the same profile and let them thin around the last line.
+
+### 161 · Register 258
+
+“Register,” “Tabular,” 258, 825 and “Equal advance” are readable in amber and slate. The original DRCS stencil figures give the industrial specimen a purpose, but putting the smaller row on the same centers only establishes shared centers. The ghost uprights show through the 8 and read like defects at both sizes. The figures feel close to the rules above and below.
+
+**Priorities.** Reuse the exact cell advances in both rows and describe that width with a common dimension rail. Keep center marks outside the figure silhouettes.
+
+### 162 · Oblique Assembly
+
+“Oblique Assembly,” LEAN, “Drawing,” “italic capitals,” “30 run” and “100 rise” read. The 30 and 100 are the tightest setting at channel size. Blue construction marks and lemon ground set off the native sheared polygons. The workshop premise is specific and original, but the right leg of A looks nearly vertical, and the tiny overlaid stems read as an icon with loose labels. The blue cap and baseline currently act more like borders than measurements.
+
+**Priorities.** Give the A a real two-leg structure and improve the fit. Enlarge the shear diagram, directly attach its dimensions and relate it to a visible construction axis in the word.
+
+### 163 · Three Voices
+
+“Three Voices,” the three VOXs and “Unaccompanied voices” all read in cream, pink and lilac against burgundy. Scaling one original DRCS word is an economical expression of three related voices. The shared release makes sense, but the bare continuation rules and unrelated ticks make the central field look like a project timeline, especially at 640. The tiny separation between type and rule is inconsistent at 480.
+
+**Priorities.** Put the beats on a common vertical grid. Give each sustained line an intentional shape and a consistent gap below the type.
+
+### 164 · The Fi Join
+
+“The fi join,” Hook, Join, the giant fi, the small f and i, arrow, small fi and “One stroke, two letters” read. Vermilion contrast is excellent and the custom hooked ligature is unusually specific to the theme. The dot near the hook can look stranded, and the long Join leader lays directly on top of the bar. The small joined setting is wider than the separated specimens' scale warrants, especially visible at 640. That weakens an otherwise original drawing plate.
+
+**Priorities.** Show the separate and joined contours at exactly the same scale and on common guides. Route the join annotation away from the stroke and identify the point where the two drawings meet.
+
+### 165 · A Room After Dark
+
+“A room after dark,” OPEN, LATE and “Read until dawn” are clear. Peach against cobalt is strong enough to carry the poster. Palette BLINK and layered vector tubes exploit the medium, although the generic marquee is less original than the fitted lettering. The flat diagonal corners of O and P make the tubes look bent from strips, and the horizontal divider splits the layout into two equally heavy signs at both sizes.
+
+**Priorities.** Form the tube bends as curves and give the two words a clearer hierarchy. Tie the animated circuits into the enclosure and cut back the central divider.
+
+## Changes made in this pass
+
+- **156 · Silt** — Refit the display capitals and drew variable-thickness laminae as dense polygon contours. Both fault blocks now meet on a continuous slip plane, with the pale marker bed visibly displaced.
+- **157 · Quarter Turn** — Made the sweep clockwise, shaded its selected quadrant and introduced 48 graduations at three weights. Four centered edge marks replace the perimeter frame.
+- **158 · The Quireline** — Built a folded sheet and return around the Q's axis. Simplified the exposed edges, tightened the story headline into one block and separated the journal descriptor.
+- **159 · Ink and Air** — Set one numbered pair of guides on the panel seam, registering the matching forms at each height. Reshaped and strengthened the right parent outline.
+- **160 · Low Water** — Staggered the receding lines more distinctly, lowered the shore and drew six traces from the same profile. Upper traces taper and break around the final line.
+- **161 · Register 258** — Set 258 and 825 at identical size in equal cells, with a shared rail measuring each cell and its center ticks outside the figures.
+- **162 · Oblique Assembly** — Redrew the legs and counter of A, showed the upright-to-oblique offset above N, and enlarged the lower inset with explicit run and rise brackets.
+- **163 · Three Voices** — Gave the three entries tapered sustain marks ending together, organized the beat ticks on shared axes and left the letterforms and counters clear.
+- **164 · The Fi Join** — Set separate and joined specimens at identical scale on matching construction lines. Moved the join leader away from the bar and onto the contour junction.
+- **165 · A Room After Dark** — Rounded the tube bends with sampled curves, gave OPEN the larger setting and replaced the divider with three lamps. The side circuits now follow the bezel and alternate across it.
+
+The existing round-four record and its archived renders were retained. The current streams, both native PNG sizes, contact sheet and manifest were rebuilt in `out/`. The validator and generators already allowed arbitrary stream sizes. Byte counts are descriptive. All ten passed the 7-bit, full reset, palette, determinism and renderer checks. Page 165 passed the BLINK phase check at both sizes. The rebuilt pages were inspected at 480 × 460 and 640 × 480, and their text reads at channel size.

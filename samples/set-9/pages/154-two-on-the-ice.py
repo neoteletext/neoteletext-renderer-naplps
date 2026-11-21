@@ -43,18 +43,19 @@ def build():
             length = hypot(dx, dy)
             for offset, groove in zip((-2.3, 2.3), grooves):
                 groove.append((x-offset*dy/length, y+offset*dx/length))
+        # The fresh pass displaces the old cut at each crossing.
+        if ink == 12:
+            p.line(grooves[0], 0, 8)
         p.line(grooves[0][:66], 1, 1.5)
         p.line(grooves[0][65:], 11, 2)
-        p.line(grooves[1][:38], 3, 1.5)
-        p.line(grooves[1][37:96], 4, 1.5)
-        p.line(grooves[1][95:], ink, 2)
-        if ink == 4:
-            p.line(grooves[1][107:], 12, 2)
+        p.line(grooves[1][:43], 3, 1.5)
+        p.line(grooves[1][42:96], ink, 1.5)
+        p.line(grooves[1][95:], ink, 2.5)
         dx, dy = direction(stop)
         return (*point(stop), atan2(dy, dx) + pi/2)
 
-    a = track(272, 225, .19, 2*pi-.78, -.24, 3)
-    b = track(366, 253, 6.05, 1.03, .21, 4)
+    a = track(272, 225, .19, 2*pi-.78, -.24, 4)
+    b = track(366, 253, 6.05, 1.03, .21, 12)
 
     def skater(x, y, tilt, coat, scarf, shade, stride, arms, bend):
         def at(u, v):
@@ -69,10 +70,11 @@ def build():
         heel, toe = at(-stride-3, 27), at(-stride+8, 23)
         p.line([at(-4, 7), at(-12, 14), at(-stride, 23)], 5, 8)
         p.line([at(5, 5), at(12, 12), at(6, 23)], shade, 8)
+        p.line([at(6, 9), at(9, 13), at(6, 19)], coat, 2)
         p.line([heel, toe], 5, 6)
         p.line([at(-stride-4, 30), at(-stride+8, 26)], 11, 2)
         p.line([at(3, 20), at(8, 28)], 5, 6)
-        p.line([at(6, 21), at(11, 28)], 11, 2)
+        p.line([at(5, 21), at(11, 30)], 11, 2.5)
         p.line([at(u, v) for u, v in arms], coat, 8)
         for u, v in (arms[0], arms[-1]):
             p.circle(*at(u, v), 3.1, scarf)
@@ -87,7 +89,7 @@ def build():
     skater(*a, 6, 7, 14, 25,
            [(-27, 10), (-18, 1), (-7, -1), (8, -6), (18, -16), (25, -22)], -2)
     skater(*b, 8, 9, 15, 10,
-           [(-18, -19), (-17, -8), (-6, 1), (7, -4), (20, -5), (31, -11)], 6)
+           [(-24, -11), (-17, -4), (-6, 1), (7, -4), (20, -11), (29, -22)], 4)
     p.text(36, 452, 'TWO ON THE ICE', 32, 42, 5)
     return p
 

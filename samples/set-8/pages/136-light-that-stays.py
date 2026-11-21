@@ -15,9 +15,11 @@ def build():
     p.label(36, 116, 'TOTAL INTERNAL REFLECTION', 28, 4)
     p.label(39, 211, 'AIR', 25)
     p.label(39, 273, 'GLASS', 25)
-    p.label(405, 152, 'GLASS TO AIR', 23)
+    p.label(405, 152, 'GLASS N = 1.50', 23)
     p.label(405, 181, 'CRITICAL 42 DEG', 23)
     p.line([(293,235),(293,406)], 7, 2)
+    p.label(40, 477, 'LIGHT SPLITS', 22, 4)
+    p.label(374, 477, 'LIGHT STAYS IN GLASS', 22, 5)
     p.label(39, 448, '25 DEG < 42 DEG', 27, 4)
     p.label(373, 448, '44 DEG > 42 DEG', 27, 5)
     for x in (180, 446):
@@ -47,8 +49,10 @@ def build():
     reflection_arc = [(446+67*sin(angle*i/2), 233+67*cos(angle*i/2))
                       for i in range(3)]
     p.pel(2).arc(*reflection_arc, 5)
-    p.label(463, 282, '44', 22, 5)
-    p.label(410, 282, '44', 22, 5)
+    p.label(104, 301, '25', 22, 4)
+    p.line([(133,294),(147,294),(158,284)], 4, 2)
+    p.label(454, 286, '44', 22, 5)
+    p.label(411, 286, '44', 22, 5)
     p.label(417, 342, 'TOTAL', 24, 5)
     p.label(391, 367, 'REFLECTION', 23, 5)
     return p

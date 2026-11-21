@@ -45,7 +45,7 @@ def build():
             for (ax, ay), (bx, by) in zip(seam, seam[1:]):
                 for i in range(1, 25):
                     t = i/24
-                    lobe = .21*sin(2*pi*t)*sin(pi*t)
+                    lobe = (.21*sin(2*pi*t) if opening else .15*sin(4*pi*t)) * sin(pi*t)
                     points.append((x+ax+(bx-ax)*t-(by-ay)*lobe,
                                    y+ay+(by-ay)*t+(bx-ax)*lobe))
             p.line(points, 3, 6).line(points, 4, 2)
@@ -58,7 +58,9 @@ def build():
             if opening:
                 p.line(inner_wall[5:-5], 6, 5)
             else:
-                p.line([(x+side*5,y-75),(x+side*5,y+75)], 9, 5)
+                wall = [(x+side*(1+7*sin(pi*i/40)**.7), y-82+164*i/40)
+                        for i in range(41)]
+                p.line(wall, 9, 8)
             for dx, dy, radius in [(38,-60,5),(49,-30,7),(52,-12,5),
                                    (53,22,6),(44,44,7),(31,59,5)]:
                 px = x+side*(dx+opening*.22)
@@ -75,15 +77,16 @@ def build():
     for x, label, target, path in [
         (34, '1 GUARD CELL', (119,273), [(84,287)]),
         (228, '2 NUCLEUS', (218,253), [(272,255)]),
-        (395, '3 THICK INNER WALL', (158,296), [(119,327)]),
+        (374, '3 INNER WALL', (158,296), [(119,327)]),
     ]:
         p.line([target, *path], 1, 2)
         p.disc(*target, 4, 1)
         bx, by = path[-1]
         p.disc(bx, by, 12, 0)
         p.label(bx-7, by+7, label[0], 21)
-        p.label(x, 461, label, 25)
+        p.label(x, 452, label, 25)
 
+    p.label(374, 476, 'THICKENED', 21, 6)
     return p
 
 

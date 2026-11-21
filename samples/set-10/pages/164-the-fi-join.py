@@ -32,20 +32,21 @@ def build():
     for y in (136, 235, 356):
         p.rect(42, y, 338, 2, 3)
     p.text(58, 366, 'F', 307, 244, 2, spacing=0, drcs=True)
-    for point, elbow, end in (((327, 171), (383, 171), (411, 153)),
-                              ((226, 240), (378, 240), (411, 222))):
-        p.line([point, elbow, end], 4, 2)
+    for point, *route in (((327, 171), (383, 171), (411, 153)),
+                              ((258, 238), (284, 233), (389, 233), (411, 216))):
+        p.line([point, *route], 4, 1.5)
         p.circle(*point, 4, 0, fill=True)
         p.circle(*point, 4, 4, width=1)
     p.text(429, 166, 'Hook', 32, 39)
     p.text(429, 234, 'Join', 32, 39)
-    p.rect(401, 354, 76, 2, 3)
-    p.rect(526, 354, 73, 2, 3)
-    p.text(399, 354, 'f', 56, 79, 2, spacing=0, drcs=True)
-    p.text(442, 354, 'i', 56, 79, 2, spacing=0, drcs=True)
-    p.line([(487, 320), (515, 320)], 4, 2)
-    p.polygon([(515, 320), (507, 315), (507, 325)], 4)
-    p.text(528, 354, 'F', 68, 79, 2, spacing=0, drcs=True)
+    for y in (278, 313, 354):
+        for x, width in ((394, 86), (527, 70)):
+            p.rect(x, y, width, 2, 3)
+    p.text(396, 356, 'f', 64, 80, 2, spacing=0, drcs=True)
+    p.text(437, 356, 'i', 64, 80, 2, spacing=0, drcs=True)
+    p.line([(486, 320), (517, 320)], 4, 2)
+    p.polygon([(517, 320), (509, 315), (509, 325)], 4)
+    p.text(529, 356, 'F', 64, 80, 2, spacing=0, drcs=True)
     p.rect(42, 395, 555, 2, 1)
     p.text(42, 447, 'One stroke, two letters', 32, 43)
     return p

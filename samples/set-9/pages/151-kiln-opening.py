@@ -11,13 +11,23 @@ META = dict(title='Kiln Opening', purpose='The first glimpse of newly fired clay
 def build():
     p = Canvas('211c25 392632 542e3b 73363c 9b4944 532d37 4c2a35'
                ' 412832 4a2934 3a2935 392932 ffc3a0 392932 452931 34252c 2f2228')
+    rng = Random(151)
     for row in range(10):
         for column in range(9):
             x = 76 * column - 38 * (row % 2)
             left, right = max(0, x + 2), min(639.6, x + 74)
             if right > left:
-                p.rect(left, 46 * row + 3, right - left, 41,
-                       1 + (column * 11 + row * 7 + column * row) % 3)
+                top = 46*row+3
+                ink = 1+(column*11+row*7+column*row)%3
+                p.poly([(left, top+2), (left+(right-left)*.42, top),
+                        (right, top+2), (right, top+39),
+                        (left+(right-left)*.61, top+41), (left, top+39)], ink)
+                if right-left > 20:
+                    p.line([(left+4, top+6), (right-4, top+5)], max(1, ink-1), 2)
+                    for _ in range(5):
+                        x0 = rng.uniform(left+3, right-9)
+                        y0 = rng.uniform(top+9, top+36)
+                        p.line([(x0, y0), (x0+rng.uniform(2, 7), y0-1)], 2, 1)
     p.rect(104, 215, 432, 200, 4)
     p.arc((104, 216), (320, 31), (536, 216), 4, True)
     for spoke in range(1, 12):
@@ -52,11 +62,12 @@ def build():
         p.line([(left, y-4), (320, y), (right, y-4)], 7, 2)
         for x in range(226 + y%2*33, 437, 52):
             p.line([(x, y), (x-2, y+22)], 7, 2)
-    rng = Random(151)
     for _ in range(83):
         x, y = rng.uniform(184, 454), rng.uniform(183, 324)
         if ((x-320)/135)**2 + ((y-252)/97)**2 < .92:
             p.line([(x, y), (x+rng.uniform(1, 5), y)], rng.choice((13, 14, 15)), 1)
+    p.pel(4).arc((141, 222), (320, 76), (499, 222), 7)
+    p.line([(142, 225), (142, 386), (496, 386)], 7, 3)
     p.poly([(180, 326), (452, 326), (479, 371), (162, 371)], 8)
     p.line([(163, 371), (477, 371)], 5, 4)
     p.line([(166, 365), (474, 365)], 13, 2)
@@ -100,6 +111,11 @@ def build():
                         (x+w*u*.82, y+h*length)], 15, 2)
                 p.circle(x+w*u*.82, y+h*length, 1.55, 15)
         elif finish == 'burnished':
+            sheen = [(x-w*r*(.78-.10*t), y+h*t) for r, t in profile[2:]]
+            sheen += [(x-w*r*(.50+.44*t), y+h*t) for r, t in profile[:1:-1]]
+            p.poly(sheen, 10)
+            p.line([(x-8, y+8), (x-9, y+h*.24), (x-15, y+h*.43),
+                    (x-31, y+h*.56), (x-32, y+h*.68)], 15, 2)
             p.pel(3).arc((x-22, y+h*.49), (x-29, y+h*.60), (x-30, y+h*.73), 13)
             p.pel(2).arc((x-31, y+h*.78), (x-28, y+h*.90), (x-23, y+h*.96), 10)
         rim = w*profile[0][0]

@@ -60,3 +60,62 @@ The central orange umbrella has excellent contrast against the dark teal and the
 | 155 · Updraft of Umbrellas | Replaced the parallel bands with staggered gusts that curl around the group. Added stitched seams and a light hem to the lead canopy, reinforced the exposed underside of the inverted canopy, and varied the smaller silhouettes. |
 
 The validator and generators already had no stream-byte ceiling. Byte counts in the manifest are descriptive. I rebuilt all ten streams, twenty PNGs, the contact sheet and the manifest, then ran the validator separately. It verified clean streams, full reset and colour maps, 7-bit data, deterministic generation, current artifacts and both animated alternate states. I reviewed the final renders at both native sizes and read every title and subtitle at 480 × 460. The narrower viewport still elongates round forms.
+
+## Review of the checked-in round-four renders
+
+Both the 480 × 460 and 640 × 480 starting renders were reviewed for each page. Round forms look taller in the narrow render. The text assessments below are for 480 × 460.
+
+### 146 · Paper Thermal
+
+The wing diagonals make a strong composition, and the cream edges and orange folds are crisp against purple. The cast outline is so sharp and uniform that it reads as a second cutout, and the shadow and projected light end too neatly together. Faceted polygons are an excellent use of NAPLPS, and the origami and its projection give this choice of subject a distinctive identity among the ten. “PAPER THERMAL” is fully legible. Give the shadow a softer edge that reflects its distance from the paper, and distinguish the lit floor from the folded paper with a subtle change in projected intensity.
+
+### 147 · Soap Film
+
+The tilt and dark margins give the spectral ribbon room. The lightest bands have good contrast, yet the broad lower purple area looks empty and the equally heavy sides make the support look like a screen bezel. The contour fills are a good use of NAPLPS. Film thinning is an original optical subject here, particularly where the colours break around near-black patches. “SOAP FILM” is fully legible. Add finer interference contours where liquid collects, and make the wire thinner and more convincingly round.
+
+### 148 · Final Spin
+
+The active drum and pink title read instantly. All three cabinets are equally frontal, and the central angular aura looks like a board standing behind the washer. Pavement reflections glow but form evenly spaced dash columns. Native circles and blink give a strong account of the action. An after-hours interior is distinct from the other subjects, although the centred triptych is conventional. “FINAL SPIN” is fully legible. Connect the active light to the shop surfaces with more gradual spill, and replace the artificial pavement wedge with puddles and reflections that break at the joints.
+
+### 149 · Rabbit in the Wall
+
+The rabbit's silhouette has excellent contrast and the hand creates a clear diagonal into it. The circular spotlight has a noisy outer rim, and the small arm crease marks read like cuts in the skin. Discrete NAPLPS tones make the plaster grain and shadow practicable. The hand turning into a profile with ears makes this a playful, original study beside the other subjects. “RABBIT IN THE WALL” is fully legible. Give the shadow a shallow penumbra that is strongest at the ears, and model the overlapping fingers and palm with broader planes.
+
+### 150 · Wind Organ
+
+The pipe heights build a strong diagonal, and the warm clay against pale green is lively. The ground shadows and rails form a dark tangle, and most air trails parallel each other even as they meet the pipes. Repetition with varied ellipses and curved strokes makes good use of NAPLPS. An imaginary wind-played instrument is a distinctive subject. Both “WIND” and “ORGAN” are fully legible. Give the pipe bases a consistent structure with believable support, and separate ambient airflow from the curls at the bores.
+
+### 151 · Kiln Opening
+
+The arch works as a frame and the three profiles form a readable hierarchy. The centre bottle is almost flat maroon, and the perfectly rectangular exterior bricks look factory-new beside the handmade pots. Native arcs and the timed palette reveal suit this subject especially well. The viewpoint inside a kiln is specific to this page and makes the pottery more original. “KILN OPENING” is fully legible. Model the central glaze with an elongated highlight, and build uneven brick surfaces and a reflected glow into the mouth.
+
+### 152 · Pocket Universe
+
+The three sizes and colours give the still life depth. The equally crisp dark weave marks make the spheres look engraved, particularly at 640 × 480, and the regularly repeated stripe pattern flattens the table. Polygon refraction and curved highlights are well chosen. Glass is a familiar still-life subject, but the disagreement between table pattern and its refracted image is distinctive among these pictures. “POCKET UNIVERSE” is fully legible. Increase the optical compression near each rim and subordinate the thread marks, and break up the flat cast shadows with transmitted colour.
+
+### 153 · Lock Within
+
+Ivory hardware on orange is clean, though all four springs resemble stacks of washers with a dark seam down their right sides. The lock is quite shallow and the cutaway gives little sense of where the pins meet the rotating plug. Repeated curves and sectioned polygons make sense for this diagram, a distinct subject whose exploded view is more original than its regular layout. “LOCK WITHIN” and “FOUR PIN STUDY” are both fully legible. Draw springs with a clearly pitched wire and separate faces, and deepen the cutaway with an exposed shear line.
+
+### 154 · Two on the Ice
+
+The paths dominate the pale surface to good effect. Their crossings are hard to follow, and the indigo skater's limbs overlap enough to obscure the pose. Long NAPLPS paths make a strong graphic of movement. The overhead perspective and blade marks make the subject feel original within the set. “TWO ON THE ICE” is fully legible. Distinguish the two paths by age and show which continues through a crossing, and make the skaters' weight shifts and the blades under them clearer.
+
+### 155 · Updraft of Umbrellas
+
+The orange lead canopy dominates and the curved diagonal reads as flight. The storm behind it is even in tone, while the parallel wisps in the upper right still look like a single track. The upper inverted umbrella has an especially busy underside. Repeated, transformed polygons are an effective NAPLPS choice. The flock is one of the set's most playful and specific subjects. “UPDRAFT OF” and “UMBRELLAS” are both fully legible. Place the group against a broad break in the storm, and simplify the inverted canopy into a readable rim, fabric bowl and ribs.
+
+## Changes after reviewing the checked-in renders
+
+- **146 · Paper Thermal.** Gave the raised wing tips wider shadow fringes than the body and varied the intensity across each projected window pane.
+- **147 · Soap Film.** Added a narrow set of interference ripples above the pooled liquid and used thinner sides with fine glints to suggest round wire.
+- **148 · Final Spin.** Replaced the angular light behind the washer with a softer spill across the bay and sill. Broke the pavement reflection around puddles and paving joints.
+- **149 · Rabbit in the Wall.** Added a shallow penumbra that widens at the ears and modelled the raised fingers and palm with broader planes.
+- **150 · Wind Organ.** Seated the six pipes on bevelled, bolted mounts and separated short bore curls from longer ambient wind lines.
+- **151 · Kiln Opening.** Roughened the exterior brick edges and faces, traced reflected heat around the mouth, and drew a long glaze highlight down the central vessel.
+- **152 · Pocket Universe.** Compressed the refracted stripes toward the glass rims, softened the internal thread marks, and drew tapered bands of transmitted colour across the cast shadows.
+- **153 · Lock Within.** Rebuilt the springs with a wider pitch and separate near and far faces. Added a lower cut bevel and clarified where the pins meet the plug.
+- **154 · Two on the Ice.** Distinguished the two cuts by age and interrupted the older cut at crossings. Opened the indigo skater's stance and clarified the skating leg and blade.
+- **155 · Updraft of Umbrellas.** Opened a broad diagonal gap in the storm, reduced competing gust lines, and redrew the inverted canopy with a clear rim, bowl and ribs.
+
+Rebuilt the ten streams, twenty previews, contact sheet and manifest in `out/`. The existing images in `rounds/round-4/` preserve the starting renders for this pass. A separate run of `python3 set-9/validate.py` passed, including the alternate states of Final Spin and Kiln Opening. I reviewed the regenerated pictures at both native sizes and confirmed that every title and subtitle reads at 480 × 460. Round forms still elongate in the narrow viewport. The validator and generators already had no stream-byte ceiling, and the manifest records byte counts for reference.

@@ -27,7 +27,30 @@ TUBES = {
 }
 
 
-def sign(p, word, top, scale):
+def round_bends(path, reach=7):
+    closed = path[0] == path[-1]
+    vertices = path[:-1] if closed else path
+    rounded = []
+    for index, (x, y) in enumerate(vertices):
+        if not closed and index in (0, len(vertices)-1):
+            rounded.append((x, y))
+            continue
+        ends = []
+        for nx, ny in (vertices[index-1], vertices[(index+1) % len(vertices)]):
+            distance = hypot(nx-x, ny-y)
+            amount = min(reach, distance/3) / distance
+            ends.append((x + amount*(nx-x), y + amount*(ny-y)))
+        start, end = ends
+        for step in range(7):
+            t = step/6
+            rounded.append(((1-t)**2*start[0] + 2*t*(1-t)*x + t*t*end[0],
+                            (1-t)**2*start[1] + 2*t*(1-t)*y + t*t*end[1]))
+    if closed:
+        rounded.append(rounded[0])
+    return rounded
+
+
+def sign(p, word, top, scale, height):
     kerning = {'LA': -5, 'AT': -8}
     layout = []
     advance = 0
@@ -39,7 +62,8 @@ def sign(p, word, top, scale):
     left = min(x for path in layout for x, _ in path)
     right = max(x for path in layout for x, _ in path)
     center = (left + right) / 2
-    paths = [[(320+(px-center)*scale, top+py) for px, py in path] for path in layout]
+    paths = [round_bends([(320+(px-center)*scale, top+py*height) for px, py in path])
+             for path in layout]
     for ink, radius in ((4, 11), (8, 7.5), (1, 4), (6, 1.5)):
         for path in paths:
             for (ax, ay), (bx, by) in zip(path, path[1:]):
@@ -62,18 +86,17 @@ def build():
                (571, 367), (69, 367), (54, 351), (54, 112)], 2)
     p.line([(61, 89), (579, 89), (594, 104)], 3, 2)
     p.text(42, 63, 'A room after dark', 39, 53)
-    sign(p, 'OPEN', 119, 1.45)
-    sign(p, 'LATE', 262, 1.54)
-    for x in (73, 567):
-        p.line([(x, 117), (x, 346)], 4, 4)
-        for index, y in enumerate((124, 150, 176, 202, 230, 258, 284, 310, 336)):
+    sign(p, 'OPEN', 126, 1.49, 1.20)
+    sign(p, 'LATE', 263, 1.11, .87)
+    for x, direction in ((77, 1), (563, -1)):
+        p.line([(x+28*direction, 112), (x, 112), (x, 351),
+                (x+28*direction, 351)], 4, 3)
+        for index, y in enumerate(range(122, 350, 25)):
             p.circle(x, y, 6, 0, fill=True)
-            p.circle(x, y, 3, 5 if index % 2 == 0 else 9, fill=True)
-    for start, end in ((89, 285), (355, 551)):
-        p.line([(start, 230), (end, 230)], 3, 2)
-    for x, ink in ((303, 9), (320, 5), (337, 9)):
-        p.circle(x, 230, 6, 0, fill=True)
-        p.circle(x, 230, 3, ink, fill=True)
+            p.circle(x, y, 3, 5 if (index + (direction == 1)) % 2 else 9, fill=True)
+    for x, ink in ((307, 9), (320, 5), (333, 9)):
+        p.circle(x, 242, 4.5, 0, fill=True)
+        p.circle(x, 242, 2.7, ink, fill=True)
     for ink, delay in ((5, 0), (9, 8)):
         p.ink(ink)
         p.command(0x3f, bytes((64+7*4, 64+8, 64+8, 64+delay)))

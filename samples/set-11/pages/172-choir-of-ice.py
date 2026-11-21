@@ -39,11 +39,16 @@ def build():
         p.poly([(x-width*.85,base-12),(x+width*.43,base-21),(x+width,base-12),
                 (x+width*.2,base+6),(x-width*.53,base+4)], 2)
         cap = [(x-width/2, y+26), (x+width*.10, y), (x+width/2, y+16)]
-        p.poly(cap + [(x+width/2, base-18), (x, base), (x-width/2, base-22)], 5)
-        shaded = [cap[1], cap[2], (x+width/2, base-18), (x, base)]
+        right_edge = [(x+width/2, base-18), (x, base)]
+        left_edge = [(x-width/2, base-22)]
+        if x == 311:
+            right_edge = [(364,218),(351,247),(365,258),(365,350),*right_edge]
+            left_edge += [(258,306),(275,270),(258,254)]
+        p.poly(cap + right_edge + left_edge, 5)
+        shaded = cap[1:] + right_edge
         p.poly(shaded, 3 if rear else 12)
-        p.poly([cap[0], cap[1], (x, base), (x-width/2, base-22)], 12 if rear else 6)
-        if not rear:
+        p.poly([cap[0], cap[1], (x, base), *left_edge], 12 if rear else 6)
+        if not rear and x != 311:
             p.texture(fill=3)
             p.poly(shaded, 5)
             p.texture()
@@ -64,12 +69,16 @@ def build():
                     (x-2,base-43)], 5, 2)
             p.line([(x+width*.07,y+77),(x+width*.25,y+91),(x+width*.40,y+84)], 4, 2)
         if x == 311:
+            p.poly([(322,162),(349,151),(355,206),(348,232),(328,249)], 13)
+            p.poly([(320,288),(348,277),(359,295),(353,338),(320,304)], 4)
+            p.poly([(261,263),(274,270),(265,293),(281,310),(261,306)], 7)
+            p.line([(364,218),(351,247),(365,258)], 7, 3)
             # The split passes across the two faces of the soloist.
-            p.poly([(260,236),(278,241),(287,257),(303,255),(311,270),
-                    (338,252),(362,259),(362,275),(338,265),(311,285),
+            p.poly([(258,236),(278,241),(287,257),(303,255),(311,270),
+                    (338,252),(364,259),(364,275),(338,265),(311,285),
                     (297,269),(283,272),(271,254),(260,250)], 12)
-            p.line([(260,236),(278,241),(287,257),(303,255),(311,270),
-                    (338,252),(362,259)], 1, 2)
+            p.line([(258,236),(278,241),(287,257),(303,255),(311,270),
+                    (338,252),(364,259)], 1, 2)
             p.line([(261,298),(280,304),(289,316),(311,323),(336,310),(362,315)], 5, 3)
             p.poly([(260,325),(280,329),(299,343),(310,342),(309,363),
                     (286,347),(260,344)], 13)
@@ -92,8 +101,14 @@ def build():
                              ((391,118),(501,65),(615,102))]:
         p.color(4).pel(2)
         p.arc(start,peak,end)
-    for x,y,r in [(349,52,3),(448,67,3)]:
-        p.disc(x,y,r,9)
+    # Spaced wavefront segments cross the three travelling crests.
+    for start, peak, end in [((180,117),(202,81),(234,64)),
+                             ((246,134),(261,85),(291,58)),
+                             ((312,145),(335,91),(370,56)),
+                             ((383,143),(407,93),(439,72)),
+                             ((450,156),(487,116),(513,106))]:
+        p.color(8).pel(2)
+        p.arc(start,peak,end)
     p.title(283, 465, 'CHOIR OF ICE', 1, 24, 35)
     return p
 

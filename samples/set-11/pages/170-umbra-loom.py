@@ -47,20 +47,14 @@ def build():
         p.arc((sx-8,sy+13),(sx+1,sy-14),(sx+18,sy-9))
         bx, by = bend
         intake = x-33*s
-        p.poly([(sx+7,sy-14),((sx+bx)*.5,(sy+by)*.5-13),(bx,by+5),
-                (bx+(intake-bx)*.55,by+(y-by)*.35+6),(intake,y+10),
-                (intake,y-9),(bx+(intake-bx)*.55,by+(y-by)*.35-8),
-                (bx,by-4),((sx+bx)*.5,(sy+by)*.5+10),(sx,sy-4)], 4)
-        for offset, ink in [(-13, 5), (-7, 7), (0, 11), (8, 6), (15, 4)]:
-            bx, by = bend
-            intake = x-33*s
-            p.line([(sx+7-offset*.46,sy-11+offset*.5),
-                    (sx+(bx-sx)*.25,sy+(by-sy)*.25+offset*.85),
-                    ((sx+bx)*.5,(sy+by)*.5+offset*1.04),
-                    (bx,by-offset*.52),
-                    (bx+(intake-bx)*.26,by+(y-by)*.10-offset*.9),
-                    (bx+(intake-bx)*.55,by+(y-by)*.35-offset*.55),
-                    (intake,y+offset*.58)], ink, 4 if ink == 11 else 2)
+        # Cross-sections keep the ribbon broad as it twists toward the guide.
+        sections = [(sx-3,sy-8,2),(sx+7,sy-11,10),((sx+bx)*.5,(sy+by)*.5,10),
+                    (bx,by,6),(bx+(intake-bx)*.30,by+(y-by)*.15,7),
+                    (bx+(intake-bx)*.68,by+(y-by)*.53,11),(intake,y,10)]
+        for low, high, ink in [(-1,1,5),(-.68,.85,6),(-.45,.16,11),(-.23,.03,7)]:
+            p.poly([(cx,cy+half*low) for cx,cy,half in sections]
+                   + [(cx,cy+half*high) for cx,cy,half in reversed(sections)], ink)
+        p.line([(cx,cy+half*.86) for cx,cy,half in sections], 13, 2)
         p.disc(sx-11, sy+7, 4*s, 7)
         p.poly([(x-19*s,y-20*s),(x+56*s,y-35*s),(x+30*s,y+13*s),(x-33*s,y+18*s)], 10)
         p.poly([(x-19*s,y-20*s),(x+56*s,y-35*s),(x+14*s,y-7*s),(x-33*s,y+18*s)], 9)
@@ -93,6 +87,14 @@ def build():
         p.disc(x,y,2,7)
     p.poly([(508,87),(522,79),(527,88),(517,104),(507,106)], 13)
     p.line([(510,92),(516,88),(520,89)], 8, 3)
+    # A split horn turns the raw ribbon around a luminous capstan.
+    for points in [[(487,83),(509,85),(525,96),(543,95),(548,86)],
+                   [(488,110),(509,107),(524,98),(543,95)]]:
+        p.line(points, 12, 8)
+        p.line(points, 13, 3)
+    p.disc(529,97,9,15)
+    p.disc(529,97,6,11)
+    p.disc(529,97,2.5,8)
     p.blink(11, 7, on=4, off=7)
     p.title(368, 454, 'UMBRA LOOM', 1, 23, 37)
     return p

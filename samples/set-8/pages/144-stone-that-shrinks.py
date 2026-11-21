@@ -55,7 +55,8 @@ def build():
         u,v = cliff(b)
         bottom_a = 394-(x-62)*.038
         bottom_b = 394-(u-62)*.038
-        face_colour = 6 if tuple(sorted((a,b))) in highlighted_edges else {0:4, 1:5, 2:4, 5:6}[side]
+        selected = tuple(sorted((a,b))) in highlighted_edges
+        face_colour = {0:7, 1:8, 2:7, 5:8}[side] if selected else {0:4, 1:5, 2:4, 5:6}[side]
         p.poly([(x,y),(u,v),(u,bottom_b),(x,bottom_a)], face_colour)
         p.line([(x,y),(x,bottom_a)], 9, 2)
         p.line([(u,v),(u,bottom_b)], 9, 2)
@@ -66,7 +67,8 @@ def build():
                 return (x+(u-x)*t, (y+(bottom_a-y)*d)*(1-t)+(v+(bottom_b-v)*d)*t)
 
             middle = on_face(.53, depth+.025)
-            p.line([on_face(.05,depth), middle, on_face(.95,depth-.025)], 12, 2)
+            p.line([on_face(.05,depth), middle, on_face(.95,depth-.025)],
+                   4 if selected else 12, 2)
             if (a[0]+index)%3 == 0:
                 p.line([middle, on_face(.72,depth+.08)], 12, 1)
 
@@ -80,9 +82,12 @@ def build():
     p.label(58, 154, 'COOLING FACE', 25)
     p.line([(223,145),(250,145),(257,193)], 1, 2)
     p.disc(257,193,4,1)
-    p.arrow((272,288),(272,352),15,3,12)
-    p.label(67, 369, 'JOINT GROWTH', 24, 14)
-    p.line([(226,361),(259,361),(269,354)], 14, 2)
+    ax, ay = cliff(highlighted[1])
+    guide = ax-17
+    p.arrow((guide,ay+13),(guide,ay+106),1,3,12)
+    p.rect(45, 341, 139, 27, 1)
+    p.label(51, 364, 'JOINT GROWTH', 21, 14)
+    p.line([(184,354),(guide,354),(guide,ay+109)], 1, 2)
 
     p.rect(443, 157, 176, 233, 0)
     p.rect(443, 157, 176, 233, 11, fill=False)

@@ -26,30 +26,35 @@ def build():
     p.label(270, 452, 'START', 27)
     p.ellipse(306, 349, 10, 6, 1, n=24)
     p.wait(11)
-    p.label(29, 276, 'RETENTION FACTOR', 21, 7)
-    p.label(29, 304, 'DYE / SOLVENT', 24, 2)
-    p.label(29, 331, 'TRAVEL DISTANCE', 23, 2)
+    p.label(29, 274, 'RETENTION FACTOR', 22, 7)
+    p.label(29, 304, 'Rf = DYE TRAVEL', 24, 2)
+    p.label(29, 331, '/ SOLVENT TRAVEL', 23, 2)
     dyes = [(151, 28, 4), (220, 24, 5), (287, 18, 6)]
     solvent_travel = 349-112
     top_travel = 349-dyes[0][0]
     p.line([(29,349),(212,349)], 7, 2)
     p.disc(38,372,6,13)
     p.label(52, 382, 'TOP DYE', 25, 2)
-    p.label(29, 415, f'{top_travel}/{solvent_travel} = {top_travel/solvent_travel:.2f}', 25, 2)
+    dye_cm = 10 * top_travel / solvent_travel
+    p.label(29, 414, f'{dye_cm:.1f}/10.0 = {top_travel/solvent_travel:.2f}', 24, 2)
+    p.label(29, 445, 'DISTANCES IN CM', 21, 7)
     strip(408)
     p.label(393, 452, 'DEVELOPED', 27)
-    p.arrow((357, 254), (399, 254), 8, 3, 11)
+    p.arrow((357, 85), (399, 85), 8, 3, 11)
     p.texture(line=2).line([(408, 112), (507, 112)], 8, 2).texture()
     p.label(514, 103, 'SOLVENT', 24).label(514, 130, 'FRONT', 24)
     p.line([(488, 349), (550, 349)], 8, 2)
     p.label(557, 367, 'ORIGIN', 24)
     p.label(514, 408, 'BATH', 24)
-    p.arrow((416, 347), (416, 116), 8, 2, 10)
+    p.line([(400,112),(393,112),(393,349),(400,349)], 8, 2)
+    p.rect(381, 218, 24, 28, 0)
+    p.label(382, 240, '10', 20, 8)
     # The dye-centre ticks share the origin and solvent front used in the key.
 
     for index, (y, width, ink) in enumerate(dyes):
         x = 503 + index*14
-        p.line([(489,y),(x,y),(x,349),(x-8,349)], ink, 2)
+        p.line([(488,y),(x,y),(x,349)], ink, 2)
+        p.line([(x-4,349),(x+4,349)], ink, 2)
         p.disc(x,y,3,ink)
         p.label(557, y+8, f'{(349-y)/(349-112):.2f}', 24, ink)
         for scale, colour in [(1, ink+6), (.77, ink+9), (.55, ink)]:

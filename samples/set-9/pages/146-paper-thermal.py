@@ -20,6 +20,10 @@ def build():
         for top, bottom in [(0, .45), (.49, .95)]:
             p.poly([floor(left, top), floor(right, top),
                     floor(right, bottom), floor(left, bottom)], 11)
+            for start, stop, tone in [(top, top+.085, 12),
+                                       (bottom-.12, bottom, 10)]:
+                p.poly([floor(left, start), floor(right, start),
+                        floor(right, stop), floor(left, stop)], tone)
             p.line([floor(left, bottom), floor(right, bottom)], 12, 2)
     for u in (.19, .72):
         p.line([floor(u, -.03), floor(u, .97)], 10, 1)
@@ -28,9 +32,14 @@ def build():
                (466, 140), (449, 174), (490, 145), (514, 122), (579, 126),
                (543, 146), (504, 169), (421, 278), (369, 292), (262, 303),
                (99, 281), (240, 259)]
-    for offset, ink in [(8, 10), (4, 3), (0, 2)]:
-        p.poly([(38 + .94*x + .10*y + offset, 257 + .39*y + .012*x + offset*.5)
-                for x, y in outline], ink)
+    # The raised wing tips have a wider penumbra than the low body.
+    def projected(x, y, spread):
+        softness = spread * (310-y)/270
+        return (38+.94*x+.10*y + softness*(x-327)/200,
+                257+.39*y+.012*x + softness*(y-267)/220)
+
+    for spread, ink in [(14, 10), (8, 9), (3.5, 3), (0, 2)]:
+        p.poly([projected(x, y, spread) for x, y in outline], ink)
     p.poly([(240, 259), (68, 101), (279, 152), (347, 237)], 4)
     p.poly([(68, 101), (229, 181), (240, 259)], 7)
     p.poly([(229, 181), (279, 152), (347, 237), (240, 259)], 5)

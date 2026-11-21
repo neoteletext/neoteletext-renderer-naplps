@@ -73,3 +73,92 @@ Ultramarine and four warm/cool triangle colours make area conservation immediate
 
 - Mark the hypotenuse square corners and show why their angles are right.
 - State the two conserved areas directly so the concluding equality follows from the visual.
+
+## Review of the starting renders for the final pass
+
+The existing Round 4 snapshot already included edits addressing several priorities above. I checked that snapshot against the delivered renders and inspected each page side by side at 480 × 460 and 640 × 480. The following notes describe the ten pages as they stood immediately before the final edits.
+
+### 136 · Light That Stays
+
+The cobalt field, dark air and two saturated rays make a clean comparison, though the lower labels leave the reader to infer the outcome from inequalities. The two experiments give the standard optics diagram a distinct composition, and the native arcs and WAIT reveal carry the science well. At 480, both headings, AIR, GLASS, GLASS TO AIR, CRITICAL 42 DEG, 39 DEG, REFRACTED, PARTIAL REFLECTION, TOTAL REFLECTION and both inequality captions read. The two 44 labels squeeze against the sloping rays and the 25-degree arc has no number. The wider raster gives the crowded angle labels slightly more room.
+
+- Complete the angle annotations and identify the refractive index behind the threshold.
+- State the outcome beneath each experiment.
+
+### 137 · The Still Points
+
+The violet traces and green nodes create a crisp, distinctive oscilloscope treatment of conventional wave geometry. Palette BLINK suits the extreme profiles and the intermediate curves make the envelope useful. At 480, the title, THIRD HARMONIC, ANTINODES, ONE WAVELENGTH, both FIXED labels, both NODE labels, EXTREMES, BETWEEN and REST POSITION read. The BETWEEN key is quieter than its neighbours. The arrows resemble velocity vectors at the extremes, where the ideal string is momentarily at rest.
+
+- Use span marks to identify the amplitude ranges.
+- Explain why three half waves make this the third harmonic and distinguish end clamps in the key.
+
+### 138 · Salt in Three Dimensions
+
+Muted mineral colours and shaded native circles make depth legible at both sizes. The strong gold neighbourhood and the smaller octahedron are a distinctive composition for a conventional lattice model. At 480, both title lines, ROCK SALT / NaCl, Na+, Cl-, Na+ CENTRE and 6 CHLORIDE NEIGHBOURS read. The angled connector grazes an unrelated sodium site and the two diagrams lack explicit scale cues.
+
+- Identify the large diagram as one cubic unit cell.
+- Reroute the enlargement cue and make the legend symbols match the shaded ions.
+
+### 139 · Ink in Flight
+
+The paper tones, nested ink contours, native hatching and delayed reveal make the familiar experiment look like an original lab print. The three dye colours remain distinct. At 480, both title lines, PAPER CHROMATOGRAPHY, RETENTION FACTOR, DYE / SOLVENT, TRAVEL DISTANCE, TOP DYE, the worked fraction, START, DEVELOPED, SOLVENT FRONT, ORIGIN, BATH and all three decimals read. The 198 and 237 are drawing units with no visible scale. The solvent arrow inside the wet strip looks like a flow vector and the dye traces bunch against a shared origin.
+
+- Give the worked example meaningful distances and identify the retention factor by its symbol.
+- Give the solvent its own scale bracket and mark each dye endpoint at the origin.
+
+### 140 · A Leaf Breathes
+
+The matched green fields and layered knockout pore make a convincing stylized microscope plate. Original lobed seams and the open/closed comparison fit the biology. The title, subtitle, both pore and turgor captions, anatomical markers 1–3, 1 GUARD CELL and 2 NUCLEUS are clear. The final L in 3 THICK INNER WALL wraps into the upper-left corner at both sizes. The closed walls look like straight ruled lines, and the epidermis still looks like a rotated duplicate.
+
+- Reflow the anatomy legend so the final word stays on the canvas.
+- Curve the closed inner walls and vary the closed field's seam profiles.
+
+### 141 · One Cell Becomes Two
+
+The clockwise arrangement reads well in lilac and gold. The chromosome macro and four persistent hues give a conventional phase diagram a distinctive and useful internal logic. At 480, the title, subtitle, numerals 1–4, four phase names and all four action captions read. Both sizes show what looks like two separate round cells joined by a rectangular bar, with no continuous contour through the furrow.
+
+- Draw one continuous membrane through the constriction.
+- Connect the furrow to the completion of cell division in the captioning.
+
+### 142 · A Star Winks
+
+Bright amber and cool graph lines keep a compact astronomy plate readable. Using one x-coordinate for each contact in both the native-circle diagram and the computed trace is the plate's most distinctive choice. At 480, the title, subtitle, UNIFORM STAR, ONE PLANET, FOUR CONTACTS, contacts 1–4, RELATIVE LIGHT, 100%, 98.72%, 97.44%, INGRESS, EGRESS, TIME and 2.56% DIP read. The outer and inner silhouettes still carry almost equal visual weight, and the graph guides obscure parts of the vertical axis.
+
+- Use outline silhouettes for external contacts and place their numbers clear of the contact points.
+- State that the path is central and keep the vertical flux axis continuous.
+
+### 143 · The Ocean Keeps a Record
+
+Rust and marine blue work well together, and the repeated stroke pattern supports the polarity distinction. Native polygons give the original cutaway enough depth to relate spreading, magnetic reversals and upwelling. At 480, both title lines, MIRRORED MAGNETIC STRIPES, SAME AGE, both OLDER labels, RIDGE AXIS, RISING MELT, NORMAL and REVERSED read. The ridge leader points to a crowded part of the cut face and its caption nearly runs into the shaded end face.
+
+- Route the ridge label to the rear crest through clear space.
+- Identify what gets older in the outward direction.
+
+### 144 · Stone That Shrinks
+
+Slate against apricot gives the rock a strong silhouette. Projecting one irregular joint network into two views is an original and useful application of native polygon fills. At 480, the title, COLUMNAR BASALT, COOLING FACE, JOINT GROWTH, TOP VIEW, SAME COLUMN and the footer read. The dark faces and short cross-fractures give the basalt depth, but the marked cap has almost the same face colour as its neighbours. The growth arrow floats on a different part of the cliff.
+
+- Extend the inset's identification to the full exposed column.
+- Place the joint-growth arrow on the selected column and give its label a clear background.
+
+### 145 · A Square Moves
+
+The ultramarine areas and four triangle colours work in both rasters. The proof is classical and the original visual treatment makes strong use of flat fills and WAIT. At 480, both headings, both a+b brackets, both sets of A–D, a, b, c, c², a², b², SAME FRAME, SAME 4 TRI., both explanatory captions and the equation read. The right-angle boxes support the conclusion, but the acute angles named in the caption are unmarked. The 480 raster stretches the outer squares, as it does the circles elsewhere in the set.
+
+- Mark the complementary acute angles at one shared corner.
+- Give the concluding equation and its superscripts clear space beneath the divider.
+
+## Changes made
+
+- **136 · Light That Stays** — Added the 25-degree callout, moved both 44-degree labels inside the paired arcs, and added the glass index and the two optical outcomes.
+- **137 · The Still Points** — Replaced motion arrows with end-capped displacement spans, distinguished fixed ends from interior nodes in the labels, and showed that three half waves fit.
+- **138 · Salt in Three Dimensions** — Captioned the unit cell and enlargement, moved the connector clear of the incidental sodium ion, and matched the shaded legend symbols to the lattice.
+- **139 · Ink in Flight** — Labelled Rf, based the worked example on 8.4 cm of dye travel over 10.0 cm of solvent travel, and drew a separate solvent bracket and dye-origin ticks.
+- **140 · A Leaf Breathes** — Reflowed the anatomy key to eliminate the wrapped glyph, curved the closed inner walls, and varied the lobes of the closed specimen's epidermal seams.
+- **141 · One Cell Becomes Two** — Rebuilt the telophase membrane as one continuous pinched contour and labelled cleavage as the step that completes division.
+- **142 · A Star Winks** — Distinguished outer contacts with outlined silhouettes and external numbers, labelled the central path, and brought the flux axis in front of the guides.
+- **143 · The Ocean Keeps a Record** — Moved the ridge-axis label to the rear crest and labelled the outward direction as older crust.
+- **144 · Stone That Shrinks** — Shaded the identified column down through both exposed facets and moved the growth arrow and caption onto that feature.
+- **145 · A Square Moves** — Marked the complementary angles with native arcs and X/Y labels, and cleared the divider from the equation's superscripts.
+
+The generators and validator already had no stream-size ceiling. The manifest still reports informational byte counts. The ten streams, twenty PNGs, contact sheet and manifest were regenerated. Validation checks the full reset, colour map, 7-bit encoding, deterministic output and reproducibility at both sizes.

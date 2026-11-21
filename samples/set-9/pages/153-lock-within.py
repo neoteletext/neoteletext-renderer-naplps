@@ -3,7 +3,7 @@ from _canvas import Canvas, write_page
 
 META = dict(title='Lock Within', purpose='An exploded view of an imagined four-pin lock',
             style='Cadmium-orange cutaway with charcoal and ivory hardware',
-            techniques=['layered cutaway', 'elliptical spring coils', 'dotted assembly axes'],
+            techniques=['layered cutaway', 'pitched wire springs', 'dotted assembly axes'],
             animated=False)
 
 
@@ -17,7 +17,8 @@ def build():
     p.poly([(105, 333), (520, 333), (568, 305), (153, 305)], 6)
     p.poly([(520, 333), (568, 305), (568, 363), (520, 393)], 5)
     p.rect(105, 333, 415, 60, 3)
-    p.rect(156, 337, 351, 50, 11)
+    p.rect(156, 337, 351, 52, 11)
+    p.poly([(156, 389), (507, 389), (494, 382), (163, 382)], 6)
     p.poly([(156, 337), (507, 337), (494, 346), (163, 346)], 5)
     p.poly([(156, 337), (163, 346), (163, 379), (156, 387)], 6)
     p.ellipse(485, 365, 20, 18, 10, n=48)
@@ -25,6 +26,7 @@ def build():
     p.rect(164, 350, 321, 9, 6)
     p.rect(164, 372, 321, 11, 5)
     p.pel(3).arc((489, 350), (503, 365), (489, 380), 6)
+    p.line([(164, 354), (486, 354)], 11, 4)
     p.line([(164, 355), (490, 355)], 2, 2)
     p.line([(164, 370), (490, 370)], 3, 2)
     p.line([(163, 382), (488, 382)], 12, 1)
@@ -53,16 +55,18 @@ def build():
         p.texture(line=1)
         p.line([(x, 311), (x, 122)], 3, 2)
         p.texture()
-        helix = [(x+14*cos(j*pi/20), 134+10*j/40+4.2*sin(j*pi/20))
-                 for j in range(241)]
-        p.line(helix, 4, 4)
-        for turn in range(6):
-            start = turn*40
-            p.line(helix[start+2:start+20], 7, 2.5)
-            p.line(helix[start+21:start+40], 10, 2)
-            p.line(helix[start+23:start+35], 6, 1)
-        p.circle(*helix[0], 2, 7)
-        p.circle(*helix[-1], 2, 12)
+        def spring(angle):
+            return (x-14*cos(angle), 131+13*angle/(2*pi)-3.2*sin(angle))
+
+        # Lay down the rear half-turns before the rounds on the near face.
+        for phase, shade, shine in [(0, 5, 10), (pi, 4, 7)]:
+            for turn in range(5):
+                start = turn*2*pi+phase
+                wire = [spring(start+pi*j/24) for j in range(25)]
+                p.line(wire, shade, 4)
+                p.line(wire[1:-1], shine, 2.5)
+        p.circle(*spring(0), 2, 12)
+        p.circle(*spring(10*pi), 2, 7)
         cylinder(x, 213, 19+4*i, 6, 5, 7)
         cylinder(x, 287-6*i, 12+6*i, 8, 9, 7)
     p.poly([(123, 346), (137, 346), (137, 352), (132, 352),

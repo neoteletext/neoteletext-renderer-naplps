@@ -2,7 +2,7 @@
   {
     "number": 146,
     "file": "146-paper-thermal.nap",
-    "bytes": 1344,
+    "bytes": 1621,
     "title": "Paper Thermal",
     "purpose": "A folded bird climbing out of its own shadow",
     "style": "Lemon paper sculpture on a violet gallery wall",
@@ -16,7 +16,7 @@
   {
     "number": 147,
     "file": "147-soap-film.nap",
-    "bytes": 10312,
+    "bytes": 12371,
     "title": "Soap Film",
     "purpose": "Interference bands draining through a stretched film",
     "style": "Chromatic contours in an oblique wire frame",
@@ -30,7 +30,7 @@
   {
     "number": 148,
     "file": "148-final-spin.nap",
-    "bytes": 5555,
+    "bytes": 8069,
     "title": "Final Spin",
     "purpose": "A single machine still running in a closed laundromat",
     "style": "Midnight shopfront in fuchsia and mint",
@@ -44,7 +44,7 @@
   {
     "number": 149,
     "file": "149-rabbit-in-the-wall.nap",
-    "bytes": 162661,
+    "bytes": 163761,
     "title": "Rabbit in the Wall",
     "purpose": "A hand and its improbable shadow share one stage",
     "style": "Amber shadow theatre on a plaster wall",
@@ -58,7 +58,7 @@
   {
     "number": 150,
     "file": "150-wind-organ.nap",
-    "bytes": 13349,
+    "bytes": 11715,
     "title": "Wind Organ",
     "purpose": "A fictional instrument played by air rushing along a cliff",
     "style": "Terracotta pipework on a luminous chartreuse landscape",
@@ -72,7 +72,7 @@
   {
     "number": 151,
     "file": "151-kiln-opening.nap",
-    "bytes": 7837,
+    "bytes": 18553,
     "title": "Kiln Opening",
     "purpose": "The first glimpse of newly fired clay vessels",
     "style": "Brick-red tessellation around a molten orange chamber",
@@ -86,7 +86,7 @@
   {
     "number": 152,
     "file": "152-pocket-universe.nap",
-    "bytes": 25256,
+    "bytes": 27571,
     "title": "Pocket Universe",
     "purpose": "Three glass marbles bending the stripes beneath them",
     "style": "Tinted glass over an apricot striped tabletop",
@@ -100,13 +100,13 @@
   {
     "number": 153,
     "file": "153-lock-within.nap",
-    "bytes": 14139,
+    "bytes": 13341,
     "title": "Lock Within",
     "purpose": "An exploded view of an imagined four-pin lock",
     "style": "Cadmium-orange cutaway with charcoal and ivory hardware",
     "techniques": [
       "layered cutaway",
-      "elliptical spring coils",
+      "pitched wire springs",
       "dotted assembly axes"
     ],
     "animated": false
@@ -114,7 +114,7 @@
   {
     "number": 154,
     "file": "154-two-on-the-ice.nap",
-    "bytes": 10300,
+    "bytes": 10772,
     "title": "Two on the Ice",
     "purpose": "An overhead view of two skaters cutting intersecting tracks",
     "style": "Blue-white negative space with two tiny saturated figures",
@@ -128,7 +128,7 @@
   {
     "number": 155,
     "file": "155-updraft-of-umbrellas.nap",
-    "bytes": 14480,
+    "bytes": 13964,
     "title": "Updraft of Umbrellas",
     "purpose": "A flock of runaway umbrellas escapes a rain shower",
     "style": "Ink-green storm bands with bright canopies at staggered scales",

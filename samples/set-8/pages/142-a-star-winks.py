@@ -30,14 +30,19 @@ def build():
     p.label(36, 159, 'UNIFORM STAR', 24)
     p.label(36, 191, 'ONE PLANET', 24, 6)
     p.label(36, 220, 'FOUR CONTACTS', 24, 6)
+    p.label(36, 269, 'CENTRAL PATH', 23, 11)
     p.arrow((37,237),(184,237),6,2,10)
     for number, distance in enumerate(contacts, start=1):
         x = centre+scale*distance
         p.texture(line=2).line([(x, star_y+16), (x, 412)], 7, 2).texture()
-        p.disc(x, star_y, scale*radius, 0)
+        if number in (2, 3):
+            p.disc(x, star_y, scale*radius, 0)
         p.disc(x, star_y, scale*radius, 11 if number in (1,4) else 6, fill=False)
-        p.label(x-6, star_y+8, str(number), 20)
-    
+        label_y = star_y-31 if number in (1, 4) else star_y+8
+        if number in (1, 4):
+            p.line([(x, star_y-17),(x, star_y-26)], 11, 2)
+        p.label(x-7, label_y, str(number), 23)
+
     p.label(36, 296, 'RELATIVE LIGHT', 25)
     p.line([(127,335),(127,411)], 11, 2)
     for y, tick in [(347, '100%'), (374.5, '98.72%'), (402, '97.44%')]:
@@ -58,6 +63,7 @@ def build():
         p.label(label_x, 464, label, 23, 6)
     p.arrow((533, 420), (606, 420), 7, 2, 10)
     p.label(551, 448, 'TIME', 24)
+    p.line([(127,347),(127,411)], 11, 2)
     p.label(34, 464, '2.56% DIP', 26, 6)
     return p
 

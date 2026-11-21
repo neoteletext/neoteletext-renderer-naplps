@@ -41,6 +41,12 @@ def build():
                 points.append(at(u+w*scale*lobe*cos(a),
                                  v+h*scale*lobe*sin(a)+.016*cos(a)))
             p.poly(points, ink)
+    # Capillary ripples rise into the thicker purple band above the wire.
+    for step, ink in enumerate((5, 13, 12, 6, 5)):
+        edge = [at(u, .81+.012*step+.029*sin(2*pi*u+step*.26)
+                   +.011*cos(5*pi*u-step*.55))
+                for u in (i/96 for i in range(97))]
+        p.poly(edge + frame[2:], ink)
     for step, ink in enumerate((5, 13, 12, 14)):
         pool = [at(u, .89+.022*step+.037*sin(pi*u)**2
                    +.015*sin(4*pi*u+step*.65))
@@ -61,8 +67,10 @@ def build():
                 swell = sin(pi*v)**2*(.65+.35*cos(10*v+side))
                 fringe.append(at(side + direction*width*swell, v))
             p.poly([at(side, 0), *fringe, at(side, 1)], ink)
-    p.line(frame + frame[:1], 1, 9)
-    p.line([(x-1.5, y) for x, y in (at(0, 0), at(0, 1))], 1, 13)
+    p.line(frame + frame[:1], 1, 6)
+    for side in (0, 1):
+        p.line([at(side, .015), at(side, .985)], 14, 2)
+    p.line([at(.07, .005), at(.94, .005)], 15, 1)
     p.line([at(.02, .97), at(.23, .985), at(.54, .975), at(.79, .99), at(.99, .965)], 14, 3)
     x, y = at(.71, 1)
     p.poly([(x-7, y), (x-3, y+8), (x-5, y+15), (x-2, y+21),

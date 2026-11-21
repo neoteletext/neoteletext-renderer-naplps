@@ -11,6 +11,12 @@ META = dict(title='Updraft of Umbrellas', purpose='A flock of runaway umbrellas 
 def build():
     p = Canvas('123439 195055 23716a 2f8b7c 80ad8f dbe3aa 112930'
                ' fbb34f fa7555 c13f58 ffcbd1 b182c0 6b5394 f6eed0 59ae9a 16464a')
+    # A gap in the rain opens along the diagonal travelled by the umbrellas.
+    for band, ink in [(3, 15), (2, 1), (1, 15), (0, 6)]:
+        edge = [(x, 345-.47*x+25*sin(x/103)+band*(14+6*sin(x/88)))
+                for x in (*range(0, 640, 8), 639)]
+        p.poly([(0, 0), (639, 0), *reversed(edge)], ink)
+
     def gust(x, shift):
         return 310 + shift + .23*x - .00108*x*x
 
@@ -22,7 +28,7 @@ def build():
         (382, 610, -132, -25, 15), (468, 638, 15, 23, 2),
         (493, 638, -50, -38, 1),
     ]:
-        for lane in range(4):
+        for lane in range(2 if x0 > 380 else 3):
             left = x0 + lane*9
             right = x1 - lane*11
             points = []
@@ -65,9 +71,7 @@ def build():
                  (74, -10), (101, 0), (80, -34), (57, -49), (28, -58)]], inks[2])
 
         ribs = [(-100, 0), (-52, 0), (0, 0), (53, 0), (101, 0)]
-        if pitch < 0:
-            p.line([at(0, -62*pitch), at(0, 58)], 12, 3)
-        for u, v in ribs:
+        for u, v in ribs if pitch > 0 else ():
             rib = [at(0, -62*pitch), at(u*.39, -55*pitch),
                    at(u*.78, -26*pitch), at(u, v)]
             p.line(rib, 13 if pitch < 0 else inks[2], 2 if scale > .7 else 1.5)
@@ -80,12 +84,15 @@ def build():
                     at(-24, -12), at(0, -2), at(26, -12),
                     at(52, -2), at(74, -11), at(100, -1)], 13, 1)
         if pitch < 0:
-            p.poly([at(-94, 1), at(-54, 11), at(-29, 21), at(0, 24),
-                    at(29, 21), at(58, 11), at(96, 1), at(57, 16),
-                    at(0, 34), at(-57, 17)], 11)
-            for u in (-100, -52, 53, 101):
-                p.line([at(0, 16), at(u*.62, -35*pitch)], 12, 2.5)
-            p.circle(*at(0, 16), 2.7, 13)
+            p.poly([at(-99, 0), at(-52, 1), at(0, 0), at(53, 1), at(101, 0),
+                    at(71, 13), at(38, 24), at(0, 29), at(-40, 24), at(-71, 13)], 12)
+            p.poly([at(-95, 2), at(-42, 7), at(0, 6), at(45, 7), at(97, 2),
+                    at(50, 17), at(0, 22), at(-49, 17)], 11)
+            p.line([at(-99, 0), at(-52, 1), at(0, 0), at(53, 1), at(101, 0)], 13, 2)
+            for u in (-91, -48, 51, 94):
+                p.line([at(0, 25), at(u*.54, 18), at(u, 3)], 10, 2)
+            p.line([at(0, 25), at(0, 58)], 13, 2)
+            p.circle(*at(0, 25), 3.3, 13)
         x_tip, y_tip = at(0, -62*pitch)
         p.circle(x_tip, y_tip, 2.4*scale, 13)
 

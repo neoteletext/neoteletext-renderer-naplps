@@ -43,18 +43,22 @@ def build():
     p.text(428, 80, 'Tabular', 31, 46, 3)
     for digit, contours in NUMERALS.items():
         p.glyph(digit, *contours)
-    p.rect(40, 113, 560, 170, 4)
-    for x in (40, 227, 413, 600):
-        p.rect(x, 113, 2, 279, 2)
-    for y in (111, 283, 391):
-        p.rect(40, y, 560, 2, 3)
-    for center, display, check in zip((133, 320, 507), '258', '825'):
-        for y in range(289, 386, 7):
-            p.rect(center, y, 2, 4, 2)
-        for y in (111, 283, 391):
-            p.rect(center-1, y-5, 2, 12, 3)
-        p.text(center-76, 270, display, 152, 148, spacing=0, drcs=True)
-        p.text(center-42, 377, check, 84, 76, 3, spacing=0, drcs=True)
+    left, advance = 40, 186
+    boundaries = [left + i*advance for i in range(4)]
+    p.rect(left, 117, 3*advance, 127, 4)
+    for x in boundaries:
+        p.rect(x, 113, 2, 259, 2)
+        p.rect(x-1, 377, 2, 18, 3)
+    for y in (113, 244, 372, 386):
+        p.rect(left, y, 3*advance, 2, 3)
+    for y, word, ink in ((227, '258', 1), (360, '825', 3)):
+        for x, digit in zip(boundaries, word):
+            p.text(x+32, y, digit, 122, 109, ink, spacing=0, drcs=True)
+    for start, end in zip(boundaries, boundaries[1:]):
+        middle = (start+end)/2
+        for x, direction in ((start+3, 1), (end-3, -1)):
+            p.polygon([(x, 387), (x+direction*10, 382), (x+direction*10, 392)], 3)
+        p.rect(middle-1, 376, 2, 7, 3)
     p.text(40, 446, 'Equal advance', 33, 46, 3)
     return p
 

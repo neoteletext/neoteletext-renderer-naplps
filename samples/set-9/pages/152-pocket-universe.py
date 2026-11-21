@@ -1,4 +1,4 @@
-from math import pi, sin, sqrt
+from math import pi, sin, sqrt, tanh
 from _canvas import Canvas, Y_SCALE, write_page
 
 META = dict(title='Pocket Universe', purpose='Three glass marbles bending the stripes beneath them',
@@ -41,6 +41,16 @@ def build():
         p.ellipse(cx+radius*.27, cy+radius*.69, radius*1.03, radius*.42, 1, n=80)
         p.ellipse(cx+radius*.20, cy+radius*.73, radius*.87, radius*.30, 2, n=80)
         p.ellipse(cx+radius*.05, cy+radius*.81, radius*.60, radius*.16, 3, n=64)
+        # Transmitted light falls inside the cast shadow.
+        for offset, width, ink in [(-.03, .13, inks[1]), (.02, .065, inks[2]),
+                                   (.07, .027, inks[3])]:
+            def ray(t, side):
+                return (cx+radius*(.30+.76*t),
+                        cy+radius*(.75+offset+caustic*t+.11*sin(pi*t)
+                                   +side*width*sin(pi*t)**1.4))
+
+            p.poly([ray(i/40, 1) for i in range(41)]
+                   + [ray(i/40, -1) for i in range(39, 0, -1)], ink)
         for sweep, width, ink in [(0, 5, inks[2]), (.055, 2, inks[3]), (.10, 1, 9)]:
             points = [(cx+radius*(.54+t*.57),
                        cy+radius*(.94+sweep+caustic*t-.19*t*t))
@@ -58,6 +68,7 @@ def build():
             for v in levels:
                 span = sqrt(1-v*v)
                 u = (boundary-phase)/inner - .54*v + .18*sin(v*pi)
+                u = 1.24*tanh(u/1.16)
                 points.append((cx+inner*max(-span, min(span, u)), cy+inner*v))
             return points
 
@@ -69,15 +80,16 @@ def build():
             v = (cy-y)/inner
             if abs(v) >= .91:
                 continue
-            span = sqrt(1-v*v)*.89
+            span = sqrt(1-v*v)*.92
+            thread = inks[1] if abs(v) > .56 else inks[0]
             def grid(u, offset=0):
-                return (cx+inner*u, cy+inner*(v+.18*(span*span-u*u))+offset)
-            p.line([grid(-span+2*span*i/28) for i in range(29)], inks[0], 1)
-            p.line([grid(-span+2*span*i/28, -3) for i in range(29)], inks[3], 1)
-            for x in range(13, 640, 23):
+                return (cx+inner*u, cy+inner*(v+.29*(span*span-u*u))+offset)
+            p.line([grid(-span+2*span*i/28) for i in range(29)], thread, 1)
+            p.line([grid(-span+2*span*i/28, -2) for i in range(29)], inks[2], 1)
+            for x in range(13, 640, 46):
                 u = .78*(cx-x)/inner
                 if abs(u) < span-.04:
-                    p.line([grid(u-.022, -3), grid(u+.022, 3)], inks[0], 1)
+                    p.line([grid(u-.015, -2), grid(u+.015, 1)], thread, 1)
         p.pel(3).arc((cx-.58*radius, cy+.62*radius),
                      (cx, cy+.86*radius),
                      (cx+.60*radius, cy+.60*radius), inks[3])

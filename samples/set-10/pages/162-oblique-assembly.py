@@ -14,9 +14,9 @@ FORMS = [
     [(1, box(0, 0, 30, 159)), (1, box(0, 132, 94, 27))],
     [(1, box(0, 0, 30, 159)), (1, box(0, 0, 96, 27)),
      (1, box(0, 66, 78, 25)), (1, box(0, 132, 96, 27))],
-    [(1, [(0, 159), (38, 0), (68, 0), (119, 159), (88, 159),
-          (74, 116), (39, 116), (29, 159)]),
-     (0, [(44, 91), (67, 91), (53, 34)])],
+    [(1, [(0, 159), (38, 0), (65, 0), (127, 159), (96, 159),
+          (79, 116), (41, 116), (29, 159)]),
+     (0, [(47, 91), (70, 91), (55, 36)])],
     [(1, box(0, 0, 28, 159)), (1, box(76, 0, 28, 159)),
      (1, [(0, 0), (28, 0), (104, 159), (76, 159)])],
 ]
@@ -39,23 +39,24 @@ def build():
         for y in (cap, baseline):
             away = -17 if y == cap else 17
             p.line([(left+(baseline-v)*shear, v) for v in (y, y+away)], 2, 2)
+    for y in range(112, cap, 6):
+        p.rect(starts[-1], y, 2, 3, 2)
+    p.line([(starts[-1], cap-11), (starts[-1]+159*shear, cap-11)], 2, 2)
     p.rect(42, 103, 559, 2, 3)
 
-    # Both outlines have the same stem width and height.
-    x, top, rise, stem = 450, 339, 100, 23
+    x, top, rise, stem = 435, 340, 108, 24
     run = rise * shear
-    p.polygon(box(x, top, stem, rise), 3)
     p.line([(x, top+rise), (x, top), (x+stem, top), (x+stem, top+rise)], 2, 2)
     p.polygon([(x, top+rise), (x+run, top), (x+run+stem, top),
                (x+stem, top+rise)], 1)
-    p.line([(x, top-10), (x+run, top-10)], 2, 2)
-    for end in (x, x+run):
-        p.rect(end-1, top-15, 2, 11, 2)
-    p.line([(440, top), (440, top+rise)], 2, 2)
+    p.line([(x-19, top), (x-19, top+rise)], 2, 2)
     for y in (top, top+rise):
-        p.rect(435, y-1, 10, 2, 2)
-    p.text(510, 367, '30 run', 20, 33, 2)
-    p.text(510, 429, '100 rise', 19, 33, 2)
+        p.line([(x-23, y), (x+stem+run+7, y)], 2, 2)
+    for end in (x, x+run):
+        p.rect(end-1, top-17, 2, 17, 2)
+    p.line([(x, top-14), (x+run, top-14)], 2, 2)
+    p.text(489, 333, '30 run', 22, 29, 2)
+    p.text(491, 425, '100 rise', 22, 33, 2)
     p.text(42, 382, 'Drawing', 34, 45)
     p.text(42, 425, 'italic capitals', 34, 45)
     return p

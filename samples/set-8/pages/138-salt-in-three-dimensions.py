@@ -42,15 +42,17 @@ def build():
             p.disc(x, y, radius+4, 12)
         p.disc(x, y, radius, (3 if sodium else 2) if j == 0 else (11 if sodium else 10))
         p.disc(x-3, y-4, radius*.56, 6 if sodium else 5)
-    p.disc(463, 57, 11, 3)
+    p.label(35, 465, 'ONE CUBIC UNIT CELL', 25, 2)
+    p.disc(463, 57, 11, 3).disc(460, 53, 6, 6)
     p.label(487, 67, 'Na+', 31)
-    p.disc(463, 106, 17, 2)
+    p.disc(463, 106, 17, 2).disc(460, 102, 9, 5)
     p.label(487, 116, 'Cl-', 31)
 
     p.line([(449,141),(620,141)], 12, 3)
     p.label(449, 170, 'Na+ CENTRE', 23)
-    p.line([(352,302),(375,302),(417,244),(430,244)], 12, 2)
-    p.arrow((430,244),(458,244),12,2,9)
+    p.label(449, 190, 'ENLARGED', 21, 9)
+    p.line([(357,315),(378,333),(422,333)], 12, 2)
+    p.arrow((422,333),(490,333),12,2,9)
     # Six chloride neighbours about a sodium ion, in an octahedron.
     centre = (535, 286)
     ring = [(463, 286), (509, 328), (607, 286), (561, 244)]

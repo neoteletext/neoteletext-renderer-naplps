@@ -5,7 +5,7 @@
     "title": "Silt",
     "purpose": "Poster for an exhibition on sediment",
     "style": "Stratified rust, umber and sand with a cut-paper display face",
-    "bytes": 1663,
+    "bytes": 9255,
     "techniques": [
       "DRCS display capitals",
       "filled strata polygons",
@@ -18,8 +18,8 @@
     "file": "157-quarter-turn.nap",
     "title": "Quarter Turn",
     "purpose": "Poster for a rotating print installation",
-    "style": "Acid lime and orchid on a black reading circuit with corner registers",
-    "bytes": 2206,
+    "style": "Acid lime and orchid on a black reading circuit with four edge indexes",
+    "bytes": 3195,
     "techniques": [
       "rotated TEXT on four paths",
       "DRCS numerals",
@@ -33,7 +33,7 @@
     "title": "The Quireline",
     "purpose": "Cover masthead for a fictional journal of folded matter",
     "style": "Violet broadside with a large engraved initial and pink rules",
-    "bytes": 1401,
+    "bytes": 1231,
     "techniques": [
       "DRCS initial with clear counter",
       "proportional TEXT",
@@ -47,7 +47,7 @@
     "title": "Ink and Air",
     "purpose": "Specimen showing reciprocal counters and strokes",
     "style": "Mint and deep green diptych with isolated counters",
-    "bytes": 2014,
+    "bytes": 1492,
     "techniques": [
       "DRCS outline",
       "cleared and isolated counterforms",
@@ -61,7 +61,7 @@
     "title": "Low Water",
     "purpose": "A short original concrete poem about a falling tide",
     "style": "Staggered shoreline verse on a blue-green two-ink field",
-    "bytes": 2914,
+    "bytes": 4776,
     "techniques": [
       "proportional TEXT",
       "stepped baselines",
@@ -75,7 +75,7 @@
     "title": "Register 258",
     "purpose": "Tabular numeral specimen for imaginary mechanical counters",
     "style": "Amber stencil numerals on a divided blue instrument face",
-    "bytes": 1449,
+    "bytes": 1066,
     "techniques": [
       "DRCS tabular numerals",
       "knockout polygons",
@@ -89,7 +89,7 @@
     "title": "Oblique Assembly",
     "purpose": "Poster for an imagined workshop on drawing italic capitals",
     "style": "Black oblique letters over a blue construction grid on lemon",
-    "bytes": 919,
+    "bytes": 987,
     "techniques": [
       "sheared vector capitals",
       "negative-space polygons",
@@ -103,10 +103,10 @@
     "title": "Three Voices",
     "purpose": "Typographic cover for an imagined programme of unaccompanied voices",
     "style": "Oxide, pink, cream and violet diagonal choral setting",
-    "bytes": 849,
+    "bytes": 1778,
     "techniques": [
       "repeated DRCS word",
-      "graded display fields",
+      "tapered duration marks",
       "beat ruler",
       "proportional TEXT"
     ],
@@ -118,7 +118,7 @@
     "title": "The Fi Join",
     "purpose": "A drawing plate for an original lowercase ligature",
     "style": "Ivory drafting paper and a vermilion calligraphic detail",
-    "bytes": 1089,
+    "bytes": 1137,
     "techniques": [
       "DRCS ligature",
       "overlaid construction rules",
@@ -132,7 +132,7 @@
     "title": "A Room After Dark",
     "purpose": "An illuminated title for an imagined all-night reading room",
     "style": "Cobalt and apricot marquee with inline lettering and phased lamps",
-    "bytes": 6634,
+    "bytes": 25690,
     "techniques": [
       "proportional TEXT",
       "optically spaced vector capitals",

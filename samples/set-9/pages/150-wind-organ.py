@@ -42,9 +42,15 @@ def build():
     pipes = [(215, 239, 407, 27), (275, 204, 384, 35), (343, 153, 365, 45),
              (411, 175, 351, 31), (468, 105, 326, 39), (539, 65, 309, 51)]
     for x, _, base, w in pipes:
-        p.poly([(x-8, base-6), (x+w, base-7), (x+w+45, base+23),
-                (x+36, base+34), (x-5, base+8)], 11)
-        p.ellipse(x+w/2, base, w*.69, 9, 4, n=14)
+        p.poly([(x-9, base-6), (x+w+4, base-9), (x+w+23, base+10),
+                (x+w+9, base+19), (x-4, base+13)], 11)
+        p.poly([(x-10, base-5), (x+w+7, base-8), (x+w+10, base+4),
+                (x-8, base+8)], 4)
+        p.poly([(x-8, base+8), (x+w+10, base+4), (x+w+10, base+10),
+                (x-8, base+14)], 15)
+        p.line([(x-9, base+7), (x+w+9, base+3)], 13, 2)
+        for bolt in (x-4, x+w+3):
+            p.circle(bolt, base+2-(bolt-x)/w*3, 2, 9)
     for x, top, base, w in pipes:
         p.poly([(x, top+15), (x+w, top+15), (x+w, base-5),
                 (x+w*.55, base+5), (x, base)], 6)
@@ -85,7 +91,7 @@ def build():
             p.line(segment, ink, 1)
     for x, top, _, w in pipes:
         mouth = x+w/2
-        for lift, span, ink in [(0, 85, 13), (-10, 108, 3), (-24, 126, 12)]:
+        for lift, span, ink in [(0, 82, 3), (-22, 114, 12)]:
             points = []
             for i in range(32):
                 t = i/31
@@ -103,9 +109,12 @@ def build():
                 p.line(points, ink, 2)
     for x, top, _, w in pipes:
         centre = x+w/2
-        for lift, ink in [(0, 13), (-7, 3), (-13, 12)]:
-            p.line([(centre+t, top+lift-9*sin(t/22)-.22*t)
-                    for t in range(2, 51, 3)], ink, 1.5)
+        # A tight curl lifts from each bore, separate from the long wind lines.
+        p.pel(2).arc((centre+3, top+6), (centre+19, top-11),
+                     (centre+46, top-19), 13)
+        p.pel(2).arc((centre+9, top-1), (centre+27, top-19),
+                     (centre+47, top-21), 12)
+        p.line([(centre+48, top-22), (centre+60, top-23)], 1, 1.5)
     for _ in range(34):
         x, y = rng.uniform(8, 550), rng.uniform(70, 248)
         if (x < 186 and y < 150) or any(px-10 <= x <= px+w+12 and y > top-9

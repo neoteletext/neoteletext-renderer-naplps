@@ -10,6 +10,7 @@ def build():
     p = Page('302137 f9e9fa 4f3460 854c7e 6f5088 f5a9ce f9e09b b79ce5 3c2949 f4cc92 9de0db c3abff 5d446d d2b5ee')
     p.label(30, 56, 'ONE CELL BECOMES TWO', 50)
     p.label(32, 86, 'MITOSIS IN AN ANIMAL CELL', 25, 13)
+    p.label(33, 477, 'CLEAVAGE FINISHES CELL DIVISION', 21, 6)
     chromosome = Writer()
     chromosome.relpoly([(-7,-11),(0,-5),(7,-11),(10,-7),(4,0),(10,7),
                         (6,11),(0,5),(-6,11),(-10,7),(-4,0),(-10,-7)])
@@ -59,11 +60,15 @@ def build():
             else:
                 p.call(0x21, cx, y, ink)
 
-    p.rect(142, 364, 52, 8, 4)
-    p.rect(142, 366, 52, 4, 2)
-    for x in (109, 227):
-        p.ellipse(x, 368, 56, 43, 4, n=120)
-        p.ellipse(x, 368, 52, 39, 2, n=120)
+    # A continuous membrane narrows to a bridge between the two nuclei.
+    def membrane(inset):
+        upper = [(56+224*i/120, 368-(42-inset) *
+                  (max(0, 1-((abs(56+224*i/120-168)-58)/54)**2)**.5
+                   + .13*max(0, 1-abs(56+224*i/120-168)/13)))
+                 for i in range(121)]
+        return upper + [(x, 736-y) for x, y in reversed(upper)]
+    p.poly(membrane(0), 4)
+    p.poly([(168+(x-168)*.965, y) for x, y in membrane(4)], 2)
     for x in (109, 227):
         p.disc(x, 368, 33, 4).disc(x, 368, 30, 3)
         positions = [(-13,-11,1),(9,-13,-1),(-10,9,-1),(12,11,1)]

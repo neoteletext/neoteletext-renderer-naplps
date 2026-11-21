@@ -14,3 +14,10 @@ The invented exchange of eclipse fire, the flume and the forked keep make the hi
 
 1. Articulate the near wing with a visible wrist, separate membrane bays and colour changes across each fold. Recede the far wing so the shoulder overlap reads even at 480 × 460.
 2. Turn the foreground silhouette into a wooded bank with irregular crowns, grounded trunks and exposed river-facing rock ledges. Keep the bright river's path open.
+
+## Changes made
+
+- Rebuilt the near wing around a hooked wrist and three distinct membrane bays. Broad copper facets and plum folds show the turn of each bay at the smaller raster size. The far wing now uses a recessed violet field with a narrow copper rim so the two wings separate at the shoulder.
+- Regraded both foreground banks into offset shelves, with asymmetric, leaning crowns, visible trunks and exposed rock ledges on the inside edges. The river still has an open path through the foreground.
+- Confirmed that the validator and generator already had no stream byte ceiling or stream-length check. The manifest still reports the byte count.
+- Rebuilt the stream, both PNGs, the contact sheet and the manifest. Visually checked both new renders. The picture remains wordless at both sizes. The 480 × 460 eclipse still appears tall, and some fine trunk highlights merge into the foreground shadows. The validator passed for both render sizes, the 7-bit stream, the full reset and all 16 palette definitions.

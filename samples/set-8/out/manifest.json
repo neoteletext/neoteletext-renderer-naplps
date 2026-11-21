@@ -11,7 +11,7 @@
       "WAIT reveal"
     ],
     "animated": true,
-    "bytes": 891
+    "bytes": 991
   },
   {
     "number": 137,
@@ -25,7 +25,7 @@
       "alternating palette BLINK"
     ],
     "animated": true,
-    "bytes": 4278
+    "bytes": 4199
   },
   {
     "number": 138,
@@ -39,7 +39,7 @@
       "native circles"
     ],
     "animated": false,
-    "bytes": 2356
+    "bytes": 2433
   },
   {
     "number": 139,
@@ -53,7 +53,7 @@
       "WAIT staging"
     ],
     "animated": true,
-    "bytes": 3713
+    "bytes": 3788
   },
   {
     "number": 140,
@@ -67,7 +67,7 @@
       "knockout pore"
     ],
     "animated": false,
-    "bytes": 15765
+    "bytes": 16098
   },
   {
     "number": 141,
@@ -81,7 +81,7 @@
       "relative macro"
     ],
     "animated": false,
-    "bytes": 3629
+    "bytes": 3664
   },
   {
     "number": 142,
@@ -95,7 +95,7 @@
       "computed light curve"
     ],
     "animated": false,
-    "bytes": 2880
+    "bytes": 2923
   },
   {
     "number": 143,
@@ -109,7 +109,7 @@
       "directional arrows"
     ],
     "animated": false,
-    "bytes": 2177
+    "bytes": 2189
   },
   {
     "number": 144,
@@ -123,7 +123,7 @@
       "indexed facet shading"
     ],
     "animated": false,
-    "bytes": 4741
+    "bytes": 4750
   },
   {
     "number": 145,
@@ -137,6 +137,6 @@
       "WAIT reveal"
     ],
     "animated": true,
-    "bytes": 1320
+    "bytes": 1368
   }
 ]

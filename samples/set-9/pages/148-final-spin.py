@@ -20,8 +20,11 @@ def build():
     for left in (85, 105, 215, 438, 455, 522):
         p.poly([(left, 155), (left+3, 144), (left+13, 143),
                 (left+16, 155)], 10)
-    p.poly([(235, 330), (255, 145), (380, 137), (409, 330)], 15)
-    p.poly([(244, 330), (267, 167), (374, 158), (398, 330)], 5)
+    # Spill falls across the back wall and skims the raised sill.
+    for rx, ry, ink in [(76, 100, 14), (64, 84, 15), (48, 65, 5)]:
+        p.ellipse(319, 241, rx, ry, ink, n=72)
+    for xx, yy, width in [(256, 161, 124), (245, 170, 150), (239, 328, 161)]:
+        p.line([(xx, yy), (xx+width, yy-2)], 6 if yy > 300 else 5, 2)
     for x in (148, 319, 489):
         active = x == 319
         p.rect(x - 65, 176, 130, 146, 6 if active else 5)
@@ -76,11 +79,11 @@ def build():
         for x in range(45, 640, 99):
             edge = min(639, x + shift)
             p.line([(x, y-10), (edge, y)], 14, 2)
-    for top, bottom, left, right in [(377, 394, 282, 358), (398, 418, 273, 371),
-                                      (422, 443, 253, 394), (449, 478, 224, 415)]:
-        p.poly([(left+11, top), (right-8, top), (right, bottom),
-                (left, bottom)], 14)
-        p.line([(left, bottom), (right, bottom)], 15, 2)
+    for x, y, rx, ry in [(322, 386, 42, 5), (300, 405, 63, 9),
+                           (354, 430, 60, 10), (300, 462, 99, 12),
+                           (112, 422, 54, 6), (485, 454, 61, 9)]:
+        p.ellipse(x, y, rx, ry, 14, n=44)
+        p.ellipse(x+rx*.09, y, rx*.76, ry*.67, 15, n=36)
     rng = Random(148)
     for y in range(380, 474, 3):
         spread = 1 + (y-380)/42
@@ -88,6 +91,8 @@ def build():
                                     (482, 31, (10, 9, 13))]:
             left = centre + rng.uniform(-width, width)*spread
             right = min(639, left+rng.uniform(5, width)*spread)
+            if y in (393, 414, 444) or rng.random() < (y-370)/330:
+                continue
             p.line([(max(0, left), y), (right, y+rng.choice((-1, 0, 1)))],
                    inks[rng.randrange(3) if y < 432 else rng.randrange(2)], 2)
     p.rect(65, 62, 505, 53, 1)

@@ -1,4 +1,5 @@
 """A rearrangement proof of the Pythagorean theorem."""
+from math import atan2, cos, pi, sin
 from _drawing import Page, save
 
 META = dict(title='A Square Moves', purpose='Prove the Pythagorean theorem by rearranging four congruent right triangles',
@@ -43,7 +44,10 @@ def build():
 
     p.label(71, 197, 'a', 25).label(52, 246, 'b', 25)
     p.label(88, 259, 'c', 25, 6)
-    p.line([(56,178),(104,178)], 1, 2)
+    p.line([(56,176),(104,176)], 1, 2)
+    for start, end in ((0, atan2(a,b)), (atan2(b,-a), pi)):
+        p.pel(2).arc(*[(38+a+22*cos(t),169+22*sin(t))
+                       for t in (start, (start+end)/2, end)], 1)
     p.line([(45,191),(45,285)], 1, 2)
     p.line([(121,181),(51,299)], 6, 2)
     dimension(38)
@@ -53,6 +57,9 @@ def build():
         dx, dy = 15*du/(a*a+b*b)**.5, 15*dv/(a*a+b*b)**.5
         x, y = corner
         p.line([(x+dx,y+dy),(x+dx-dy,y+dy+dx),(x-dy,y+dx)], 6, 2)
+    # The two complementary acute angles flank the same inner corner.
+    p.label(150, 188, 'Y', 22, 1)
+    p.label(88, 204, 'X', 22, 1)
     p.wait(12)
     p.label(280, 227, 'SAME', 24)
     p.label(279, 250, 'FRAME', 23)
@@ -70,14 +77,14 @@ def build():
     for x, y, length in [(378,251,b),(516,169,a)]:
         p.line([(x,y+length),(x+length,y+length),
                 (x+length,y),(x,y),(x,y+length)], 1, 2)
-    p.label(39, 416, 'ACUTE ANGLES ADD TO 90', 22)
+    p.label(39, 416, 'X + Y = 90 DEG', 24)
     p.label(378, 416, 'EQUAL AREA LEFT OVER', 22)
-    p.line([(39,429),(598,429)], 5, 2)
-    p.label(220, 463, 'a', 38).label(242, 445, '2', 24)
+    p.line([(39,424),(598,424)], 5, 2)
+    p.label(220, 463, 'a', 38).label(242, 448, '2', 21)
     p.label(264, 461, '+', 34)
-    p.label(294, 463, 'b', 38).label(317, 445, '2', 24)
+    p.label(294, 463, 'b', 38).label(317, 448, '2', 21)
     p.label(341, 461, '=', 34)
-    p.label(373, 463, 'c', 38).label(395, 445, '2', 24)
+    p.label(373, 463, 'c', 38).label(395, 448, '2', 21)
     return p
 
 
