@@ -34,7 +34,7 @@ use common::{colour, macro_rectangle, rectangle, wait};
 /// Raise when what `naplps-render` draws for one of these pages changes on purpose. 2: objects
 /// are placed in raster dots (DEC-6853, `docs/naplps-raster.md` RAS-4), so the sequences with
 /// objects, `layers` and `cycle`, changed; those without kept their pictures.
-const FORMAT_VERSION: u32 = 2;
+const FORMAT_VERSION: u32 = 3;
 
 /// The first line of the golden file.
 fn heading() -> String {
