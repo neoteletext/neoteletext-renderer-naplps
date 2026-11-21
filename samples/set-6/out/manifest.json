@@ -5,7 +5,7 @@
     "title": "Afterimage",
     "purpose": "A mechanical iris with a travelling pulse",
     "style": "Radial precision instrument in teal, violet and lime",
-    "bytes": 1843,
+    "bytes": 11084,
     "techniques": [
       "relative polygon vertices",
       "native circles",
@@ -19,7 +19,7 @@
     "title": "The Lure",
     "purpose": "An anglerfish materialising beyond a dive light",
     "style": "Abyssal silhouettes in petrol blue and acid green",
-    "bytes": 1109,
+    "bytes": 7493,
     "techniques": [
       "WAIT staging",
       "palette redefinition",
@@ -34,7 +34,7 @@
     "title": "Fault Line",
     "purpose": "A poster for an imagined letterpress exhibition",
     "style": "Fractured block lettering in bone, oxide red and carbon",
-    "bytes": 683,
+    "bytes": 18227,
     "techniques": [
       "polygonal letterforms",
       "overpainting",
@@ -48,7 +48,7 @@
     "title": "Breathing Earth",
     "purpose": "A schematic section through a termite mound",
     "style": "Ochre field-guide cutaway with ink tunnels and cream annotations",
-    "bytes": 1217,
+    "bytes": 14925,
     "techniques": [
       "user-defined fill pattern",
       "connected lines",
@@ -62,11 +62,12 @@
     "title": "Selvedge Moth",
     "purpose": "A moth woven from programmable character tiles",
     "style": "Symmetrical pixel tapestry in indigo, clay and glacier blue",
-    "bytes": 2512,
+    "bytes": 61058,
     "techniques": [
       "DRCS triangular half-tiles",
       "fixed-size character fields",
-      "reflected tile map"
+      "reflected embroidery masks",
+      "vector satin stitching"
     ],
     "animated": false
   }

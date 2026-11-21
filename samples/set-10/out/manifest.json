@@ -1,0 +1,144 @@
+[
+  {
+    "number": 156,
+    "file": "156-silt.nap",
+    "title": "Silt",
+    "purpose": "Poster for an exhibition on sediment",
+    "style": "Stratified rust, umber and sand with a cut-paper display face",
+    "bytes": 1663,
+    "techniques": [
+      "DRCS display capitals",
+      "filled strata polygons",
+      "proportional TEXT"
+    ],
+    "animated": false
+  },
+  {
+    "number": 157,
+    "file": "157-quarter-turn.nap",
+    "title": "Quarter Turn",
+    "purpose": "Poster for a rotating print installation",
+    "style": "Acid lime and orchid on a black reading circuit with corner registers",
+    "bytes": 2206,
+    "techniques": [
+      "rotated TEXT on four paths",
+      "DRCS numerals",
+      "graduated dial"
+    ],
+    "animated": false
+  },
+  {
+    "number": 158,
+    "file": "158-the-quireline.nap",
+    "title": "The Quireline",
+    "purpose": "Cover masthead for a fictional journal of folded matter",
+    "style": "Violet broadside with a large engraved initial and pink rules",
+    "bytes": 1401,
+    "techniques": [
+      "DRCS initial with clear counter",
+      "proportional TEXT",
+      "ruled editorial grid"
+    ],
+    "animated": false
+  },
+  {
+    "number": 159,
+    "file": "159-ink-and-air.nap",
+    "title": "Ink and Air",
+    "purpose": "Specimen showing reciprocal counters and strokes",
+    "style": "Mint and deep green diptych with isolated counters",
+    "bytes": 2014,
+    "techniques": [
+      "DRCS outline",
+      "cleared and isolated counterforms",
+      "registration rules"
+    ],
+    "animated": false
+  },
+  {
+    "number": 160,
+    "file": "160-low-water.nap",
+    "title": "Low Water",
+    "purpose": "A short original concrete poem about a falling tide",
+    "style": "Staggered shoreline verse on a blue-green two-ink field",
+    "bytes": 2914,
+    "techniques": [
+      "proportional TEXT",
+      "stepped baselines",
+      "filled polygons"
+    ],
+    "animated": false
+  },
+  {
+    "number": 161,
+    "file": "161-register-258.nap",
+    "title": "Register 258",
+    "purpose": "Tabular numeral specimen for imaginary mechanical counters",
+    "style": "Amber stencil numerals on a divided blue instrument face",
+    "bytes": 1449,
+    "techniques": [
+      "DRCS tabular numerals",
+      "knockout polygons",
+      "fixed-width cells"
+    ],
+    "animated": false
+  },
+  {
+    "number": 162,
+    "file": "162-oblique-assembly.nap",
+    "title": "Oblique Assembly",
+    "purpose": "Poster for an imagined workshop on drawing italic capitals",
+    "style": "Black oblique letters over a blue construction grid on lemon",
+    "bytes": 919,
+    "techniques": [
+      "sheared vector capitals",
+      "negative-space polygons",
+      "proportional TEXT"
+    ],
+    "animated": false
+  },
+  {
+    "number": 163,
+    "file": "163-three-voices.nap",
+    "title": "Three Voices",
+    "purpose": "Typographic cover for an imagined programme of unaccompanied voices",
+    "style": "Oxide, pink, cream and violet diagonal choral setting",
+    "bytes": 849,
+    "techniques": [
+      "repeated DRCS word",
+      "graded display fields",
+      "beat ruler",
+      "proportional TEXT"
+    ],
+    "animated": false
+  },
+  {
+    "number": 164,
+    "file": "164-the-fi-join.nap",
+    "title": "The Fi Join",
+    "purpose": "A drawing plate for an original lowercase ligature",
+    "style": "Ivory drafting paper and a vermilion calligraphic detail",
+    "bytes": 1089,
+    "techniques": [
+      "DRCS ligature",
+      "overlaid construction rules",
+      "proportional TEXT"
+    ],
+    "animated": false
+  },
+  {
+    "number": 165,
+    "file": "165-a-room-after-dark.nap",
+    "title": "A Room After Dark",
+    "purpose": "An illuminated title for an imagined all-night reading room",
+    "style": "Cobalt and apricot marquee with inline lettering and phased lamps",
+    "bytes": 6634,
+    "techniques": [
+      "proportional TEXT",
+      "optically spaced vector capitals",
+      "layered tube strokes",
+      "palette BLINK"
+    ],
+    "animated": true
+  }
+]

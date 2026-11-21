@@ -1,0 +1,17 @@
+[
+  {
+    "number": 176,
+    "file": "176-the-ember-tithe.nap",
+    "bytes": 20191,
+    "title": "The Ember Tithe",
+    "purpose": "A dragon brings eclipse fire to a citadel above a river of mist",
+    "style": "Layered sunset clouds, lantern-crowned towers and twisting eclipse fire",
+    "techniques": [
+      "16-entry colour map",
+      "native circular arcs",
+      "relative filled polygons",
+      "batched points and lines"
+    ],
+    "animated": false
+  }
+]

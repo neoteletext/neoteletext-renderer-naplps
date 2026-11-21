@@ -1,0 +1,142 @@
+[
+  {
+    "number": 146,
+    "file": "146-paper-thermal.nap",
+    "bytes": 1344,
+    "title": "Paper Thermal",
+    "purpose": "A folded bird climbing out of its own shadow",
+    "style": "Lemon paper sculpture on a violet gallery wall",
+    "techniques": [
+      "faceted polygons",
+      "layered projected shadow",
+      "connected crease lines"
+    ],
+    "animated": false
+  },
+  {
+    "number": 147,
+    "file": "147-soap-film.nap",
+    "bytes": 10312,
+    "title": "Soap Film",
+    "purpose": "Interference bands draining through a stretched film",
+    "style": "Chromatic contours in an oblique wire frame",
+    "techniques": [
+      "nested contour polygons",
+      "thin-film islands",
+      "native droplet highlight"
+    ],
+    "animated": false
+  },
+  {
+    "number": 148,
+    "file": "148-final-spin.nap",
+    "bytes": 5555,
+    "title": "Final Spin",
+    "purpose": "A single machine still running in a closed laundromat",
+    "style": "Midnight shopfront in fuchsia and mint",
+    "techniques": [
+      "native circles and arcs",
+      "sampled reflection streaks",
+      "palette BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 149,
+    "file": "149-rabbit-in-the-wall.nap",
+    "bytes": 162661,
+    "title": "Rabbit in the Wall",
+    "purpose": "A hand and its improbable shadow share one stage",
+    "style": "Amber shadow theatre on a plaster wall",
+    "techniques": [
+      "dithered radial illumination",
+      "rounded silhouette polygons",
+      "open crease arcs"
+    ],
+    "animated": false
+  },
+  {
+    "number": 150,
+    "file": "150-wind-organ.nap",
+    "bytes": 13349,
+    "title": "Wind Organ",
+    "purpose": "A fictional instrument played by air rushing along a cliff",
+    "style": "Terracotta pipework on a luminous chartreuse landscape",
+    "techniques": [
+      "extruded polygons",
+      "native airflow arcs",
+      "layered rock strata"
+    ],
+    "animated": false
+  },
+  {
+    "number": 151,
+    "file": "151-kiln-opening.nap",
+    "bytes": 7837,
+    "title": "Kiln Opening",
+    "purpose": "The first glimpse of newly fired clay vessels",
+    "style": "Brick-red tessellation around a molten orange chamber",
+    "techniques": [
+      "native filled arches",
+      "profile-following glaze arcs",
+      "WAIT and palette reveal"
+    ],
+    "animated": true
+  },
+  {
+    "number": 152,
+    "file": "152-pocket-universe.nap",
+    "bytes": 25256,
+    "title": "Pocket Universe",
+    "purpose": "Three glass marbles bending the stripes beneath them",
+    "style": "Tinted glass over an apricot striped tabletop",
+    "techniques": [
+      "polygon-clipped refraction bands",
+      "curved refraction lines",
+      "window reflections and caustics"
+    ],
+    "animated": false
+  },
+  {
+    "number": 153,
+    "file": "153-lock-within.nap",
+    "bytes": 14139,
+    "title": "Lock Within",
+    "purpose": "An exploded view of an imagined four-pin lock",
+    "style": "Cadmium-orange cutaway with charcoal and ivory hardware",
+    "techniques": [
+      "layered cutaway",
+      "elliptical spring coils",
+      "dotted assembly axes"
+    ],
+    "animated": false
+  },
+  {
+    "number": 154,
+    "file": "154-two-on-the-ice.nap",
+    "bytes": 10300,
+    "title": "Two on the Ice",
+    "purpose": "An overhead view of two skaters cutting intersecting tracks",
+    "style": "Blue-white negative space with two tiny saturated figures",
+    "techniques": [
+      "graded figure-eight cuts",
+      "directional ice scores",
+      "native spray circles"
+    ],
+    "animated": false
+  },
+  {
+    "number": 155,
+    "file": "155-updraft-of-umbrellas.nap",
+    "bytes": 14480,
+    "title": "Updraft of Umbrellas",
+    "purpose": "A flock of runaway umbrellas escapes a rain shower",
+    "style": "Ink-green storm bands with bright canopies at staggered scales",
+    "techniques": [
+      "transformed canopy polygons",
+      "open handle arcs",
+      "gust filaments and directional rain"
+    ],
+    "animated": false
+  }
+]

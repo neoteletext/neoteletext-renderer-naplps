@@ -1,0 +1,142 @@
+[
+  {
+    "number": 136,
+    "file": "136-light-that-stays.nap",
+    "title": "Light That Stays",
+    "purpose": "Compare incidence below and above the glass–air critical angle",
+    "style": "Cobalt optical slab with cyan and amber rays",
+    "techniques": [
+      "textured normals",
+      "native angle arcs",
+      "WAIT reveal"
+    ],
+    "animated": true,
+    "bytes": 891
+  },
+  {
+    "number": 137,
+    "file": "137-the-still-points.nap",
+    "title": "The Still Points",
+    "purpose": "Show the third harmonic and its stationary nodes",
+    "style": "Violet oscilloscope envelopes over black plum",
+    "techniques": [
+      "sampled polylines",
+      "native circle nodes",
+      "alternating palette BLINK"
+    ],
+    "animated": true,
+    "bytes": 4278
+  },
+  {
+    "number": 138,
+    "file": "138-salt-in-three-dimensions.nap",
+    "title": "Salt in Three Dimensions",
+    "purpose": "Show alternating sodium and chloride sites and six nearest neighbours",
+    "style": "Ivory crystallographic plate with coral and teal ions",
+    "techniques": [
+      "oblique projection",
+      "depth ordering",
+      "native circles"
+    ],
+    "animated": false,
+    "bytes": 2356
+  },
+  {
+    "number": 139,
+    "file": "139-ink-in-flight.nap",
+    "title": "Ink in Flight",
+    "purpose": "Show three dye components separating as solvent climbs paper",
+    "style": "Warm laboratory print with three pigment tracks",
+    "techniques": [
+      "layered pigment contours",
+      "native hatch",
+      "WAIT staging"
+    ],
+    "animated": true,
+    "bytes": 3713
+  },
+  {
+    "number": 140,
+    "file": "140-a-leaf-breathes.nap",
+    "title": "A Leaf Breathes",
+    "purpose": "Compare paired guard cells at high and low turgor",
+    "style": "Jade microscopy plate with inked epidermal seams",
+    "techniques": [
+      "nested contour polygons",
+      "native circles",
+      "knockout pore"
+    ],
+    "animated": false,
+    "bytes": 15765
+  },
+  {
+    "number": 141,
+    "file": "141-one-cell-becomes-two.nap",
+    "title": "One Cell Becomes Two",
+    "purpose": "Follow chromosome condensation, alignment, separation and nuclear reformation",
+    "style": "Numbered rose and lilac fluorescence-style specimens",
+    "techniques": [
+      "native cell discs",
+      "thick chromatid strokes",
+      "relative macro"
+    ],
+    "animated": false,
+    "bytes": 3629
+  },
+  {
+    "number": 142,
+    "file": "142-a-star-winks.nap",
+    "title": "A Star Winks",
+    "purpose": "Relate an exoplanet crossing a stellar disc to a drop in measured light",
+    "style": "Amber stellar disc paired with an icy photometry trace",
+    "techniques": [
+      "native circles",
+      "indexed overpainting",
+      "computed light curve"
+    ],
+    "animated": false,
+    "bytes": 2880
+  },
+  {
+    "number": 143,
+    "file": "143-the-ocean-keeps-a-record.nap",
+    "title": "The Ocean Keeps a Record",
+    "purpose": "Show how polarity reversals are recorded symmetrically as ocean floor spreads",
+    "style": "Rust and marine-blue seafloor block diagram",
+    "techniques": [
+      "oblique polygons",
+      "spaced polarity marks",
+      "directional arrows"
+    ],
+    "animated": false,
+    "bytes": 2177
+  },
+  {
+    "number": 144,
+    "file": "144-stone-that-shrinks.nap",
+    "title": "Stone That Shrinks",
+    "purpose": "Show polygonal cooling joints continuing down through a lava flow",
+    "style": "Basalt cross-section in slate and apricot",
+    "techniques": [
+      "shared-edge polygons",
+      "oblique projection",
+      "indexed facet shading"
+    ],
+    "animated": false,
+    "bytes": 4741
+  },
+  {
+    "number": 145,
+    "file": "145-a-square-moves.nap",
+    "title": "A Square Moves",
+    "purpose": "Prove the Pythagorean theorem by rearranging four congruent right triangles",
+    "style": "Ultramarine and saffron geometric proof poster",
+    "techniques": [
+      "congruent polygon dissection",
+      "colour pairing",
+      "WAIT reveal"
+    ],
+    "animated": true,
+    "bytes": 1320
+  }
+]

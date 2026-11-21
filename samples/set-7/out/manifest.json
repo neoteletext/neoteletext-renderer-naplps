@@ -1,0 +1,150 @@
+[
+  {
+    "number": 126,
+    "file": "126-hem-of-the-sky.nap",
+    "title": "Hem of the Sky",
+    "purpose": "Title screen for a weather-stitching adventure",
+    "style": "Ultramarine woodblock sky with vermilion pennants and wheat lettering",
+    "bytes": 2179,
+    "techniques": [
+      "native discs",
+      "faceted polygons",
+      "connected stitch lines",
+      "palette BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 127,
+    "file": "127-spore-switch.nap",
+    "title": "Spore Switch",
+    "purpose": "Live platform screen with two spore lamps still to light",
+    "style": "Peach and hot pink fungi over a plum forest of silhouettes",
+    "bytes": 4950,
+    "techniques": [
+      "relative sprite macros",
+      "stepped silhouettes",
+      "native arcs",
+      "logical pels"
+    ],
+    "animated": false
+  },
+  {
+    "number": 128,
+    "file": "128-siltfold.nap",
+    "title": "Siltfold",
+    "purpose": "Travel map showing the footpath unlocked at low water",
+    "style": "Parchment flood chart with indigo pools and vermilion wayfinding",
+    "bytes": 2214,
+    "techniques": [
+      "defined fill texture",
+      "filled shoreline polygons",
+      "dashed connected lines",
+      "native discs"
+    ],
+    "animated": false
+  },
+  {
+    "number": 129,
+    "file": "129-tessera-vault.nap",
+    "title": "Tessera Vault",
+    "purpose": "Inventory with a gravity-changing relic selected",
+    "style": "Black enamel display case with mint, pale lilac and electric amber",
+    "bytes": 2150,
+    "techniques": [
+      "faceted polygons",
+      "outlined rectangles",
+      "native discs",
+      "fixed-pitch numerals"
+    ],
+    "animated": false
+  },
+  {
+    "number": 130,
+    "file": "130-brine-dash.nap",
+    "title": "Brine Dash",
+    "purpose": "Race results showing four sail-sled times",
+    "style": "Cobalt and persimmon sports graphics on chalk white",
+    "bytes": 1527,
+    "techniques": [
+      "slanted polygon lanes",
+      "diagonal pel strokes",
+      "fixed-pitch race times"
+    ],
+    "animated": false
+  },
+  {
+    "number": 131,
+    "file": "131-hillwalk-oath.nap",
+    "title": "Hillwalk Oath",
+    "purpose": "Cutscene where the crossing stirs and walks away",
+    "style": "Silhouette theatre in violet twilight and luminous coral",
+    "bytes": 2560,
+    "techniques": [
+      "WAIT stages",
+      "palette redefinition",
+      "native sun disc",
+      "silhouette polygons"
+    ],
+    "animated": true
+  },
+  {
+    "number": 132,
+    "file": "132-dayglass-relay.nap",
+    "title": "Dayglass Relay",
+    "purpose": "Optics puzzle with a misdirected beam and a dormant lens",
+    "style": "Sea-glass board, deep green channels and bright yellow light",
+    "bytes": 2599,
+    "techniques": [
+      "connected line beams",
+      "native rings",
+      "filled direction markers",
+      "logical pels"
+    ],
+    "animated": false
+  },
+  {
+    "number": 133,
+    "file": "133-drum-of-moths.nap",
+    "title": "Drum of Moths",
+    "purpose": "Rhythm playfield with a five-lane percussion pattern",
+    "style": "Charcoal stage, hot coloured beat lanes and chunky teletext wing glyphs",
+    "bytes": 5003,
+    "techniques": [
+      "native six-cell mosaics",
+      "palette BLINK",
+      "segmented strike pads"
+    ],
+    "animated": true
+  },
+  {
+    "number": 134,
+    "file": "134-terrace-kin.nap",
+    "title": "Terrace Kin",
+    "purpose": "Building screen with a terrace selected for planting",
+    "style": "Axonometric clay gardens on a bright apricot field",
+    "bytes": 5329,
+    "techniques": [
+      "axonometric polygon tiles",
+      "occlusion order",
+      "connected contour lines",
+      "logical pels"
+    ],
+    "animated": false
+  },
+  {
+    "number": 135,
+    "file": "135-keel-of-thunder.nap",
+    "title": "Keel of Thunder",
+    "purpose": "Boss phase with two charge nodes and their grounding sockets",
+    "style": "Acid citron and steel-blue wireframe with orange charge nodes",
+    "bytes": 3958,
+    "techniques": [
+      "mirrored polygon facets",
+      "connected lightning lines",
+      "native rings",
+      "palette BLINK"
+    ],
+    "animated": true
+  }
+]

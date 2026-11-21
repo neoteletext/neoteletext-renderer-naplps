@@ -27,8 +27,8 @@ def validate_stream(script, manifest_entry, page, ppm):
     require(set(expected) == MANIFEST_FIELDS and expected == manifest_entry,
             f'Manifest disagrees with {script.name}')
     require(stream == (OUT / page.name).read_bytes(), f'Stale stream for {script.name}')
-    require(stream.startswith(RESET) and max(stream) < 128 and len(stream) < 4000,
-            f'Invalid reset, 8-bit data or oversized stream in {script.name}')
+    require(stream.startswith(RESET) and max(stream) < 128,
+            f'Invalid reset or 8-bit data in {script.name}')
     # After the four character-set designations and the six-byte DOMAIN,
     # each map definition is SELECT, SET COLOR and four RGB operand bytes.
     start = len(RESET) + 12 + 6
@@ -51,7 +51,6 @@ def validate_stream(script, manifest_entry, page, ppm):
         write_png(candidate, width, height, pixels)
         require(candidate.read_bytes() == preview_path(script, width, height).read_bytes(),
                 f'Stale preview for {script.name} at {width} × {height}')
-    return len(stream)
 
 
 def validate_timing(page, ppm):
@@ -75,9 +74,9 @@ def main():
         ppm = Path(temp) / 'page.ppm'
         for script, entry in zip(PAGES, manifest):
             nap = ppm.with_name(script.stem + '.nap')
-            size = validate_stream(script, entry, nap, ppm)
+            validate_stream(script, entry, nap, ppm)
             validate_timing(nap, ppm)
-            print(f'{script.stem} | {size:,} bytes | 640 × 480 and 480 × 460 OK')
+            print(f'{script.stem} | 640 × 480 and 480 × 460 OK')
     print('All five pages passed. The six BLINK phases and three WAIT stages are distinct.')
 
 

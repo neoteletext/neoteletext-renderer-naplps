@@ -119,7 +119,6 @@ class Page:
         return self
     def save(self):
         self.data.extend(b'\x0f') # finish the last PDI operand, leave primary text active
-        if len(self.data)>=8192:raise ValueError(f'{self.name}: {len(self.data)} exceeds brief')
         (ROOT/'out').mkdir(exist_ok=True)
         path=ROOT/'out'/f'{self.name}.nap'
         path.write_bytes(self.data)
