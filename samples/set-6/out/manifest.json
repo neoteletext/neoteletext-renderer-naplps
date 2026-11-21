@@ -1,0 +1,73 @@
+[
+  {
+    "number": 121,
+    "file": "121-afterimage.nap",
+    "title": "Afterimage",
+    "purpose": "A mechanical iris with a travelling pulse",
+    "style": "Radial precision instrument in teal, violet and lime",
+    "bytes": 1843,
+    "techniques": [
+      "relative polygon vertices",
+      "native circles",
+      "phase-offset BLINK"
+    ],
+    "animated": true
+  },
+  {
+    "number": 122,
+    "file": "122-the-lure.nap",
+    "title": "The Lure",
+    "purpose": "An anglerfish materialising beyond a dive light",
+    "style": "Abyssal silhouettes in petrol blue and acid green",
+    "bytes": 1109,
+    "techniques": [
+      "WAIT staging",
+      "palette redefinition",
+      "open arcs",
+      "layered polygons"
+    ],
+    "animated": true
+  },
+  {
+    "number": 123,
+    "file": "123-fault-line.nap",
+    "title": "Fault Line",
+    "purpose": "A poster for an imagined letterpress exhibition",
+    "style": "Fractured block lettering in bone, oxide red and carbon",
+    "bytes": 683,
+    "techniques": [
+      "polygonal letterforms",
+      "overpainting",
+      "proportional TEXT"
+    ],
+    "animated": false
+  },
+  {
+    "number": 124,
+    "file": "124-breathing-earth.nap",
+    "title": "Breathing Earth",
+    "purpose": "A schematic section through a termite mound",
+    "style": "Ochre field-guide cutaway with ink tunnels and cream annotations",
+    "bytes": 1217,
+    "techniques": [
+      "user-defined fill pattern",
+      "connected lines",
+      "faceted chamber polygons"
+    ],
+    "animated": false
+  },
+  {
+    "number": 125,
+    "file": "125-selvedge-moth.nap",
+    "title": "Selvedge Moth",
+    "purpose": "A moth woven from programmable character tiles",
+    "style": "Symmetrical pixel tapestry in indigo, clay and glacier blue",
+    "bytes": 2512,
+    "techniques": [
+      "DRCS triangular half-tiles",
+      "fixed-size character fields",
+      "reflected tile map"
+    ],
+    "animated": false
+  }
+]
